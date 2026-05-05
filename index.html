@@ -1502,8 +1502,35 @@ function renderProp(){
     ${ab}<button class="ab" onclick="editProp(${ri})">Editar</button></div></td></tr>`;
   }).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhuma proposta</td></tr>`;
 }
-function prevPropIdx(i){const x=ld(SK.prop)[i];const h=buildPropostaHTML(x);const w=window.open('','_blank');w.document.write(h);w.document.close();}
-function dlPropIdx(i){const x=ld(SK.prop)[i];const h=buildPropostaHTML(x);const bl=new Blob([h],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download=`Proposta_SER_${(x.nome||'cliente').replace(/\s+/g,'_')}.html`;a.click();URL.revokeObjectURL(a.href);}
+function prevPropIdx(i){
+  const arr=ld(SK.prop);
+  const x=arr[i]||arr.find(p=>p.id===i)||arr.find((_,idx)=>idx===+i);
+  if(!x)return alert('Proposta não encontrada');
+  // Abrir overlay de proposta com dados preenchidos
+  const ov=document.getElementById('proposta-overlay');
+  if(!ov)return;
+  // Construir e mostrar o ppage
+  try{
+    // Tentar usar a função buildPropostaHTML existente para preencher o ppage
+    const ppage=document.getElementById('ppage');
+    if(ppage){
+      const html=buildPropostaHTML(x);
+      // Extrair o body do HTML gerado e colocar no ppage
+      const tmp=document.createElement('div');
+      tmp.innerHTML=html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>/gi,'');
+      ppage.innerHTML='<div style="position:sticky;top:10px;z-index:100;display:flex;gap:10px;justify-content:flex-end;padding:12px 18px;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:12px">'
+        +'<button class="pact" style="padding:8px 20px;border:1.5px solid #ccc;border-radius:9px;background:transparent;color:#555;font-size:13px;cursor:pointer" onclick="fecharProposta()">← Fechar</button>'
+        +'<button style="padding:8px 20px;background:linear-gradient(135deg,#3B6D11,#639922);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer" onclick="window.print()">🖨️ Imprimir / PDF</button>'
+        +'</div>'
+        +tmp.innerHTML;
+      document.getElementById('wiz').style.display='none';
+      ppage.style.display='block';
+    }
+  }catch(e){console.warn('prevPropIdx erro:',e);}
+  ov.style.display='block';
+  document.body.style.overflow='hidden';
+}
+function dlPropIdx(i){prevPropIdx(i);setTimeout(()=>window.print(),800);}
 function setFP(f){filt.prop=f;renderProp()}
 function chgP(i,v){const d=ld(SK.prop);d[i].status=v;sv(SK.prop,d);_hookSave('propostas',d[i]);renderProp()}
 function trigAceite(i){aceiteIdx=i;const x=ld(SK.prop)[i];document.getElementById('aceite-info').innerHTML=[{l:'Cliente',v:x.nome},{l:'Consumo',v:(x.kwh||'—')+' kWh/mês'},{l:'Valor',v:f(x.valor)},{l:'Vendedor',v:x.vend||'—'}].map(o=>`<div style="background:var(--sec);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--mu)">${o.l}</div><div style="font-size:13px;font-weight:500">${o.v}</div></div>`).join('');openM('mo-aceite')}
@@ -1695,8 +1722,58 @@ function renderCont(){
   <button class="ab" onclick="editCont(${ri})">Editar</button></div></td></tr>`;
   }).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhum contrato</td></tr>`;
 }
-function prevContIdx(i){const arr=ld(SK.cont);const x=arr[i]||arr.find(c=>c.id===i)||arr.find((_,idx)=>idx===+i);if(!x)return alert('Contrato não encontrado');const h=buildContratoHTML(x);const w=window.open('','_blank');w.document.write(h);w.document.close();}
-function dlContIdx(i){const x=ld(SK.cont)[i];const h=buildContratoHTML(x);const bl=new Blob([h],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download=`Contrato_SER_${(x.nome||'cliente').replace(/\s+/g,'_')}.html`;a.click();URL.revokeObjectURL(a.href);}
+function prevContIdx(i){
+  const arr=ld(SK.cont);
+  const x=arr[i]||arr.find(c=>c.id===i)||arr.find((_,idx)=>idx===+i);
+  if(!x)return alert('Contrato não encontrado');
+  // Mostrar dentro do overlay interno (não abre nova aba)
+  const ov=document.getElementById('contrato-overlay');
+  if(!ov)return;
+  // Preencher o cpage com o HTML do contrato
+  const cpage=document.getElementById('cpage');
+  if(cpage){
+    // Substituir conteúdo do cpage pelo documento gerado
+    const fR=v=>'R\u00a0'+Number(v||0).toLocaleString('pt-BR');
+    const end=[(x.rua||''),(x.num?'nº '+x.num:''),(x.bairro||''),(x.cidade||''),(x.estado||'')].filter(Boolean).join(', ');
+    cpage.innerHTML=`<div class="cact">
+      <button class="bedit" onclick="fecharContrato()">← Fechar</button>
+      <button class="bprint" onclick="window.print()">🖨️ Imprimir / PDF</button>
+    </div>
+    <div id="cdoc">
+      <div class="dh">
+        <img src="https://i.imgur.com/8UQsVkR.png" onerror="this.style.display='none'">
+        <div class="dtit">INSTRUMENTO PARTICULAR DE CONTRATO DE<br>PROJETO E INSTALAÇÃO FOTOVOLTAICO</div>
+        <div class="dsub">SOLUÇÕES EM ENERGIA RENOVÁVEL MATRIZ LTDA — CNPJ 58.656.750/0001-04</div>
+      </div>
+      <div class="pbox">
+        <strong>CONTRATANTE:</strong> ${x.nome||'—'}, portador(a) do CPF sob o n. ${x.cpf||'___________'}, RG ${x.rg||'___________'} ${x.rgorg?'/ '+x.rgorg:''}, residente em ${end||'___________'}.<br><br>
+        <strong>CONTRATADA:</strong> SOLUÇÕES EM ENERGIA RENOVÁVEL MATRIZ LTDA, denominada <strong>SER ENERGIA RENOVÁVEL</strong>, CNPJ 58.656.750/0001-04, Travessa Antônio Baena, n 300, Bairro Marco, CEP 66.093-635, Belém/PA.
+      </div>
+      <div class="cs"><div class="ctit">DO OBJETO</div>
+        <p class="ct">Sistema fotovoltaico de <strong>${x.kwp||'—'} kWp</strong>, incluindo fornecimento, instalação e homologação junto à concessionária.</p>
+      </div>
+      <div class="cs"><div class="ctit">DO VALOR E PAGAMENTO</div>
+        <p class="ct">Valor total: <strong>${fR(x.valor)}</strong></p>
+        <p class="ct">Forma de pagamento: <strong>${x.pgto||'—'}</strong>${x.pgto_desc||x.pgtoDesc?' — '+(x.pgto_desc||x.pgtoDesc):''}</p>
+      </div>
+      <div class="cs"><div class="ctit">DO VENDEDOR</div>
+        <p class="ct">Responsável comercial: <strong>${x.vend||'—'}</strong></p>
+      </div>
+      <div class="sigs">
+        <div class="sig-date">Belém/PA, ${x.data||new Date().toLocaleDateString('pt-BR')}</div>
+        <div class="sg">
+          <div class="sb"><div class="sl2"></div><div class="sn">${x.nome||'CONTRATANTE'}</div><div class="sr">Contratante</div></div>
+          <div class="sb"><div class="sl2"></div><div class="sn">SER ENERGIA RENOVÁVEL</div><div class="sr">Contratada — CNPJ 58.656.750/0001-04</div></div>
+        </div>
+      </div>
+    </div>`;
+    document.getElementById('wiz-ov').style.display='none';
+    cpage.style.display='block';
+  }
+  ov.style.display='block';
+  document.body.style.overflow='hidden';
+}
+function dlContIdx(i){prevContIdx(i);setTimeout(()=>window.print(),800);}
 function setFC(f){filt.cont=f;renderCont()}
 function chgC(i,v){const d=ld(SK.cont);d[i].status=v;sv(SK.cont,d);_hookSave('contratos',d[i]);renderCont()}
 function abrirTemplateContrato(){window.open('https://docs.google.com/document/d/1JmfNk2c4GSLs5HzFyBGkVsEGh4YCauksjHmvtxnF9h8/edit','_blank')}
@@ -2250,8 +2327,8 @@ async function sbUpsert(tbl,item){
   delete e._idx;
   // Remove campos camelCase que nao existem nas tabelas do Supabase
   const _INVALIDOS={
-    contratos:['marcaInv','potInv','qtdInv','marcaMod','potMod','qtdMod'],
-    propostas:['vendEmail','vendWpp','ecoAnual'],
+    contratos:['marcaInv','potInv','qtdInv','marcaMod','potMod','qtdMod','kwh','aceito','eco','validade'],
+    propostas:['vendEmail','vendWpp','ecoAnual','aceito','kwh','eco','validade','wpp'],
     homologacoes:['marcaInv','qtdInv','marcaMod','qtdMod','fileNames'],
     instalacoes:[],vistorias:[],comissoes:[],cadastros:[],equipamentos:[],receitas:[]
   };
