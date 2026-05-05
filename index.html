@@ -545,7 +545,7 @@ tr:hover td{background:#fafaf8}
   <h3 id="mp-t">Nova proposta</h3>
   <div class="msec">Dados do cliente</div>
   <div class="mr2"><div><label>Nome completo do cliente</label><input type="text" id="mp-nome" list="list-clientes"></div><div><label>WhatsApp</label><input type="text" id="mp-wpp"></div></div>
-  <div class="mr2"><div><label>E-mail do cliente</label><input type="email" id="mp-email"></div><div><label>Vendedor responsável</label><input type="text" id="mp-vend" list="list-vend-prop"></div></div>
+  <div class="mr2"><div><label>E-mail do cliente</label><input type="email" id="mp-email"></div><div><label>Vendedor responsável</label><select id="mp-vend"><option value="">— Vendedor —</option></select></div></div>
   <datalist id="list-vend-prop"></datalist>
   <datalist id="list-clientes"></datalist>
   <div class="mr2"><div><label>WhatsApp do vendedor</label><input type="text" id="mp-vend-wpp"></div><div><label>E-mail do vendedor</label><input type="email" id="mp-vend-email"></div></div>
@@ -556,14 +556,14 @@ tr:hover td{background:#fafaf8}
     <div id="mp-calc"></div>
   </div>
   <div class="msec">Kit fotovoltaico <span style="font-size:10px;font-weight:400;color:var(--mu)">— selecione dos equipamentos cadastrados ou preencha manualmente</span></div>
-  <div class="mr2"><div><label>Qtd. Módulos</label><input type="number" id="mp-qm" min="0" value="0" oninput="calcProposta()"></div><div><label>Módulo (Marca + Modelo)</label><input type="text" id="mp-mm" list="list-equip-modulo" placeholder="Ex: JA Solar 545W"></div></div>
+  <div class="mr2"><div><label>Qtd. Módulos</label><input type="number" id="mp-qm" min="0" value="0" oninput="calcProposta()"></div><div><label>Módulo — Marca</label><select id="mp-mm"><option value="">— Módulo —</option></select></div></div>
   <datalist id="list-equip-modulo"></datalist>
-  <div class="mr2"><div><label>Potência do Módulo (W)</label><input type="number" id="mp-pm" value="0" oninput="calcProposta()"></div><div><label>Qtd. Baterias <span style="font-weight:400;color:var(--mu)">(se houver)</span></label><input type="number" id="mp-qb" min="0" value="0"></div></div>
-  <div class="mr2"><div><label>Bateria (Marca + Modelo)</label><input type="text" id="mp-mb" list="list-equip-bateria" placeholder="Ex: Pylontech US3000C"></div><div><label>Potência da Bateria (kWh)</label><input type="number" id="mp-pb" value="0"></div></div>
+  <div class="mr2"><div><label>Potência do Módulo (W)</label><select id="mp-pm" onchange="calcProposta()"><option value="">— W —</option></select></div><div><label>Qtd. Baterias <span style="font-weight:400;color:var(--mu)">(se houver)</span></label><input type="number" id="mp-qb" min="0" value="0"></div></div>
+  <div class="mr2"><div><label>Bateria — Marca</label><select id="mp-mb"><option value="">— Bateria —</option></select></div><div><label>Potência da Bateria (kWh)</label><select id="mp-pb"><option value="">— kWh —</option></select></div></div>
   <datalist id="list-equip-bateria"></datalist>
-  <div class="mr2"><div><label>Qtd. Inversores</label><input type="number" id="mp-qi" min="0" value="1" oninput="calcProposta()"></div><div><label>Inversor (Marca + Modelo)</label><input type="text" id="mp-mi" list="list-equip-inversor" placeholder="Ex: Growatt MIN 5000TL-X"></div></div>
+  <div class="mr2"><div><label>Qtd. Inversores</label><input type="number" id="mp-qi" min="0" value="1" oninput="calcProposta()"></div><div><label>Inversor — Marca</label><select id="mp-mi"><option value="">— Inversor —</option></select></div></div>
   <datalist id="list-equip-inversor"></datalist>
-  <div class="mr2"><div><label>Potência do Inversor (kW)</label><input type="number" id="mp-pi" step="0.1" value="0" oninput="calcProposta()"></div><div><label>Área mínima (m²)</label><input type="number" id="mp-area" step="0.1" value="0" readonly class="readonly"></div></div>
+  <div class="mr2"><div><label>Potência do Inversor (kW)</label><select id="mp-pi" onchange="calcProposta()"><option value="">— kW —</option></select></div><div><label>Área mínima (m²)</label><input type="number" id="mp-area" step="0.1" value="0" readonly class="readonly"></div></div>
   <div class="msec">Valores e economia <span style="font-size:10px;font-weight:400;color:var(--mu)">(calculados automaticamente ao informar kWh/mês)</span></div>
   <div class="mr2"><div><label>Conta sem solar (R$/mês)</label><input type="number" id="mp-semsolar" class="readonly" readonly></div><div><label>Conta com solar · 15% (R$/mês)</label><input type="number" id="mp-comsolar" class="readonly" readonly></div></div>
   <div class="mr2"><div><label>Economia mensal · 85% (R$)</label><input type="number" id="mp-eco" class="readonly" readonly></div><div><label>Valor total do projeto (R$)</label><input type="number" id="mp-valor"></div></div>
@@ -618,15 +618,15 @@ tr:hover td{background:#fafaf8}
   <div class="mr2"><div><label>Número</label><input type="text" id="mc-num"></div><div><label>Complemento</label><input type="text" id="mc-comp" placeholder="Apto, Bloco..."></div></div>
   <div class="mr2"><div><label>Bairro</label><input type="text" id="mc-bairro"></div><div><label>Cidade</label><input type="text" id="mc-cidade"></div></div>
   <div class="msec">Projeto fotovoltaico</div>
-  <div class="mr2"><div><label>kWp instalado</label><input type="number" id="mc-kwp" step="0.1"></div><div><label>Vendedor</label><input type="text" id="mc-vend" list="list-vendedores"></div></div>
+  <div class="mr2"><div><label>kWp instalado</label><input type="number" id="mc-kwp" step="0.1"></div><div><label>Vendedor</label><select id="mc-vend"><option value="">— Vendedor —</option></select></div></div>
   <datalist id="list-vendedores"></datalist>
   <div class="msec">Kit — Inversores</div>
-  <div class="mr2"><div><label>Qtd. Inversores</label><input type="number" id="mc-qi" min="1" value="1"></div><div><label>Marca</label><input type="text" id="mc-mi" placeholder="Ex: Growatt, Solis..."></div></div>
-  <div class="mr2"><div><label>Potência do Inversor (kW)</label><input type="number" id="mc-pi" step="0.1"></div><div><label>Fase da rede</label><select id="mc-fase"><option>Monofásico</option><option>Bifásico</option><option>Trifásico</option></select></div></div>
-  <div class="mr2"><div><label>Tensão da rede (V)</label><input type="number" id="mc-tensao" value="220"></div><div></div></div>
+  <div class="mr2"><div><label>Qtd. Inversores</label><input type="number" id="mc-qi" min="1" value="1"></div><div><label>Marca</label><select id="mc-mi"><option value="">— Inversor —</option></select></div></div>
+  <div class="mr2"><div><label>Potência do Inversor (kW)</label><select id="mc-pi"><option value="">— kW —</option></select></div><div><label>Fase da rede</label><select id="mc-fase"><option>Monofásico</option><option>Bifásico</option><option>Trifásico</option></select></div></div>
+  <div class="mr2"><div><label>Tensão da rede (V)</label><select id="mc-tensao"><option value="">—</option></select></div><div></div></div>
   <div class="msec">Kit — Módulos solares</div>
-  <div class="mr2"><div><label>Qtd. Módulos</label><input type="number" id="mc-qm" min="1" value="0"></div><div><label>Marca</label><input type="text" id="mc-mm" placeholder="Ex: JA Solar, Risen..."></div></div>
-  <div class="mr2"><div><label>Potência do Módulo (W)</label><input type="number" id="mc-pm" value="0"></div><div></div></div>
+  <div class="mr2"><div><label>Qtd. Módulos</label><input type="number" id="mc-qm" min="1" value="0"></div><div><label>Marca</label><select id="mc-mm"><option value="">— Módulo —</option></select></div></div>
+  <div class="mr2"><div><label>Potência do Módulo (W)</label><select id="mc-pm"><option value="">— W —</option></select></div><div></div></div>
   <div class="msec">Pagamento e valor</div>
   <div class="mr2"><div><label>Valor total (R$)</label><input type="number" id="mc-valor"></div><div><label>Forma de pagamento</label><select id="mc-pgto"><option>À vista</option><option>Financiamento</option><option>Parcelado interno</option><option>Misto</option></select></div></div>
   <label>Descrição do pagamento</label><input type="text" id="mc-pgto-desc" placeholder="Ex: 50% entrada + 50% na instalação">
@@ -668,11 +668,11 @@ tr:hover td{background:#fafaf8}
   <h3 id="mh-t">Nova homologação</h3>
   <label>Cliente</label><input type="text" id="mh-nome">
   <div class="mr2"><div><label>kWp</label><input type="number" id="mh-kwp" step="0.1"></div><div><label>Data assinatura</label><input type="date" id="mh-ds"></div></div>
-  <div class="mr2"><div><label>Vendedor</label><input type="text" id="mh-vend" list="list-vendedores2"></div><div><label>WhatsApp</label><input type="text" id="mh-wpp"></div></div>
+  <div class="mr2"><div><label>Vendedor</label><select id="mh-vend"><option value="">— Vendedor —</option></select></div><div><label>WhatsApp</label><input type="text" id="mh-wpp"></div></div>
   <datalist id="list-vendedores2"></datalist>
   <div class="msec">Equipamentos do projeto</div>
-  <div class="mr2"><div><label>Qtd. Inversores</label><input type="number" id="mh-qi" min="0" value="1"></div><div><label>Marca dos Inversores</label><input type="text" id="mh-mi" placeholder="Ex: Growatt, Solis..."></div></div>
-  <div class="mr2"><div><label>Qtd. Módulos</label><input type="number" id="mh-qm" min="0" value="0"></div><div><label>Marca dos Módulos</label><input type="text" id="mh-mm" placeholder="Ex: JA Solar, Risen..."></div></div>
+  <div class="mr2"><div><label>Qtd. Inversores</label><input type="number" id="mh-qi" min="0" value="1"></div><div><label>Marca dos Inversores</label><select id="mh-mi"><option value="">— Inversor —</option></select></div></div>
+  <div class="mr2"><div><label>Qtd. Módulos</label><input type="number" id="mh-qm" min="0" value="0"></div><div><label>Marca dos Módulos</label><select id="mh-mm"><option value="">— Módulo —</option></select></div></div>
   <div class="msec">Documentos da homologação</div>
   <div style="display:grid;gap:8px;margin-bottom:4px">
     <div class="doc-upload-row"><label class="doc-label">📄 Doc. do Homologador</label><input type="file" id="mh-f-homologador" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-homologador">Nenhum arquivo</div></div>
@@ -698,7 +698,7 @@ tr:hover td{background:#fafaf8}
   <div class="mr2"><div><label>Valor de referência (R$)</label><input type="number" id="mcom-ref" oninput="calcCom()"></div><div><label>Valor vendido — contrato (R$)</label><input type="number" id="mcom-vd" oninput="calcCom()"></div></div>
   <div style="background:var(--al);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:12px"><span style="color:var(--a);font-weight:700">Majorado: </span><span id="mcom-maj">R$ 0</span></div>
   <div class="msec">Vendedor</div>
-  <div class="mr2"><div><label>Nome</label><input type="text" id="mcom-vn" list="list-vendedores3"></div><div><label>% sobre referência</label><input type="number" id="mcom-vp" step="0.1" oninput="calcCom()"></div></div>
+  <div class="mr2"><div><label>Nome</label><select id="mcom-vn"><option value="">— Vendedor —</option></select></div><div><label>% sobre referência</label><input type="number" id="mcom-vp" step="0.1" oninput="calcCom()"></div></div>
   <datalist id="list-vendedores3"></datalist>
   <div class="mr2"><div><label>% do majorado ao vendedor</label><input type="number" id="mcom-vmp" step="1" oninput="calcCom()"></div><div><label>Bônus calculado</label><input type="number" id="mcom-vb" class="readonly" readonly></div></div>
   <div class="msec">SDR</div>
@@ -915,33 +915,68 @@ function updateNavCounts(){
   });
 }
 
-// Populate datalists from cadastro
+// Opções fixas do sistema
+const _OPTS={
+  marcaMod:['Jinko Solar','LONGi Solar','Trina Solar','JA Solar','Canadian Solar','Tongwei Solar','Astronergy (Chint)','Risen Energy','AIKO Solar','GCL System','First Solar','Waaree Solar','DMEGC Solar','Yingli Solar','Talesun Solar','Hanwha Q CELLS','Jolywood','Seraphim Solar','DAS Solar','Runergy / Hyperion','Huasun','Boviet Solar','ZNShine Solar','Phono Solar (SUMEC)','Vikram Solar','VSUN Solar','ReneSola','Suntech Power','Eging PV','HT-SAAE','SEG Solar','DAH Solar','Leapton Energy','Luxen Solar','Haitai Solar','Sunova Solar','Adani Solar','ET Solar (Elite Solar)','Hanersun','Solarspace'],
+  marcaInv:['Sungrow','Huawei Digital Power','SMA Solar Technology','Power Electronics','Sineng Electric','FIMER','SINEXCEL','Solis (Ginlong)','GoodWe','Growatt','Kehua Tech','TMEIC (Toshiba Mitsubishi)','Delta Electronics','Ingeteam','Hopewind'],
+  marcaBat:['GoodWe','Solplanet','Huawei','BYD','Tesla','Sungrow'],
+  potMod:[555,585,610,620,700],
+  potInv:[3.0,3.3,3.5,3.6,4.0,5.0,6.0,7.0,7.5,8.0,9.0,9.1,10.0,15.0,20.0,25.0,50.0,75.0],
+  potBat:[5.0],
+  tensao:[127,220,380],
+  vendedores:['Jonnhy Dyego Belém Silva','Moisés Lima de Oliveira','Rogério Costa Barbosa','Kurt Dickinson Lemos Pinheiro']
+};
+
+// Populate datalists and selects from cadastro + static data
 function populateDataLists(){
   const cads=ld(SK.cad);
   const byType={};
   cads.forEach(c=>{if(!byType[c.tipo])byType[c.tipo]=[];byType[c.tipo].push(c.nome)});
   const fill=(id,names)=>{const el=document.getElementById(id);if(!el)return;el.innerHTML=names.map(n=>`<option value="${n}">`).join('')};
+  const fillSel=(id,items,blank='— selecione —')=>{
+    const el=document.getElementById(id);if(!el||el.tagName!=='SELECT')return;
+    el.innerHTML=`<option value="">${blank}</option>`+items.map(o=>{
+      const v=typeof o==='object'?o.v:String(o);
+      const l=typeof o==='object'?o.l:String(o);
+      return `<option value="${v}">${l}</option>`;
+    }).join('');
+  };
   // Clientes
   const clientes=[...(byType.cliente||[]),...ld(SK.cont).map(c=>c.nome).filter(Boolean),...ld(SK.prop).map(p=>p.nome).filter(Boolean)];
-  const clientesUniq=[...new Set(clientes)].sort();
-  fill('list-clientes',clientesUniq);
-  // Vendedores
-  const vends=[...(byType.vendedor||[]),...(byType.supervisor||[]),...(byType.gerente||[])];
-  fill('list-vendedores',vends);
-  fill('list-vendedores2',vends);
-  fill('list-vendedores3',vends);
-  fill('list-vend-prop',vends);
+  fill('list-clientes',[...new Set(clientes)].sort());
+  // Vendedores — merge estático + cadastros
+  const vends=[...new Set([..._OPTS.vendedores,...(byType.vendedor||[]),...(byType.supervisor||[]),...(byType.gerente||[])])];
+  fill('list-vendedores',vends);fill('list-vendedores2',vends);fill('list-vendedores3',vends);fill('list-vend-prop',vends);
+  fillSel('mp-vend',vends,'— Vendedor —');
+  fillSel('mc-vend',vends,'— Vendedor —');
+  fillSel('mh-vend',vends,'— Vendedor —');
+  fillSel('mcom-vn',vends,'— Vendedor —');
   fill('list-sdrs',byType.sdr||[]);
   fill('list-instaladores',byType.instalador||[]);
   fill('list-vistoriadores',byType.vistoriador||[]);
-  // Equipamentos
+  // Módulos
+  fillSel('mp-mm',_OPTS.marcaMod,'— Módulo —');
+  fillSel('mc-mm',_OPTS.marcaMod,'— Módulo —');
+  fillSel('mh-mm',_OPTS.marcaMod,'— Módulo —');
+  fillSel('mp-pm',_OPTS.potMod.map(v=>({v:String(v),l:v+' W'})),'— W —');
+  fillSel('mc-pm',_OPTS.potMod.map(v=>({v:String(v),l:v+' W'})),'— W —');
+  // Inversores
+  fillSel('mp-mi',_OPTS.marcaInv,'— Inversor —');
+  fillSel('mc-mi',_OPTS.marcaInv,'— Inversor —');
+  fillSel('mh-mi',_OPTS.marcaInv,'— Inversor —');
+  fillSel('mp-pi',_OPTS.potInv.map(v=>({v:v.toFixed(1),l:String(v.toFixed(1)).replace('.',',')+' kW'})),'— kW —');
+  fillSel('mc-pi',_OPTS.potInv.map(v=>({v:v.toFixed(1),l:String(v.toFixed(1)).replace('.',',')+' kW'})),'— kW —');
+  // Baterias
+  fillSel('mp-mb',_OPTS.marcaBat,'— Bateria —');
+  fillSel('mp-pb',_OPTS.potBat.map(v=>({v:v.toFixed(1),l:v.toFixed(1)+' kWh'})),'— kWh —');
+  // Tensão
+  fillSel('mc-tensao',_OPTS.tensao.map(v=>({v:String(v),l:v+' V'})),'—');
+  // Manter datalists legado de equipamentos cadastrados
   const equips=ld(SK.equip);
   const modelos=equips.filter(e=>e.tipo==='modulo').map(e=>`${e.marca} ${e.modelo||''} ${e.pot}W`.trim());
   const inversores=equips.filter(e=>e.tipo==='inversor').map(e=>`${e.marca} ${e.modelo||''} ${e.pot}kW`.trim());
   const baterias=equips.filter(e=>e.tipo==='bateria').map(e=>`${e.marca} ${e.modelo||''} ${e.pot}kWh`.trim());
-  fill('list-equip-modulo',modelos);
-  fill('list-equip-inversor',inversores);
-  fill('list-equip-bateria',baterias);
+  fill('list-equip-modulo',modelos);fill('list-equip-inversor',inversores);fill('list-equip-bateria',baterias);
 }
 
 // ===================== DASHBOARD =====================
@@ -1540,7 +1575,7 @@ function setFP(f){filt.prop=f;renderProp()}
 function chgP(i,v){const d=ld(SK.prop);d[i].status=v;sv(SK.prop,d);_hookSave('propostas',d[i]);renderProp()}
 function trigAceite(i){aceiteIdx=i;const x=ld(SK.prop)[i];document.getElementById('aceite-info').innerHTML=[{l:'Cliente',v:x.nome},{l:'Consumo',v:(x.kwh||'—')+' kWh/mês'},{l:'Valor',v:f(x.valor)},{l:'Vendedor',v:x.vend||'—'}].map(o=>`<div style="background:var(--sec);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--mu)">${o.l}</div><div style="font-size:13px;font-weight:500">${o.v}</div></div>`).join('');openM('mo-aceite')}
 function confirmarAceite(){const ps=ld(SK.prop);if(aceiteIdx===null||!ps[aceiteIdx])return;ps[aceiteIdx].aceito=true;ps[aceiteIdx].status='win';sv(SK.prop,ps);sbUpsert('propostas',ps[aceiteIdx]);const cs=ld(SK.cont);const x=ps[aceiteIdx];if(!cs.some(c=>c.nome===x.nome)){const nc={nome:x.nome,kwp:x.kwp||0,valor:x.valor,pgto:'Financiamento',pgtoDesc:'',vend:x.vend||'',wpp:x.wpp||'',status:'pendente',data:new Date().toLocaleDateString('pt-BR'),fase:'Monofásico',tensao:220,cpf:'',rg:'',rgorg:'',cep:'',estado:'',rua:'',num:'',comp:'',bairro:'',cidade:''};const cs2=ld(SK.cont);cs2.unshift(nc);sv(SK.cont,cs2);_hookSave('contratos',nc);}closeM('mo-aceite');renderProp();renderCont();updateNavCounts();sw('contratos',true)}
-function openPropModal(){ei.prop=null;['mp-nome','mp-wpp','mp-email','mp-vend','mp-vend-wpp','mp-vend-email','mp-kwh','mp-qm','mp-mm','mp-pm','mp-qi','mp-mi','mp-pi','mp-qb','mp-mb','mp-pb','mp-semsolar','mp-comsolar','mp-eco','mp-valor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('mp-qi').value=1;document.getElementById('mp-qm').value=0;document.getElementById('mp-pm').value=0;document.getElementById('mp-pi').value=0;document.getElementById('mp-qb').value=0;document.getElementById('mp-pb').value=0;document.getElementById('mp-area').value=0;const vd=new Date();vd.setDate(vd.getDate()+7);document.getElementById('mp-validade').value='7 dias (até '+vd.toLocaleDateString('pt-BR')+')';document.getElementById('mp-status').value='new';document.getElementById('mp-nota').style.display='none';document.getElementById('mp-t').textContent='Nova proposta';populateDataLists();openM('mo-prop')}
+function openPropModal(){ei.prop=null;['mp-nome','mp-wpp','mp-email','mp-vend','mp-vend-wpp','mp-vend-email','mp-kwh','mp-qm','mp-mm','mp-pm','mp-qi','mp-mi','mp-pi','mp-qb','mp-mb','mp-pb','mp-semsolar','mp-comsolar','mp-eco','mp-valor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('mp-qi').value=1;document.getElementById('mp-qm').value=0;document.getElementById('mp-pm').value='';document.getElementById('mp-pi').value='';document.getElementById('mp-qb').value=0;document.getElementById('mp-pb').value='';document.getElementById('mp-area').value=0;const vd=new Date();vd.setDate(vd.getDate()+7);document.getElementById('mp-validade').value='7 dias (até '+vd.toLocaleDateString('pt-BR')+')';document.getElementById('mp-status').value='new';document.getElementById('mp-nota').style.display='none';document.getElementById('mp-t').textContent='Nova proposta';populateDataLists();openM('mo-prop')}
 function editProp(i){ei.prop=i;const x=ld(SK.prop)[i];['nome','wpp','email','vend','vendWpp','vendEmail','validade'].forEach(k=>{const el=document.getElementById('mp-'+k.replace(/([A-Z])/g,'-$1').toLowerCase());if(el)el.value=x[k]||'';});document.getElementById('mp-kwh').value=x.kwh||0;document.getElementById('mp-qm').value=x.qm||0;document.getElementById('mp-mm').value=x.mm||'';document.getElementById('mp-pm').value=x.pm||0;document.getElementById('mp-qi').value=x.qi||1;document.getElementById('mp-mi').value=x.mi||'';document.getElementById('mp-pi').value=x.pi||0;document.getElementById('mp-qb').value=x.qb||0;document.getElementById('mp-mb').value=x.mb||'';document.getElementById('mp-pb').value=x.pb||0;document.getElementById('mp-area').value=x.area||0;document.getElementById('mp-semsolar').value=x.semsolar||0;document.getElementById('mp-comsolar').value=x.comsolar||0;document.getElementById('mp-eco').value=x.eco||0;document.getElementById('mp-valor').value=x.valor||0;document.getElementById('mp-status').value=x.status;document.getElementById('mp-t').textContent='Editar proposta';calcProposta();openM('mo-prop')}
 function saveProp(){const nome=document.getElementById('mp-nome').value.trim();if(!nome)return alert('Informe o nome');const p=getPropData();const e={...p,status:document.getElementById('mp-status').value,aceito:false};const d=ld(SK.prop);if(ei.prop!==null)d[ei.prop]=e;else d.unshift(e);sv(SK.prop,d);_hookSave('propostas',e);closeM('mo-prop');renderProp();updateNavCounts()}
 
@@ -1782,7 +1817,7 @@ function dlContIdx(i){prevContIdx(i);setTimeout(()=>window.print(),800);}
 function setFC(f){filt.cont=f;renderCont()}
 function chgC(i,v){const d=ld(SK.cont);d[i].status=v;sv(SK.cont,d);_hookSave('contratos',d[i]);renderCont()}
 function abrirTemplateContrato(){window.open('https://docs.google.com/document/d/1JmfNk2c4GSLs5HzFyBGkVsEGh4YCauksjHmvtxnF9h8/edit','_blank')}
-function openContModal(){ei.cont=null;['mc-nome','mc-cpf','mc-rg','mc-rgorg','mc-wpp','mc-cep','mc-rua','mc-num','mc-comp','mc-bairro','mc-cidade','mc-kwp','mc-vend','mc-qi','mc-mi','mc-pi','mc-tensao','mc-qm','mc-mm','mc-pm','mc-valor','mc-pgto-desc'].forEach(id=>document.getElementById(id).value='');document.getElementById('mc-qi').value=1;document.getElementById('mc-qm').value=0;document.getElementById('mc-pm').value=0;document.getElementById('mc-tensao').value=220;document.getElementById('mc-estado').value='';document.getElementById('mc-pgto').value='À vista';document.getElementById('mc-fase').value='Monofásico';document.getElementById('mc-status').value='pendente';document.getElementById('mc-t').textContent='Registrar contrato';populateDataLists();openM('mo-cont')}
+function openContModal(){ei.cont=null;['mc-nome','mc-cpf','mc-rg','mc-rgorg','mc-wpp','mc-cep','mc-rua','mc-num','mc-comp','mc-bairro','mc-cidade','mc-kwp','mc-vend','mc-qi','mc-mi','mc-pi','mc-tensao','mc-qm','mc-mm','mc-pm','mc-valor','mc-pgto-desc'].forEach(id=>document.getElementById(id).value='');document.getElementById('mc-qi').value=1;document.getElementById('mc-qm').value=0;document.getElementById('mc-pm').value='';document.getElementById('mc-tensao').value='220';document.getElementById('mc-estado').value='';document.getElementById('mc-pgto').value='À vista';document.getElementById('mc-fase').value='Monofásico';document.getElementById('mc-status').value='pendente';document.getElementById('mc-t').textContent='Registrar contrato';populateDataLists();openM('mo-cont')}
 function editCont(i){ei.cont=i;const x=ld(SK.cont)[i];document.getElementById('mc-nome').value=x.nome;document.getElementById('mc-cpf').value=x.cpf||'';document.getElementById('mc-rg').value=x.rg||'';document.getElementById('mc-rgorg').value=x.rgorg||'';document.getElementById('mc-wpp').value=x.wpp||'';document.getElementById('mc-cep').value=x.cep||'';document.getElementById('mc-estado').value=x.estado||'';document.getElementById('mc-rua').value=x.rua||'';document.getElementById('mc-num').value=x.num||'';document.getElementById('mc-comp').value=x.comp||'';document.getElementById('mc-bairro').value=x.bairro||'';document.getElementById('mc-cidade').value=x.cidade||'';document.getElementById('mc-kwp').value=x.kwp;document.getElementById('mc-vend').value=x.vend||'';document.getElementById('mc-qi').value=x.qtdInv||1;document.getElementById('mc-mi').value=x.marcaInv||'';document.getElementById('mc-pi').value=x.potInv||'';document.getElementById('mc-fase').value=x.fase||'Monofásico';document.getElementById('mc-tensao').value=x.tensao||220;document.getElementById('mc-qm').value=x.qtdMod||0;document.getElementById('mc-mm').value=x.marcaMod||'';document.getElementById('mc-pm').value=x.potMod||0;document.getElementById('mc-valor').value=x.valor;document.getElementById('mc-pgto').value=x.pgto||'À vista';document.getElementById('mc-pgto-desc').value=x.pgtoDesc||'';document.getElementById('mc-status').value=x.status;document.getElementById('mc-t').textContent='Editar contrato';openM('mo-cont')}
 function saveCont(){const nome=document.getElementById('mc-nome').value.trim();if(!nome)return alert('Informe o nome');const e={nome,cpf:document.getElementById('mc-cpf').value.trim(),rg:document.getElementById('mc-rg').value.trim(),rgorg:document.getElementById('mc-rgorg').value.trim(),wpp:document.getElementById('mc-wpp').value.trim(),cep:document.getElementById('mc-cep').value.trim(),estado:document.getElementById('mc-estado').value,rua:document.getElementById('mc-rua').value.trim(),num:document.getElementById('mc-num').value.trim(),comp:document.getElementById('mc-comp').value.trim(),bairro:document.getElementById('mc-bairro').value.trim(),cidade:document.getElementById('mc-cidade').value.trim(),kwp:+document.getElementById('mc-kwp').value||0,vend:document.getElementById('mc-vend').value.trim(),qtdInv:+document.getElementById('mc-qi').value||1,marcaInv:document.getElementById('mc-mi').value.trim(),potInv:+document.getElementById('mc-pi').value||0,fase:document.getElementById('mc-fase').value,tensao:+document.getElementById('mc-tensao').value||220,qtdMod:+document.getElementById('mc-qm').value||0,marcaMod:document.getElementById('mc-mm').value.trim(),potMod:+document.getElementById('mc-pm').value||0,valor:+document.getElementById('mc-valor').value||0,pgto:document.getElementById('mc-pgto').value,pgtoDesc:document.getElementById('mc-pgto-desc').value.trim(),status:document.getElementById('mc-status').value,data:new Date().toLocaleDateString('pt-BR')};const d=ld(SK.cont);if(ei.cont!==null)d[ei.cont]=e;else d.unshift(e);sv(SK.cont,d);_hookSave('contratos',e);closeM('mo-cont');renderCont();updateNavCounts()}
 
