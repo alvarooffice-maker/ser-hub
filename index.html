@@ -229,11 +229,24 @@ tr:hover td{background:#fafaf8}
 }
 /* ── Print: oculta tudo exceto o overlay ativo ── */
 @media print{
-  .shell,.login-screen{display:none!important}
-  #proposta-overlay,#contrato-overlay{display:block!important;position:static!important;overflow:visible!important;z-index:auto!important}
-  #proposta-overlay #ppage,#contrato-overlay #cpage{display:block!important}
-  #proposta-overlay #wiz,#contrato-overlay #wiz-ov{display:none!important}
-  button[onclick*="fechar"]{display:none!important}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .shell,.login-screen,button[onclick*="fechar"]{display:none!important}
+  body{background:#fff!important;margin:0!important;padding:0!important}
+  /* Overlay ativo vira bloco estático */
+  #proposta-overlay,#contrato-overlay{
+    display:block!important;position:static!important;overflow:visible!important;
+    z-index:auto!important;width:100%!important;height:auto!important;
+    background:#fff!important
+  }
+  /* Mostra o documento gerado */
+  #proposta-overlay #ppage{display:block!important}
+  #contrato-overlay #cpage{display:block!important}
+  /* Esconde wizard e botões de ação */
+  #proposta-overlay #wiz{display:none!important}
+  #contrato-overlay #wiz-ov{display:none!important}
+  #proposta-overlay .pact,#contrato-overlay .cact{display:none!important}
+  /* Overlay inativo some */
+  #proposta-overlay:not([style*="block"]),#contrato-overlay:not([style*="block"]){display:none!important}
 }
 .rank3-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
 .rank3-grid .top-list{min-height:80px}
@@ -2235,6 +2248,14 @@ async function sbUpsert(tbl,item){
   const e={...item};
   if(e.criado_por===undefined&&_user)e.criado_por=_user.id;
   delete e._idx;
+  // Remove campos camelCase que nao existem nas tabelas do Supabase
+  const _INVALIDOS={
+    contratos:['marcaInv','potInv','qtdInv','marcaMod','potMod','qtdMod'],
+    propostas:['vendEmail','vendWpp','ecoAnual'],
+    homologacoes:['marcaInv','qtdInv','marcaMod','qtdMod','fileNames'],
+    instalacoes:[],vistorias:[],comissoes:[],cadastros:[],equipamentos:[],receitas:[]
+  };
+  (_INVALIDOS[tbl]||[]).forEach(k=>delete e[k]);
   if(e.id){await getSB().from(tbl).update(e).eq('id',e.id);}
   else{const {data}=await getSB().from(tbl).insert(e).select().single();if(data)item.id=data.id;}
 }
@@ -3889,7 +3910,7 @@ async function salvarContratoNoSupabase(entry){
     }
     const {data:{session}}=await getSB().auth.getSession();
 
-    const {_origem,data,...rest}=entry;
+    const {_origem,data,marcaInv,potInv,qtdInv,marcaMod,potMod,qtdMod,...rest}=entry;
     const row={...rest,id:entry.id||crypto.randomUUID()};
     if(session?.user)row.criado_por=session.user.id;
 
