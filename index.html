@@ -2321,7 +2321,6 @@ async function sbUpsert(tbl,item){
   const e={...item};
   if(e.criado_por===undefined&&_user)e.criado_por=_user.id;
   delete e._idx;
-  // Remove campos camelCase que nao existem nas tabelas do Supabase
   const _INVALIDOS={
     contratos:['marcaInv','potInv','qtdInv','marcaMod','potMod','qtdMod','kwh','aceito','eco','validade'],
     propostas:['vendEmail','vendWpp','ecoAnual','aceito','kwh','eco','validade','wpp'],
@@ -2329,10 +2328,30 @@ async function sbUpsert(tbl,item){
     instalacoes:[],vistorias:[],comissoes:[],cadastros:[],equipamentos:[],receitas:[]
   };
   (_INVALIDOS[tbl]||[]).forEach(k=>delete e[k]);
-  // Para contratos: renomear camelCase para snake_case
   if(tbl==='contratos'&&e.pgtoDesc!==undefined){e.pgto_desc=e.pgtoDesc;delete e.pgtoDesc;}
-  if(e.id){await getSB().from(tbl).update(e).eq('id',e.id);}
-  else{const {data,error}=await getSB().from(tbl).insert(e).select().single();if(data){item.id=data.id;if(_cache[tbl]&&!_cache[tbl].some(c=>c.id===data.id))_cache[tbl].unshift(data);if(_pending[tbl])_pending[tbl]=_pending[tbl].filter(p=>p.nome!==item.nome);}else if(error){console.error('sbUpsert insert error',tbl,error);}}
+  if(e.id){
+    const{error}=await getSB().from(tbl).update(e).eq('id',e.id);
+    if(error){console.error('sbUpsert update error',tbl,error);_sbErrAlert(tbl,error);}
+  } else {
+    const {data,error}=await getSB().from(tbl).insert(e).select().single();
+    if(data){
+      item.id=data.id;
+      if(_cache[tbl]&&!_cache[tbl].some(c=>c.id===data.id))_cache[tbl].unshift(data);
+      if(_pending[tbl])_pending[tbl]=_pending[tbl].filter(p=>p.nome!==item.nome);
+    } else if(error){
+      console.error('sbUpsert insert error',tbl,error);
+      _sbErrAlert(tbl,error);
+    }
+  }
+}
+function _sbErrAlert(tbl,error){
+  const msg=error?.message||'';
+  const tblNome={propostas:'proposta',contratos:'contrato',homologacoes:'homologação',instalacoes:'instalação',vistorias:'vistoria',comissoes:'comissão',cadastros:'cadastro'}[tbl]||tbl;
+  if(msg.includes('policy')||msg.includes('permission')||msg.includes('row-level')||msg.includes('violates')||error?.code==='42501'){
+    alert('⚠️ Sem permissão para salvar '+tblNome+'.\n\nO administrador precisa configurar as políticas RLS no Supabase:\nDatabase → Tables → '+tbl+' → Policies\n\nAdicione uma política INSERT para usuários autenticados.');
+  } else {
+    alert('Erro ao salvar '+tblNome+': '+msg);
+  }
 }
 async function sbDel(tbl,id){if(id)await getSB().from(tbl).delete().eq('id',id);}
 function _hookSave(tbl,item){setTimeout(()=>sbUpsert(tbl,item),0);}
