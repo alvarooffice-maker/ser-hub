@@ -2338,7 +2338,7 @@ async function sbUpsert(tbl,item){
   // Para contratos: renomear camelCase para snake_case
   if(tbl==='contratos'&&e.pgtoDesc!==undefined){e.pgto_desc=e.pgtoDesc;delete e.pgtoDesc;}
   if(e.id){await getSB().from(tbl).update(e).eq('id',e.id);}
-  else{const {data}=await getSB().from(tbl).insert(e).select().single();if(data){item.id=data.id;if(_pending[tbl])_pending[tbl]=_pending[tbl].filter(p=>p.nome!==item.nome);}}
+  else{const {data,error}=await getSB().from(tbl).insert(e).select().single();if(data){item.id=data.id;if(_cache[tbl]&&!_cache[tbl].some(c=>c.id===data.id))_cache[tbl].unshift(data);if(_pending[tbl])_pending[tbl]=_pending[tbl].filter(p=>p.nome!==item.nome);}else if(error){console.error('sbUpsert insert error',tbl,error);}}
 }
 async function sbDel(tbl,id){if(id)await getSB().from(tbl).delete().eq('id',id);}
 function _hookSave(tbl,item){setTimeout(()=>sbUpsert(tbl,item),0);}
