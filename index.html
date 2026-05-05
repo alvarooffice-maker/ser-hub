@@ -917,10 +917,10 @@ function updateNavCounts(){
 
 // Opções fixas do sistema
 const _OPTS={
-  marcaMod:['Jinko Solar','LONGi Solar','Trina Solar','JA Solar','Canadian Solar','Tongwei Solar','Astronergy (Chint)','Risen Energy','AIKO Solar','GCL System','First Solar','Waaree Solar','DMEGC Solar','Yingli Solar','Talesun Solar','Hanwha Q CELLS','Jolywood','Seraphim Solar','DAS Solar','Runergy / Hyperion','Huasun','Boviet Solar','ZNShine Solar','Phono Solar (SUMEC)','Vikram Solar','VSUN Solar','ReneSola','Suntech Power','Eging PV','HT-SAAE','SEG Solar','DAH Solar','Leapton Energy','Luxen Solar','Haitai Solar','Sunova Solar','Adani Solar','ET Solar (Elite Solar)','Hanersun','Solarspace'],
-  marcaInv:['Sungrow','Huawei Digital Power','SMA Solar Technology','Power Electronics','Sineng Electric','FIMER','SINEXCEL','Solis (Ginlong)','GoodWe','Growatt','Kehua Tech','TMEIC (Toshiba Mitsubishi)','Delta Electronics','Ingeteam','Hopewind'],
+  marcaMod:['Jinko Solar','LONGi Solar','Trina Solar','JA Solar','Canadian Solar','Astronergy','DMEGC Solar','DAS Solar','ReneSola','SEG Solar','DAH Solar','Leapton Energy','Sunpro Solar','Hanersun','Era Solar','Pulling Energy','MAXEON','RENEPV'],
+  marcaInv:['Sungrow','Huawei','SMA Solar','Solis','GoodWe','Growatt','Auxsol','Solplanet','Leapton','Canadian','Deye'],
   marcaBat:['GoodWe','Solplanet','Huawei','BYD','Tesla','Sungrow'],
-  potMod:[555,585,610,620,700],
+  potMod:[535,555,585,610,620,630,700],
   potInv:[3.0,3.3,3.5,3.6,4.0,5.0,6.0,7.0,7.5,8.0,9.0,9.1,10.0,15.0,20.0,25.0,50.0,75.0],
   potBat:[5.0],
   tensao:[127,220,380],
@@ -971,6 +971,19 @@ function populateDataLists(){
   fillSel('mp-pb',_OPTS.potBat.map(v=>({v:v.toFixed(1),l:v.toFixed(1)+' kWh'})),'— kWh —');
   // Tensão
   fillSel('mc-tensao',_OPTS.tensao.map(v=>({v:String(v),l:v+' V'})),'—');
+  // Wizard de proposta
+  fillSel('p-mm',_OPTS.marcaMod,'— Módulo —');
+  fillSel('p-mi',_OPTS.marcaInv,'— Inversor —');
+  fillSel('p-mb',_OPTS.marcaBat,'— Bateria —');
+  fillSel('p-pm',_OPTS.potMod.map(v=>({v:String(v),l:v+' W'})),'— W —');
+  fillSel('p-pi',_OPTS.potInv.map(v=>({v:v.toFixed(1),l:String(v.toFixed(1)).replace('.',',')+' kW'})),'— kW —');
+  fillSel('p-pb',_OPTS.potBat.map(v=>({v:v.toFixed(1),l:v.toFixed(1)+' kWh'})),'— kWh —');
+  // Wizard de contrato
+  fillSel('f-tensao',_OPTS.tensao.map(v=>({v:String(v),l:v+' V'})),'—');
+  fillSel('f-marca-plac',_OPTS.marcaMod,'— Módulo —');
+  fillSel('f-pot-plac',_OPTS.potMod.map(v=>({v:String(v),l:v+' W'})),'— W —');
+  fillSel('f-marca-inv',_OPTS.marcaInv,'— Inversor —');
+  fillSel('f-pot-inv',_OPTS.potInv.map(v=>({v:v.toFixed(1),l:String(v.toFixed(1)).replace('.',',')+' kW'})),'— kW —');
   // Manter datalists legado de equipamentos cadastrados
   const equips=ld(SK.equip);
   const modelos=equips.filter(e=>e.tipo==='modulo').map(e=>`${e.marca} ${e.modelo||''} ${e.pot}W`.trim());
@@ -2461,6 +2474,7 @@ async function abrirGeradorProposta(){
   }catch(e){}
   ov.style.display='block';
   document.body.style.overflow='hidden';
+  populateDataLists();
 }
 async function abrirGeradContrato(){
   const ov=document.getElementById('contrato-overlay');
@@ -2486,6 +2500,7 @@ async function abrirGeradContrato(){
   }catch(e){}
   ov.style.display='block';
   document.body.style.overflow='hidden';
+  populateDataLists();
 }
 function fecharProposta(){
   const ov=document.getElementById('proposta-overlay');
@@ -3224,20 +3239,20 @@ setInterval(async () => {
       </div>
       <div class="fg c2">
         <div class="fd req"><label>Qtd. Módulos</label><input type="number" id="p-qm" min="0" value="0" oninput="calcP()"></div>
-        <div class="fd req"><label>Potência do Módulo (W)</label><input type="number" id="p-pm" value="0" oninput="calcP()"></div>
+        <div class="fd req"><label>Potência do Módulo (W)</label><select id="p-pm" onchange="calcP()"><option value="">— W —</option></select></div>
       </div>
       <div class="fg c2">
-        <div class="fd"><label>Marca dos Módulos</label><input type="text" id="p-mm" list="lst-mod" placeholder="Ex: JA Solar"></div>
+        <div class="fd"><label>Marca dos Módulos</label><select id="p-mm"><option value="">— Módulo —</option></select></div>
         <div class="fd"><label>Qtd. Inversores</label><input type="number" id="p-qi" min="0" value="1" oninput="calcP()"></div>
       </div>
       <div class="fg c2">
-        <div class="fd"><label>Marca do Inversor</label><input type="text" id="p-mi" list="lst-inv" placeholder="Ex: Growatt"></div>
-        <div class="fd"><label>Potência do Inversor (kW)</label><input type="number" id="p-pi" step="0.1" value="0" oninput="calcP()"></div>
+        <div class="fd"><label>Marca do Inversor</label><select id="p-mi"><option value="">— Inversor —</option></select></div>
+        <div class="fd"><label>Potência do Inversor (kW)</label><select id="p-pi" onchange="calcP()"><option value="">— kW —</option></select></div>
       </div>
       <div class="fg c3">
         <div class="fd"><label>Qtd. Baterias</label><input type="number" id="p-qb" min="0" value="0"></div>
-        <div class="fd"><label>Marca da Bateria</label><input type="text" id="p-mb" list="lst-bat" placeholder="Ex: Pylontech"></div>
-        <div class="fd"><label>Potência Bat. (kWh)</label><input type="number" id="p-pb" value="0"></div>
+        <div class="fd"><label>Marca da Bateria</label><select id="p-mb"><option value="">— Bateria —</option></select></div>
+        <div class="fd"><label>Potência Bat. (kWh)</label><select id="p-pb"><option value="">— kWh —</option></select></div>
       </div>
       <datalist id="lst-mod"></datalist><datalist id="lst-inv"></datalist><datalist id="lst-bat"></datalist>
       <div class="wcalc" id="wcalc" style="display:none">
@@ -3392,16 +3407,16 @@ setInterval(async () => {
      <div class="fd"><label>Fase da rede</label>
       <select id="f-fase"><option value="MONOFÁSICO">Monofásico</option><option value="BIFÁSICO">Bifásico</option><option value="TRIFÁSICO">Trifásico</option></select>
      </div>
-     <div class="fd"><label>Tensão da rede (V)</label><input type="text" id="f-tensao" placeholder="Ex: 220"></div>
+     <div class="fd"><label>Tensão da rede (V)</label><select id="f-tensao"><option value="">—</option></select></div>
     </div>
     <div class="wnote" style="margin-top:4px">🔆 Módulos Solares</div>
     <div class="fr c2">
      <div class="fd req"><label>Qtd. de módulos</label><input type="number" id="f-qtd-plac" placeholder="Ex: 14" oninput="calcKwp()"></div>
-     <div class="fd req"><label>Marca dos módulos</label><input type="text" id="f-marca-plac" placeholder="Ex: JA Solar"></div>
+     <div class="fd req"><label>Marca dos módulos</label><select id="f-marca-plac"><option value="">— Módulo —</option></select></div>
     </div>
     <div class="fr c1"><div class="fd req">
      <label>Potência dos módulos (W)</label>
-     <input type="number" id="f-pot-plac" placeholder="Ex: 545" oninput="calcKwp()">
+     <select id="f-pot-plac" onchange="calcKwp()"><option value="">— W —</option></select>
     </div></div>
     <div class="fr c1"><div class="fd">
      <label>Potência do sistema (kWp) — calculado automaticamente</label>
@@ -3410,11 +3425,11 @@ setInterval(async () => {
     <div class="wnote" style="margin-top:4px">⚡ Inversores</div>
     <div class="fr c2">
      <div class="fd req"><label>Qtd. de inversores</label><input type="number" id="f-qtd-inv" placeholder="Ex: 1"></div>
-     <div class="fd req"><label>Marca do inversor</label><input type="text" id="f-marca-inv" placeholder="Ex: Growatt"></div>
+     <div class="fd req"><label>Marca do inversor</label><select id="f-marca-inv"><option value="">— Inversor —</option></select></div>
     </div>
     <div class="fr c1"><div class="fd req">
      <label>Potência do inversor (kW)</label>
-     <input type="text" id="f-pot-inv" placeholder="Ex: 8">
+     <select id="f-pot-inv"><option value="">— kW —</option></select>
     </div></div>
    </div>
 
