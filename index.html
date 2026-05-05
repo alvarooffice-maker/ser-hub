@@ -1502,33 +1502,29 @@ function renderProp(){
     ${ab}<button class="ab" onclick="editProp(${ri})">Editar</button></div></td></tr>`;
   }).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhuma proposta</td></tr>`;
 }
+function _loadPropIntoForm(x){
+  const eco=x.eco||0,kwh=x.kwh||0;
+  const sem=x.semsolar||(kwh*1.29);
+  const com=x.comsolar||(sem*0.15);
+  const setV=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v;};
+  setV('p-nome',x.nome||'');setV('p-wpp',x.wpp||'');setV('p-email',x.email||'');
+  setV('p-kwh',kwh);setV('p-valor',x.valor||0);
+  setV('p-qm',x.qm||0);setV('p-pm',x.pm||0);setV('p-mm',x.mm||'');
+  setV('p-qi',x.qi||1);setV('p-pi',x.pi||0);setV('p-mi',x.mi||'');
+  setV('p-qb',x.qb||0);setV('p-pb',x.pb||0);setV('p-mb',x.mb||'');
+  setV('p-vend',x.vend||'');setV('p-vwpp',x.vendWpp||'');setV('p-vemail',x.vendEmail||'');
+  setV('p-validade',x.validade||'7 dias');
+  const kwhEl=document.getElementById('p-kwh');
+  if(kwhEl)Object.assign(kwhEl.dataset,{kwp:x.kwp||0,area:x.area||0,nmod:x.qm||0,sem,com,eco,eco5:eco*60,eco10:eco*120,eco25:eco*300});
+}
 function prevPropIdx(i){
   const arr=ld(SK.prop);
   const x=arr[i]||arr.find(p=>p.id===i)||arr.find((_,idx)=>idx===+i);
   if(!x)return alert('Proposta não encontrada');
-  // Abrir overlay de proposta com dados preenchidos
   const ov=document.getElementById('proposta-overlay');
   if(!ov)return;
-  // Construir e mostrar o ppage
-  try{
-    // Tentar usar a função buildPropostaHTML existente para preencher o ppage
-    const ppage=document.getElementById('ppage');
-    if(ppage){
-      const html=buildPropostaHTML(x);
-      // Extrair o body do HTML gerado e colocar no ppage
-      const tmp=document.createElement('div');
-      tmp.innerHTML=html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>/gi,'');
-      // Remover login-screen injetado pelo template da proposta
-      const _ls=tmp.querySelector('#login-screen');if(_ls)_ls.remove();
-      ppage.innerHTML='<div style="position:sticky;top:10px;z-index:100;display:flex;gap:10px;justify-content:flex-end;padding:12px 18px;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:12px">'
-        +'<button class="pact" style="padding:8px 20px;border:1.5px solid #ccc;border-radius:9px;background:transparent;color:#555;font-size:13px;cursor:pointer" onclick="fecharProposta()">← Fechar</button>'
-        +'<button style="padding:8px 20px;background:linear-gradient(135deg,#3B6D11,#639922);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer" onclick="window.print()">🖨️ Imprimir / PDF</button>'
-        +'</div>'
-        +tmp.innerHTML;
-      document.getElementById('wiz').style.display='none';
-      ppage.style.display='block';
-    }
-  }catch(e){console.warn('prevPropIdx erro:',e);}
+  _loadPropIntoForm(x);
+  genProp(true);
   ov.style.display='block';
   document.body.style.overflow='hidden';
 }
@@ -2516,6 +2512,12 @@ function mostrarMenuUsuarios() {
   if (p === 'financeiro') {
     ['propostas','vistorias','contratos','instalacao','homologacao','cadastro','equipamentos','usuarios']
       .forEach(id => { const n=document.getElementById('ni-'+id); if(n) n.style.display='none'; });
+  }
+
+  // Menu Financeiro: restrito a gerente, diretor, financeiro e admin
+  if (!['gerente','diretor','financeiro','admin'].includes(p)) {
+    const nFin=document.getElementById('ni-financeiro');
+    if(nFin)nFin.style.display='none';
   }
 }
 
@@ -3590,8 +3592,8 @@ function gd(id,k){return document.getElementById(id)?.dataset[k]||0}
 // ===================== GENERATE =====================
 function propEditWiz(){document.getElementById('ppage').style.display='none';document.getElementById('wiz').style.display='flex'}
 
-function genProp(){
-  if(!valStep(4))return;
+function genProp(viewOnly){
+  if(!viewOnly&&!valStep(4))return;
 
   const nome=g('p-nome'),wpp=g('p-wpp'),email=g('p-email');
   const kwh=+document.getElementById('p-kwh').value||0;
@@ -3915,7 +3917,7 @@ function genProp(){
   `;
 
   // Save to Supabase + Hub storage
-  try{
+  if(!viewOnly){try{
     const entry={
       id:crypto.randomUUID(),
       nome,wpp,email,vend,vendWpp:vwpp,vendEmail:vemail,
@@ -3944,7 +3946,7 @@ function genProp(){
       bar.innerHTML='✅ Proposta salva! <button onclick="fecharProposta()" style="background:rgba(255,255,255,.25);border:none;color:#fff;padding:5px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">← Voltar ao Hub</button>';
       document.body.appendChild(bar);
     }
-  }catch(e){}
+  }catch(e){}}
 
   document.getElementById('wiz').style.display='none';
   document.getElementById('ppage').style.display='block';
