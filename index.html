@@ -278,7 +278,6 @@ tr:hover td{background:#fafaf8}
   <div class="nav-section">Gestão</div>
   <button class="nav-item" id="ni-usuarios" style="display:none" onclick="sw('usuarios')"><span class="ni">🔐</span> Usuários <span class="nav-count" id="nc-usuarios"></span></button>
   <button class="nav-item" onclick="sw('cadastro')" id="ni-cadastro"><span class="ni">👥</span> Cadastros <span class="nav-count" id="nc-cadastro"></span></button>
-  <button class="nav-item" onclick="sw('equipamentos')" id="ni-equipamentos"><span class="ni">🔋</span> Equipamentos <span class="nav-count" id="nc-equipamentos"></span></button>
   <div class="sidebar-bottom">
     <div class="sidebar-date" id="sdate"></div>
   </div>
@@ -451,15 +450,6 @@ tr:hover td{background:#fafaf8}
   </div>
 
   <!-- ===== EQUIPAMENTOS ===== -->
-  <div class="tab-panel" id="tab-equipamentos">
-    <div class="sl">Catálogo de equipamentos cadastrados</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px" id="equip-summary"></div>
-    <div class="card">
-      <div class="ch"><span class="ct" id="equip-title">Equipamentos</span><button class="add-btn" onclick="openEquipModal()">+ Cadastrar equipamento</button></div>
-      <div id="equip-list"></div>
-    </div>
-  </div>
-
   <!-- ===== USUÁRIOS (admin only) ===== -->
   <div class="tab-panel" id="tab-usuarios">
     <div class="sl">Gestão de acesso ao SISTEMA SER</div>
@@ -838,13 +828,11 @@ const PAGES={
   comissoes:{title:'Comissões',sub:'Controle de comissões e bônus'},
   financeiro:{title:'Financeiro',sub:'Análise financeira completa'},
   cadastro:{title:'Cadastros',sub:'Clientes, colaboradores e parceiros'},
-  equipamentos:{title:'Equipamentos',sub:'Catálogo de módulos, inversores e baterias'},
   usuarios:{title:'Usuários',sub:'Gestão de acesso e perfis do sistema'},
 };
 
 const PAGE_CTA={
   cadastro:{label:'+ Novo cadastro',fn:'openCadModal'},
-  equipamentos:{label:'+ Cadastrar equipamento',fn:'openEquipModal'},
   propostas:{label:'+ Nova proposta',fn:'abrirGeradorProposta'},
   vistorias:{label:'+ Agendar vistoria',fn:'openVistModal'},
   contratos:{label:'+ Registrar contrato',fn:'abrirGeradContrato'},
@@ -868,12 +856,12 @@ function sw(id, noFetch){
   if(cta){btn.textContent=cta.label;btn.style.display='inline-block';}
   else{btn.style.display='none';}
   // Recarrega dados do Supabase ao trocar de aba
-  const renders={dashboard:renderDash,propostas:renderProp,vistorias:renderVist,contratos:renderCont,instalacao:renderInst,homologacao:renderHomo,comissoes:renderCom,financeiro:renderFin,cadastro:renderCad,equipamentos:renderEquip,usuarios:renderUsuarios};
+  const renders={dashboard:renderDash,propostas:renderProp,vistorias:renderVist,contratos:renderCont,instalacao:renderInst,homologacao:renderHomo,comissoes:renderCom,financeiro:renderFin,cadastro:renderCad,usuarios:renderUsuarios};
   if(!noFetch && _user && _TBL) {
     // Determina qual tabela recarregar para esta aba
     const abaParaTabela={propostas:'propostas',vistorias:'vistorias',contratos:'contratos',
       instalacao:'instalacoes',homologacao:'homologacoes',comissoes:'comissoes',
-      financeiro:null,cadastro:'cadastros',equipamentos:'equipamentos',usuarios:null};
+      financeiro:null,cadastro:'cadastros',usuarios:null};
     const tbl=abaParaTabela[id];
     if(tbl) {
       getSB().from(tbl).select('*').order('criado_em',{ascending:false}).then(({data})=>{
@@ -907,7 +895,6 @@ function updateNavCounts(){
     homologacao: ld(SK.homo).length,
     comissoes: ld(SK.com).length,
     cadastro: ld(SK.cad).length,
-    equipamentos: ld(SK.equip).length,
   };
   Object.entries(counts).forEach(([k,v])=>{
     const el=document.getElementById('nc-'+k);
@@ -2557,21 +2544,21 @@ function mostrarMenuUsuarios() {
 
   // Técnico: só vê homologacao
   if (p === 'tecnico') {
-    ['propostas','vistorias','contratos','instalacao','comissoes','financeiro','cadastro','equipamentos','usuarios']
+    ['propostas','vistorias','contratos','instalacao','comissoes','financeiro','cadastro','usuarios']
       .forEach(id => { const n=document.getElementById('ni-'+id); if(n) n.style.display='none'; });
     sw('homologacao');
   }
 
   // Instalador: só vê instalacao
   if (p === 'instalador') {
-    ['propostas','vistorias','contratos','homologacao','comissoes','financeiro','cadastro','equipamentos','usuarios']
+    ['propostas','vistorias','contratos','homologacao','comissoes','financeiro','cadastro','usuarios']
       .forEach(id => { const n=document.getElementById('ni-'+id); if(n) n.style.display='none'; });
     sw('instalacao');
   }
 
   // Financeiro: só vê financeiro e comissoes
   if (p === 'financeiro') {
-    ['propostas','vistorias','contratos','instalacao','homologacao','cadastro','equipamentos','usuarios']
+    ['propostas','vistorias','contratos','instalacao','homologacao','cadastro','usuarios']
       .forEach(id => { const n=document.getElementById('ni-'+id); if(n) n.style.display='none'; });
   }
 
@@ -2708,7 +2695,7 @@ async function salvarUsuario() {
       // Confirma o email automaticamente via update (sem precisar do link)
       if(newData?.user && !newData.user.email_confirmed_at) {
         // Tenta marcar como confirmado via SQL direto
-        await getSB().rpc('confirm_user_email', {user_id: newData.user.id}).catch(()=>{});
+        try { await getSB().rpc('confirm_user_email', {user_id: newData.user.id}); } catch(e) {}
       }
       if(signErr) throw new Error(signErr.message);
       if(!newData?.user) throw new Error('Erro ao criar usuário');
@@ -2734,7 +2721,12 @@ async function salvarUsuario() {
       await renderUsuarios();
       alert('✅ Usuário criado com sucesso!\n\nEmail: '+email+'\nSenha: '+senha+'\n\nCompartilhe as credenciais com '+nome+'.');
     } catch(err) {
-      alert('Erro: '+err.message);
+      const msg = err.message||'';
+      if(msg.toLowerCase().includes('rate limit')||msg.toLowerCase().includes('email rate')) {
+        alert('⚠️ Limite de emails do Supabase atingido.\n\nPara resolver, acesse o painel do Supabase:\nAuthentication → Providers → Email → desative "Confirm email"\n\nApós isso, novos usuários serão criados sem envio de email.');
+      } else {
+        alert('Erro: '+msg);
+      }
     } finally {
       if(btn){btn.textContent='Salvar';btn.disabled=false;}
     }
@@ -2837,7 +2829,7 @@ setInterval(async () => {
   // Atualiza a aba atual silenciosamente
   const renders={propostas:renderProp,vistorias:renderVist,contratos:renderCont,
     instalacoes:renderInst,homologacoes:renderHomo,comissoes:renderCom,
-    cadastros:renderCad,equipamentos:renderEquip};
+    cadastros:renderCad};
   const cur=document.querySelector('.nav-item.active')?.id?.replace('ni-','');
   if(cur&&renders[_TBL[SK[cur]]])renders[_TBL[SK[cur]]]();
   updateNavCounts();
