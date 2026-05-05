@@ -544,9 +544,10 @@ tr:hover td{background:#fafaf8}
 <div class="overlay" id="mo-prop"><div class="modal" style="width:620px">
   <h3 id="mp-t">Nova proposta</h3>
   <div class="msec">Dados do cliente</div>
-  <div class="mr2"><div><label>Nome completo do cliente</label><input type="text" id="mp-nome"></div><div><label>WhatsApp</label><input type="text" id="mp-wpp"></div></div>
+  <div class="mr2"><div><label>Nome completo do cliente</label><input type="text" id="mp-nome" list="list-clientes"></div><div><label>WhatsApp</label><input type="text" id="mp-wpp"></div></div>
   <div class="mr2"><div><label>E-mail do cliente</label><input type="email" id="mp-email"></div><div><label>Vendedor responsável</label><input type="text" id="mp-vend" list="list-vend-prop"></div></div>
   <datalist id="list-vend-prop"></datalist>
+  <datalist id="list-clientes"></datalist>
   <div class="mr2"><div><label>WhatsApp do vendedor</label><input type="text" id="mp-vend-wpp"></div><div><label>E-mail do vendedor</label><input type="email" id="mp-vend-email"></div></div>
   <div class="msec">Dimensionamento</div>
   <div class="mr2"><div><label>Consumo mensal (kWh/mês)</label><input type="number" id="mp-kwh" step="1" placeholder="Ex: 300" oninput="calcProposta()"></div><div><label>Validade (automática)</label><input type="text" id="mp-validade" class="readonly" readonly placeholder="Calculado automaticamente"></div></div>
@@ -594,7 +595,7 @@ tr:hover td{background:#fafaf8}
 <!-- VISTORIA -->
 <div class="overlay" id="mo-vist"><div class="modal">
   <h3 id="mv-t">Agendar vistoria</h3>
-  <label>Cliente</label><input type="text" id="mv-nome">
+  <label>Cliente</label><input type="text" id="mv-nome" list="list-clientes">
   <div class="mr2"><div><label>Data</label><input type="date" id="mv-data"></div><div><label>Horário</label><input type="time" id="mv-hora"></div></div>
   <label>Endereço</label><input type="text" id="mv-end">
   <div class="mr2"><div><label>Técnico/Vistoriador</label><input type="text" id="mv-tec" list="list-vistoriadores"></div><div><label>WhatsApp</label><input type="text" id="mv-wpp"></div></div>
@@ -920,10 +921,16 @@ function populateDataLists(){
   const byType={};
   cads.forEach(c=>{if(!byType[c.tipo])byType[c.tipo]=[];byType[c.tipo].push(c.nome)});
   const fill=(id,names)=>{const el=document.getElementById(id);if(!el)return;el.innerHTML=names.map(n=>`<option value="${n}">`).join('')};
-  fill('list-vendedores',[...(byType.vendedor||[]),...(byType.supervisor||[]),...(byType.gerente||[])]);
-  fill('list-vendedores2',[...(byType.vendedor||[]),...(byType.supervisor||[]),...(byType.gerente||[])]);
-  fill('list-vendedores3',[...(byType.vendedor||[]),...(byType.supervisor||[]),...(byType.gerente||[])]);
-  fill('list-vend-prop',[...(byType.vendedor||[]),...(byType.supervisor||[]),...(byType.gerente||[])]);
+  // Clientes
+  const clientes=[...(byType.cliente||[]),...ld(SK.cont).map(c=>c.nome).filter(Boolean),...ld(SK.prop).map(p=>p.nome).filter(Boolean)];
+  const clientesUniq=[...new Set(clientes)].sort();
+  fill('list-clientes',clientesUniq);
+  // Vendedores
+  const vends=[...(byType.vendedor||[]),...(byType.supervisor||[]),...(byType.gerente||[])];
+  fill('list-vendedores',vends);
+  fill('list-vendedores2',vends);
+  fill('list-vendedores3',vends);
+  fill('list-vend-prop',vends);
   fill('list-sdrs',byType.sdr||[]);
   fill('list-instaladores',byType.instalador||[]);
   fill('list-vistoriadores',byType.vistoriador||[]);
@@ -1532,7 +1539,7 @@ function dlPropIdx(i){prevPropIdx(i);setTimeout(()=>window.print(),800);}
 function setFP(f){filt.prop=f;renderProp()}
 function chgP(i,v){const d=ld(SK.prop);d[i].status=v;sv(SK.prop,d);_hookSave('propostas',d[i]);renderProp()}
 function trigAceite(i){aceiteIdx=i;const x=ld(SK.prop)[i];document.getElementById('aceite-info').innerHTML=[{l:'Cliente',v:x.nome},{l:'Consumo',v:(x.kwh||'—')+' kWh/mês'},{l:'Valor',v:f(x.valor)},{l:'Vendedor',v:x.vend||'—'}].map(o=>`<div style="background:var(--sec);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--mu)">${o.l}</div><div style="font-size:13px;font-weight:500">${o.v}</div></div>`).join('');openM('mo-aceite')}
-function confirmarAceite(){const ps=ld(SK.prop);if(aceiteIdx===null||!ps[aceiteIdx])return;ps[aceiteIdx].aceito=true;ps[aceiteIdx].status='win';sv(SK.prop,ps);sbUpsert('propostas',ps[aceiteIdx]);const cs=ld(SK.cont);const x=ps[aceiteIdx];if(!cs.some(c=>c.nome===x.nome)){const nc={nome:x.nome,kwp:x.kwp||0,valor:x.valor,pgto:'Financiamento',pgtoDesc:'',vend:x.vend||'',wpp:x.wpp||'',status:'pendente',data:new Date().toLocaleDateString('pt-BR'),fase:'Monofásico',tensao:220,cpf:'',rg:'',rgorg:'',cep:'',estado:'',rua:'',num:'',comp:'',bairro:'',cidade:''};_pending['contratos']=_pending['contratos']||[];_pending['contratos'].unshift(nc);sbUpsert('contratos',nc);}closeM('mo-aceite');renderProp();renderCont();updateNavCounts();sw('contratos',true)}
+function confirmarAceite(){const ps=ld(SK.prop);if(aceiteIdx===null||!ps[aceiteIdx])return;ps[aceiteIdx].aceito=true;ps[aceiteIdx].status='win';sv(SK.prop,ps);sbUpsert('propostas',ps[aceiteIdx]);const cs=ld(SK.cont);const x=ps[aceiteIdx];if(!cs.some(c=>c.nome===x.nome)){const nc={nome:x.nome,kwp:x.kwp||0,valor:x.valor,pgto:'Financiamento',pgtoDesc:'',vend:x.vend||'',wpp:x.wpp||'',status:'pendente',data:new Date().toLocaleDateString('pt-BR'),fase:'Monofásico',tensao:220,cpf:'',rg:'',rgorg:'',cep:'',estado:'',rua:'',num:'',comp:'',bairro:'',cidade:''};const cs2=ld(SK.cont);cs2.unshift(nc);sv(SK.cont,cs2);_hookSave('contratos',nc);}closeM('mo-aceite');renderProp();renderCont();updateNavCounts();sw('contratos',true)}
 function openPropModal(){ei.prop=null;['mp-nome','mp-wpp','mp-email','mp-vend','mp-vend-wpp','mp-vend-email','mp-kwh','mp-qm','mp-mm','mp-pm','mp-qi','mp-mi','mp-pi','mp-qb','mp-mb','mp-pb','mp-semsolar','mp-comsolar','mp-eco','mp-valor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('mp-qi').value=1;document.getElementById('mp-qm').value=0;document.getElementById('mp-pm').value=0;document.getElementById('mp-pi').value=0;document.getElementById('mp-qb').value=0;document.getElementById('mp-pb').value=0;document.getElementById('mp-area').value=0;const vd=new Date();vd.setDate(vd.getDate()+7);document.getElementById('mp-validade').value='7 dias (até '+vd.toLocaleDateString('pt-BR')+')';document.getElementById('mp-status').value='new';document.getElementById('mp-nota').style.display='none';document.getElementById('mp-t').textContent='Nova proposta';populateDataLists();openM('mo-prop')}
 function editProp(i){ei.prop=i;const x=ld(SK.prop)[i];['nome','wpp','email','vend','vendWpp','vendEmail','validade'].forEach(k=>{const el=document.getElementById('mp-'+k.replace(/([A-Z])/g,'-$1').toLowerCase());if(el)el.value=x[k]||'';});document.getElementById('mp-kwh').value=x.kwh||0;document.getElementById('mp-qm').value=x.qm||0;document.getElementById('mp-mm').value=x.mm||'';document.getElementById('mp-pm').value=x.pm||0;document.getElementById('mp-qi').value=x.qi||1;document.getElementById('mp-mi').value=x.mi||'';document.getElementById('mp-pi').value=x.pi||0;document.getElementById('mp-qb').value=x.qb||0;document.getElementById('mp-mb').value=x.mb||'';document.getElementById('mp-pb').value=x.pb||0;document.getElementById('mp-area').value=x.area||0;document.getElementById('mp-semsolar').value=x.semsolar||0;document.getElementById('mp-comsolar').value=x.comsolar||0;document.getElementById('mp-eco').value=x.eco||0;document.getElementById('mp-valor').value=x.valor||0;document.getElementById('mp-status').value=x.status;document.getElementById('mp-t').textContent='Editar proposta';calcProposta();openM('mo-prop')}
 function saveProp(){const nome=document.getElementById('mp-nome').value.trim();if(!nome)return alert('Informe o nome');const p=getPropData();const e={...p,status:document.getElementById('mp-status').value,aceito:false};const d=ld(SK.prop);if(ei.prop!==null)d[ei.prop]=e;else d.unshift(e);sv(SK.prop,d);_hookSave('propostas',e);closeM('mo-prop');renderProp();updateNavCounts()}
