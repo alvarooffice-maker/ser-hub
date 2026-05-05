@@ -2519,6 +2519,12 @@ function mostrarMenuUsuarios() {
     const nFin=document.getElementById('ni-financeiro');
     if(nFin)nFin.style.display='none';
   }
+
+  // Menu Comissões: restrito a gerente, diretor, financeiro e admin
+  if (!['gerente','diretor','financeiro','admin'].includes(p)) {
+    const nCom=document.getElementById('ni-comissoes');
+    if(nCom)nCom.style.display='none';
+  }
 }
 
 async function renderUsuarios() {
