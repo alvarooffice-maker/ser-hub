@@ -5,6 +5,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISTEMA SER · SER Energia Renovável</title>
@@ -620,7 +621,7 @@ tr:hover td{background:#fafaf8}
   <div class="mr2"><div><label>Valor total (R$)</label><input type="number" id="mc-valor"></div><div><label>Forma de pagamento</label><select id="mc-pgto"><option>À vista</option><option>Financiamento</option><option>Parcelado interno</option><option>Misto</option></select></div></div>
   <label>Descrição do pagamento</label><input type="text" id="mc-pgto-desc" placeholder="Ex: 50% entrada + 50% na instalação">
   <div class="msec">Status</div>
-  <select id="mc-status"><option value="pendente">Pendente assinatura</option><option value="assinado">Assinado</option><option value="instalando">Em instalação</option><option value="homologando">Em homologação</option><option value="concluido">Concluído</option></select>
+  <select id="mc-status"><option value="pendente">Pendente assinatura</option><option value="enviado">Enviado para assinatura</option><option value="assinado">Assinado</option><option value="instalando">Em instalação</option><option value="homologando">Em homologação</option><option value="concluido">Concluído</option></select>
   <div style="margin-top:16px;background:var(--gl);border:1px solid #b8d99a;border-radius:10px;padding:14px">
     <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;margin-bottom:10px">📑 Contrato gerado automaticamente</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
@@ -628,6 +629,10 @@ tr:hover td{background:#fafaf8}
       <button class="btn-s" style="background:var(--b);font-size:12px" onclick="enviarContratoWhatsApp()">💬 Enviar WPP</button>
       <button class="btn-s" style="background:#EA4335;font-size:12px" onclick="enviarContratoEmail()">📧 Enviar Email</button>
     </div>
+    <div style="margin-top:8px">
+      <button class="btn-s" style="background:#6B46C1;font-size:12px;width:100%" onclick="enviarClickSignModal()">✍️ Enviar para Assinatura Digital (ClickSign)</button>
+    </div>
+    <div id="cs-status-modal" style="display:none;margin-top:8px;font-size:11px;padding:8px 10px;border-radius:6px"></div>
   </div>
   <div class="mfooter"><button class="btn-c" onclick="closeM('mo-cont')">Cancelar</button><button class="btn-s" onclick="saveCont()">Salvar</button></div>
 </div></div>
@@ -1030,8 +1035,13 @@ function buildVendDropdown(){
 // Parse dd/mm/yyyy → {m,y}
 function _parseDMY(s){
   if(!s)return null;
-  const p=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  return p?{m:+p[2],y:+p[3]}:null;
+  // dd/mm/yyyy (local format)
+  let p=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(p)return{m:+p[2],y:+p[3]};
+  // yyyy-mm-dd (ISO from Supabase)
+  p=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(p)return{m:+p[2],y:+p[1]};
+  return null;
 }
 
 // Generic filter: supports year+quarter+vendedor
@@ -1678,10 +1688,8 @@ p{margin-bottom:10px;text-align:justify}
 </body></html>`;
 }
 function gerarContratoPreview(){
-  const x=getContData();const h=buildContratoHTML(x);
-  const bl=new Blob([h],{type:'text/html'});const url=URL.createObjectURL(bl);
-  window.open(url,'_blank');
-  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  const x=getContData();
+  _abrirContratoCompleto(x, false);
 }
 function downloadContrato(){
   const x=getContData();const h=buildContratoHTML(x);const bl=new Blob([h],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download=`Contrato_SER_${(x.nome||'cliente').replace(/\s+/g,'_')}.html`;a.click();URL.revokeObjectURL(a.href);
@@ -1697,7 +1705,7 @@ function enviarContratoEmail(){
   const body=encodeURIComponent(`Olá ${x.nome},\n\nSeu contrato está pronto! Seguem os dados:\n\nEndereço: ${x.rua}, ${x.num} — ${x.cidade}/${x.estado}\nSistema: ${x.kwp} kWp\nInversores: ${x.qtdInv}x ${x.marcaInv} ${x.potInv}kW\nMódulos: ${x.qtdMod}x ${x.marcaMod} ${x.potMod}W\nValor: R$ ${(x.valor||0).toLocaleString('pt-BR')}\nPagamento: ${x.pgto}${x.pgtoDesc?' — '+x.pgtoDesc:''}\n\nAtenciosamente,\n${x.vend||'SER Energia Renovável'}`);
   window.open(`mailto:${email}?subject=${sub}&body=${body}`);
 }
-const CSTAT={pendente:'Pendente',assinado:'Assinado',instalando:'Em instalação',homologando:'Em homologação',concluido:'Concluído'};
+const CSTAT={pendente:'Pendente',enviado:'Enviado p/ assinatura',assinado:'Assinado',instalando:'Em instalação',homologando:'Em homologação',concluido:'Concluído'};
 function renderCont(){
   const d=ld(SK.cont);const pend=d.filter(x=>x.status==='pendente').length,inst=d.filter(x=>['instalando','homologando'].includes(x.status)).length,conc=d.filter(x=>x.status==='concluido').length;
   const rec=d.filter(x=>x.status==='concluido').reduce((s,x)=>s+(+x.valor||0),0);
@@ -1711,61 +1719,81 @@ function renderCont(){
   <td><div class="act-row">${wu?`<button class="ab ab-g" onclick="ol('${wu}')">WPP</button>`:''}
   <button class="ab ab-a" onclick="prevContIdx(${ri})">👁️</button>
   <button class="ab ab-b" onclick="dlContIdx(${ri})">⬇️</button>
+  <button class="ab" style="background:#EDE9FE;color:#6B46C1;border-color:#C4B5FD" onclick="enviarClickSign(${ri})">✍️</button>
   <button class="ab" onclick="editCont(${ri})">Editar</button></div></td></tr>`;
   }).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhum contrato</td></tr>`;
 }
+// Preenche campos f-* do wizard com dados do objeto contrato salvo
+function _carregarContNaWiz(x){
+  const sv2=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v!=null?v:'';};
+  sv2('f-nome',    x.nome);
+  sv2('f-cpf',     x.cpf);
+  sv2('f-rg',      x.rg);
+  const rgParts=(x.rgorg||'').split('/');
+  sv2('f-orgao',   rgParts[0]||'SSP');
+  const ufEl=document.getElementById('f-uf-rg');
+  if(ufEl) ufEl.value=rgParts[1]||x.estado||'PA';
+  const rawData=x.datasign||x.data||'';
+  const dp=rawData.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  sv2('f-datasign', dp?`${dp[3]}-${dp[2]}-${dp[1]}`:rawData||new Date().toISOString().slice(0,10));
+  sv2('f-rua',      x.rua);
+  sv2('f-numero',   x.num||x.numero);
+  sv2('f-comp',     x.comp);
+  sv2('f-bairro',   x.bairro);
+  sv2('f-cep',      x.cep);
+  sv2('f-cidade',   x.cidade);
+  const estEl=document.getElementById('f-estado');
+  if(estEl) estEl.value=x.estado||'PA';
+  const faseEl=document.getElementById('f-fase');
+  if(faseEl) faseEl.value=(x.fase||'MONOFÁSICO').toUpperCase();
+  sv2('f-tensao',   x.tensao||220);
+  sv2('f-qtd-plac', x.qtdMod||x.qtdPlac||0);
+  const setSelect=(id,val)=>{const e=document.getElementById(id);if(!e)return;e.value=val||'';if(!e.value&&val){const o=document.createElement('option');o.value=val;o.textContent=val;e.appendChild(o);e.value=val;}};
+  setSelect('f-marca-plac', x.marcaMod||x.marcaPlac);
+  setSelect('f-pot-plac',   String(x.potMod||x.potPlac||''));
+  sv2('f-qtd-inv',  x.qtdInv||1);
+  setSelect('f-marca-inv',  x.marcaInv);
+  setSelect('f-pot-inv',    String(x.potInv||''));
+  sv2('f-valor',    x.valor||0);
+  const extEl=document.getElementById('f-valor-ext');
+  if(extEl){
+    if(x.valorExt||x.valor_ext) extEl.value=x.valorExt||x.valor_ext;
+    else if(x.valor&&typeof numExtenso==='function') extEl.value=numExtenso(+x.valor);
+  }
+  setSelect('f-pgto-tipo', x.pgto);
+  sv2('f-pgto-desc', x.pgtoDesc||x.pgto_desc);
+  sv2('f-vend-nome', x.vend);
+  sv2('f-vend-cpf',  x.vendCpf||x.vend_cpf);
+  if(typeof calcKwp==='function') calcKwp();
+}
+
+// Abre overlay e exibe contrato completo em modo visualização (sem salvar)
+function _abrirContratoCompleto(x, imprimir){
+  _carregarContNaWiz(x);
+  const ov=document.getElementById('contrato-overlay');
+  if(!ov) return;
+  const wizOv=document.getElementById('wiz-ov');
+  const cpage=document.getElementById('cpage');
+  if(wizOv) wizOv.style.display='none';
+  if(cpage) cpage.style.display='block';
+  ov.style.display='block';
+  document.body.style.overflow='hidden';
+  genContract(true);
+  if(imprimir) setTimeout(()=>window.print(),700);
+}
+
 function prevContIdx(i){
   const arr=ld(SK.cont);
   const x=arr[i]||arr.find(c=>c.id===i)||arr.find((_,idx)=>idx===+i);
-  if(!x)return alert('Contrato não encontrado');
-  // Mostrar dentro do overlay interno (não abre nova aba)
-  const ov=document.getElementById('contrato-overlay');
-  if(!ov)return;
-  // Preencher o cpage com o HTML do contrato
-  const cpage=document.getElementById('cpage');
-  if(cpage){
-    // Substituir conteúdo do cpage pelo documento gerado
-    const fR=v=>'R\u00a0'+Number(v||0).toLocaleString('pt-BR');
-    const end=[(x.rua||''),(x.num?'nº '+x.num:''),(x.bairro||''),(x.cidade||''),(x.estado||'')].filter(Boolean).join(', ');
-    cpage.innerHTML=`<div class="cact">
-      <button class="bedit" onclick="fecharContrato()">← Fechar</button>
-      <button class="bprint" onclick="window.print()">🖨️ Imprimir / PDF</button>
-    </div>
-    <div id="cdoc">
-      <div class="dh">
-        <img src="https://i.imgur.com/8UQsVkR.png" onerror="this.style.display='none'">
-        <div class="dtit">INSTRUMENTO PARTICULAR DE CONTRATO DE<br>PROJETO E INSTALAÇÃO FOTOVOLTAICO</div>
-        <div class="dsub">SOLUÇÕES EM ENERGIA RENOVÁVEL MATRIZ LTDA — CNPJ 58.656.750/0001-04</div>
-      </div>
-      <div class="pbox">
-        <strong>CONTRATANTE:</strong> ${x.nome||'—'}, portador(a) do CPF sob o n. ${x.cpf||'___________'}, RG ${x.rg||'___________'} ${x.rgorg?'/ '+x.rgorg:''}, residente em ${end||'___________'}.<br><br>
-        <strong>CONTRATADA:</strong> SOLUÇÕES EM ENERGIA RENOVÁVEL MATRIZ LTDA, denominada <strong>SER ENERGIA RENOVÁVEL</strong>, CNPJ 58.656.750/0001-04, Travessa Antônio Baena, n 300, Bairro Marco, CEP 66.093-635, Belém/PA.
-      </div>
-      <div class="cs"><div class="ctit">DO OBJETO</div>
-        <p class="ct">Sistema fotovoltaico de <strong>${x.kwp||'—'} kWp</strong>, incluindo fornecimento, instalação e homologação junto à concessionária.</p>
-      </div>
-      <div class="cs"><div class="ctit">DO VALOR E PAGAMENTO</div>
-        <p class="ct">Valor total: <strong>${fR(x.valor)}</strong></p>
-        <p class="ct">Forma de pagamento: <strong>${x.pgto||'—'}</strong>${x.pgto_desc||x.pgtoDesc?' — '+(x.pgto_desc||x.pgtoDesc):''}</p>
-      </div>
-      <div class="cs"><div class="ctit">DO VENDEDOR</div>
-        <p class="ct">Responsável comercial: <strong>${x.vend||'—'}</strong></p>
-      </div>
-      <div class="sigs">
-        <div class="sig-date">Belém/PA, ${x.data||new Date().toLocaleDateString('pt-BR')}</div>
-        <div class="sg">
-          <div class="sb"><div class="sl2"></div><div class="sn">${x.nome||'CONTRATANTE'}</div><div class="sr">Contratante</div></div>
-          <div class="sb"><div class="sl2"></div><div class="sn">SER ENERGIA RENOVÁVEL</div><div class="sr">Contratada — CNPJ 58.656.750/0001-04</div></div>
-        </div>
-      </div>
-    </div>`;
-    document.getElementById('wiz-ov').style.display='none';
-    cpage.style.display='block';
-  }
-  ov.style.display='block';
-  document.body.style.overflow='hidden';
+  if(!x) return alert('Contrato não encontrado');
+  _abrirContratoCompleto(x, false);
 }
-function dlContIdx(i){prevContIdx(i);setTimeout(()=>window.print(),800);}
+function dlContIdx(i){
+  const arr=ld(SK.cont);
+  const x=arr[i]||arr.find(c=>c.id===i)||arr.find((_,idx)=>idx===+i);
+  if(!x) return alert('Contrato não encontrado');
+  _abrirContratoCompleto(x, true);
+}
 function setFC(f){filt.cont=f;renderCont()}
 function chgC(i,v){const d=ld(SK.cont);d[i].status=v;sv(SK.cont,d);_hookSave('contratos',d[i]);renderCont()}
 function abrirTemplateContrato(){window.open('https://docs.google.com/document/d/1JmfNk2c4GSLs5HzFyBGkVsEGh4YCauksjHmvtxnF9h8/edit','_blank')}
@@ -2322,13 +2350,17 @@ async function sbUpsert(tbl,item){
   if(e.criado_por===undefined&&_user)e.criado_por=_user.id;
   delete e._idx;
   const _INVALIDOS={
-    contratos:['marcaInv','potInv','qtdInv','marcaMod','potMod','qtdMod','kwh','aceito','eco','validade'],
-    propostas:['vendEmail','vendWpp','ecoAnual','aceito','kwh','eco','validade','wpp'],
-    homologacoes:['marcaInv','qtdInv','marcaMod','qtdMod','fileNames'],
-    instalacoes:[],vistorias:[],comissoes:[],cadastros:[],equipamentos:[],receitas:[]
+    contratos:['marcaInv','potInv','qtdInv','marcaMod','potMod','qtdMod','kwh','aceito','eco','validade','data','num','_origem'],
+    propostas:['vendEmail','vendWpp','ecoAnual','aceito','kwh','eco','validade','wpp','data','_origem'],
+    homologacoes:['marcaInv','qtdInv','marcaMod','qtdMod','fileNames','data','_origem'],
+    instalacoes:['data','_origem'],vistorias:['_origem'],comissoes:['_origem'],cadastros:['_origem'],equipamentos:['_origem'],receitas:['_origem']
   };
   (_INVALIDOS[tbl]||[]).forEach(k=>delete e[k]);
-  if(tbl==='contratos'&&e.pgtoDesc!==undefined){e.pgto_desc=e.pgtoDesc;delete e.pgtoDesc;}
+  // Normaliza campos de contratos para colunas do Supabase
+  if(tbl==='contratos'){
+    if(e.pgtoDesc!==undefined){e.pgto_desc=e.pgtoDesc;delete e.pgtoDesc;}
+    if(e.num!==undefined) delete e.num; // coluna não existe, já removida acima
+  }
   if(e.id){
     const{error}=await getSB().from(tbl).update(e).eq('id',e.id);
     if(error){console.error('sbUpsert update error',tbl,error);_sbErrAlert(tbl,error);}
@@ -2479,7 +2511,7 @@ function fecharProposta(){
       }
     }
   }catch(e){}
-  renderProp();updateNavCounts();
+  renderProp();renderDash();updateNavCounts();
 }
 function fecharContrato(){
   const ov=document.getElementById('contrato-overlay');
@@ -2498,7 +2530,7 @@ function fecharContrato(){
       }
     }
   }catch(e){}
-  renderCont();updateNavCounts();
+  renderCont();renderDash();updateNavCounts();
 }
 
 
@@ -2752,7 +2784,7 @@ window.addEventListener('storage', async (e) => {
       await getSB().from('propostas').upsert(row);
       _cache['propostas'] = _cache['propostas'] || [];
       _cache['propostas'].unshift(row);
-      renderProp();
+      renderProp();renderDash();
       updateNavCounts();
       sw('propostas');
       // Notifica visualmente
@@ -2770,7 +2802,7 @@ window.addEventListener('storage', async (e) => {
       await getSB().from('contratos').upsert(rest);
       _cache['contratos'] = _cache['contratos'] || [];
       _cache['contratos'].unshift(rest);
-      renderCont();
+      renderCont();renderDash();
       updateNavCounts();
       sw('contratos');
       _toast('✅ Novo contrato adicionado ao Hub!');
@@ -4265,8 +4297,8 @@ function contEditWiz() {
   document.getElementById('wiz-ov').style.display='flex';
 }
 
-function genContract() {
-  if (!validateStep(5)) return;
+function genContract(viewOnly) {
+  if (!viewOnly && !validateStep(5)) return;
 
   const nome=g('f-nome'), cpf=g('f-cpf'), rg=g('f-rg')||'___________';
   const orgao=g('f-orgao')||'SSP', ufRg=g('f-uf-rg')||g('f-estado');
@@ -4440,8 +4472,7 @@ function genContract() {
   window.scrollTo(0,0);
 
   // ===== INTEGRAÇÃO COM HUB =====
-  // Salva o contrato no formato do Hub (s6c) para importação automática
-  try {
+  if(!viewOnly) try {
     const rawValor = parseFloat(document.getElementById('f-valor').value)||0;
     const entry = {
       nome:    g('f-nome'),
@@ -4506,8 +4537,137 @@ function genContract() {
 // _fazerLogin handled by index.html
 
 
+
 // Init
 (async function(){document.getElementById('f-datasign').value = new Date().toISOString().slice(0,10);})();
+
+// ===================== CLICKSIGN =====================
+const _CS_PROXY = 'https://aickvgjrieeirybtqemh.supabase.co/functions/v1/clicksign-proxy';
+const _CS_ANON  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpY2t2Z2pyaWVlaXJ5YnRxZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NDQ1NjUsImV4cCI6MjA5MzIyMDU2NX0.FS1K-oI3iAYgmqjH9LH3DKFVdEOiIPfUD1KnbU78uuE';
+
+async function _csCall(action, payload){
+  const res = await fetch(_CS_PROXY, {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':'Bearer '+_CS_ANON
+    },
+    body: JSON.stringify({action, payload})
+  });
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+function _csToast(msg, estado){
+  let t = document.getElementById('_cs_toast');
+  if(!t){ t=document.createElement('div'); t.id='_cs_toast'; document.body.appendChild(t); }
+  const bg = estado==='ok'?'#3B6D11': estado==='erro'?'#A32D2D':'#6B46C1';
+  t.style.cssText=`position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:${bg};color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.3);max-width:90vw;text-align:center;transition:background .3s`;
+  t.textContent = msg;
+  if(estado==='ok'||estado==='erro') setTimeout(()=>t.remove(), 6000);
+}
+
+function _csModalStatus(msg, estado){
+  const el = document.getElementById('cs-status-modal');
+  if(!el) return;
+  const cfg = {
+    loading:{ bg:'#EDE9FE', color:'#6B46C1', border:'#C4B5FD' },
+    ok:     { bg:'#EAF3DE', color:'#3B6D11', border:'#b8d99a' },
+    erro:   { bg:'#FCEBEB', color:'#A32D2D', border:'#f5c6c6' },
+  }[estado]||{ bg:'#EDE9FE', color:'#6B46C1', border:'#C4B5FD' };
+  el.style.cssText=`display:block;margin-top:8px;font-size:11px;padding:8px 10px;border-radius:6px;background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.border}`;
+  el.textContent = msg;
+}
+
+async function _executarEnvioCS(x, onStatus){
+  if(!x.email){
+    const email = prompt(`E-mail do cliente ${x.nome} para assinatura digital:`, '');
+    if(!email) return;
+    x = {...x, email};
+  }
+
+  try {
+    onStatus('⏳ Gerando PDF do contrato...','loading');
+
+    // Gera o HTML do contrato
+    const html = buildContratoHTML({...x, pgtoDesc: x.pgtoDesc||x.pgto_desc||''});
+
+    // Cria elemento temporário fora da tela para renderizar o HTML
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#fff';
+    container.innerHTML = html;
+    document.body.appendChild(container);
+
+    // Converte para PDF usando html2pdf.js
+    const pdfBlob = await html2pdf().set({
+      margin:      [15, 15, 15, 15],
+      filename:    'contrato.pdf',
+      image:       { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    }).from(container).outputPdf('blob');
+
+    document.body.removeChild(container);
+
+    // Converte Blob para base64
+    const b64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(pdfBlob);
+    });
+
+    const nomeArquivo = `Contrato_SER_${(x.nome||'cliente').replace(/\s+/g,'_')}_${Date.now()}.pdf`;
+
+    onStatus('⏳ Enviando para o ClickSign...','loading');
+
+    const res = await _csCall('enviar_contrato', {
+      nomeArquivo,
+      conteudoBase64: b64,
+      nome:           x.nome,
+      email:          x.email,
+      cpf:            x.cpf||'',
+      telefone:       x.wpp ? '+55'+x.wpp.replace(/\D/g,'') : ''
+    });
+
+    if(res.erro) throw new Error(res.erro + (res.detalhe ? ': '+JSON.stringify(res.detalhe) : ''));
+
+    // Salva envelope_id no contrato
+    const d = ld(SK.cont);
+    const idx = d.findIndex(c=>c.id===x.id||(c.nome===x.nome&&!c.id));
+    if(idx>=0){
+      d[idx].clicksign_envelope = res.envelope_id;
+      d[idx].clicksign_email    = x.email;
+      d[idx].clicksign_status   = 'enviado';
+      d[idx].status             = 'enviado';
+      sv(SK.cont, d);
+      _hookSave('contratos', d[idx]);
+    }
+
+    onStatus(`✅ Enviado! ${x.email} receberá o link de assinatura por e-mail.`,'ok');
+    renderCont();
+
+  } catch(err){
+    onStatus('❌ Erro: '+err.message,'erro');
+  }
+}
+
+// Botão ✍️ na TABELA
+function enviarClickSign(i){
+  const arr = ld(SK.cont);
+  const x   = arr[i]||arr.find((_,idx2)=>idx2===+i);
+  if(!x) return alert('Contrato não encontrado');
+  _executarEnvioCS(x, (msg,estado)=>_csToast(msg,estado));
+}
+
+// Botão ✍️ no MODAL de edição
+function enviarClickSignModal(){
+  const x = getContData();
+  if(!x.nome){ alert('Preencha o nome do cliente primeiro.'); return; }
+  const d = ld(SK.cont);
+  const salvo = d.find(c=>c.nome===x.nome)||{};
+  _executarEnvioCS({...salvo,...x}, (msg,estado)=>_csModalStatus(msg,estado));
+}
 
 </script>
 
