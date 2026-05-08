@@ -271,9 +271,11 @@ tr:hover td{background:#fafaf8}
   <button class="nav-item" onclick="sw('propostas')" id="ni-propostas"><span class="ni">📋</span> Propostas <span class="nav-count" id="nc-propostas"></span></button>
   <button class="nav-item" onclick="sw('vistorias')" id="ni-vistorias"><span class="ni">🔍</span> Vistorias <span class="nav-count" id="nc-vistorias"></span></button>
   <button class="nav-item" onclick="sw('contratos')" id="ni-contratos"><span class="ni">📑</span> Contratos <span class="nav-count" id="nc-contratos"></span></button>
+  <button class="nav-item" onclick="sw('logistica')" id="ni-logistica"><span class="ni">📦</span> Logística <span class="nav-count" id="nc-logistica"></span></button>
   <button class="nav-item" onclick="sw('instalacao')" id="ni-instalacao"><span class="ni">🔧</span> Instalação <span class="nav-count" id="nc-instalacao"></span></button>
   <button class="nav-item" onclick="sw('homologacao')" id="ni-homologacao"><span class="ni">⚡</span> Homologação <span class="nav-count" id="nc-homologacao"></span></button>
   <div class="nav-section">Financeiro</div>
+  <button class="nav-item" onclick="sw('posvenda')" id="ni-posvenda"><span class="ni">🤝</span> Pós Venda <span class="nav-count" id="nc-posvenda"></span></button>
   <button class="nav-item" onclick="sw('comissoes')" id="ni-comissoes"><span class="ni">💰</span> Comissões <span class="nav-count" id="nc-comissoes"></span></button>
   <button class="nav-item" onclick="sw('financeiro')" id="ni-financeiro"><span class="ni">📈</span> Financeiro <span class="nav-count" id="nc-financeiro"></span></button>
   <div class="nav-section">Gestão</div>
@@ -348,11 +350,8 @@ tr:hover td{background:#fafaf8}
         <div id="dash-alerts"></div>
       </div>
       <div>
-        <div class="sl">Receita por mês (comissões)</div>
-        <div style="background:var(--card);border:1px solid var(--bd);border-radius:var(--rad);padding:14px">
-          <div class="mini-chart" id="dash-chart"></div>
-          <div style="display:flex;gap:3px" id="dash-chart-labels"></div>
-        </div>
+        <div class="sl">🚚 Distribuidoras</div>
+        <div class="top-list" id="dash-rank-dist"></div>
       </div>
     </div>
 
@@ -393,6 +392,16 @@ tr:hover td{background:#fafaf8}
     </div>
   </div>
 
+  <!-- ===== LOGÍSTICA ===== -->
+  <div class="tab-panel" id="tab-logistica">
+    <div class="metrics c3" id="m-log" style="margin-bottom:16px"></div>
+    <div class="card">
+      <div class="ch"><span class="ct" id="c-log">Logística</span><span style="font-size:12px;color:var(--g);margin-left:8px">Contratos assinados aguardando equipamentos</span></div>
+      <table><thead><tr><th style="width:22%">Cliente</th><th style="width:10%">kWp</th><th style="width:13%">Vendedor</th><th style="width:18%">Distribuidora</th><th style="width:15%">Status compra</th><th style="width:22%">Ações</th></tr></thead><tbody id="tb-log"></tbody></table>
+    </div>
+  </div>
+
+
   <!-- ===== INSTALAÇÃO ===== -->
   <div class="tab-panel" id="tab-instalacao">
     <div class="metrics c4" id="m-inst" style="margin-bottom:16px"></div>
@@ -413,6 +422,31 @@ tr:hover td{background:#fafaf8}
       <table><thead><tr><th style="width:17%">Cliente</th><th style="width:9%">kWp</th><th style="width:12%">Assinatura</th><th style="width:13%">Técnico</th><th style="width:10%">TRT</th><th style="width:13%">Estimado</th><th style="width:11%">Status</th><th style="width:15%">Ações</th></tr></thead><tbody id="tb-homo"></tbody></table>
     </div>
   </div>
+
+  <!-- ===== PÓS VENDA ===== -->
+  <div class="tab-panel" id="tab-posvenda">
+    <div class="card">
+      <div class="ch">
+        <span class="ct">🤝 Pós Venda</span>
+        <span style="font-size:12px;color:var(--g);margin-left:8px">Contagens baseadas na data de instalação</span>
+      </div>
+      <div style="overflow-x:auto">
+      <table style="min-width:900px">
+        <thead><tr>
+          <th style="width:18%">Cliente</th>
+          <th style="width:13%">🎂 Aniversário</th>
+          <th style="width:14%">🔧 Manutenção<br><small style="font-weight:400;font-size:10px">+300d recorrente</small></th>
+          <th style="width:13%">👋 Boas Vindas<br><small style="font-weight:400;font-size:10px">+5 dias</small></th>
+          <th style="width:13%">🙏 Gratidão<br><small style="font-weight:400;font-size:10px">+30 dias</small></th>
+          <th style="width:13%">🌟 Embaixador<br><small style="font-weight:400;font-size:10px">+90 dias</small></th>
+          <th style="width:16%">Ações</th>
+        </tr></thead>
+        <tbody id="tb-pv"></tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+
 
   <!-- ===== COMISSÕES ===== -->
   <div class="tab-panel" id="tab-comissoes">
@@ -535,7 +569,7 @@ tr:hover td{background:#fafaf8}
 <div class="overlay" id="mo-prop"><div class="modal" style="width:620px">
   <h3 id="mp-t">Nova proposta</h3>
   <div class="msec">Dados do cliente</div>
-  <div class="mr2"><div><label>Nome completo do cliente</label><input type="text" id="mp-nome" list="list-clientes"></div><div><label>WhatsApp</label><input type="text" id="mp-wpp"></div></div>
+  <div class="mr2"><div><label>Nome completo do cliente</label><input type="text" id="mp-nome" list="list-clientes" oninput="autoFillCliente(this.value,'mp-wpp','mp-email')"></div><div><label>WhatsApp</label><input type="text" id="mp-wpp"></div></div>
   <div class="mr2"><div><label>E-mail do cliente</label><input type="email" id="mp-email"></div><div><label>Vendedor responsável</label><select id="mp-vend"><option value="">— Vendedor —</option></select></div></div>
   <datalist id="list-vend-prop"></datalist>
   <datalist id="list-clientes"></datalist>
@@ -599,11 +633,11 @@ tr:hover td{background:#fafaf8}
 <div class="overlay" id="mo-cont"><div class="modal" style="width:600px">
   <h3 id="mc-t">Registrar contrato</h3>
   <div class="msec">Dados do cliente</div>
-  <div class="mr2"><div><label>Nome completo</label><input type="text" id="mc-nome"></div><div><label>CPF</label><input type="text" id="mc-cpf" placeholder="000.000.000-00"></div></div>
+  <div class="mr2"><div><label>Nome completo</label><input type="text" id="mc-nome"></div><div><label>CPF</label><input type="text" id="mc-cpf" placeholder="000.000.000-00" oninput="checkCPF(this)"></div></div>
   <div class="mr2"><div><label>RG</label><input type="text" id="mc-rg"></div><div><label>Órgão / UF do RG</label><input type="text" id="mc-rgorg" placeholder="SSP/PA"></div></div>
   <label>WhatsApp</label><input type="text" id="mc-wpp">
   <div class="msec">Endereço de instalação</div>
-  <div class="mr2"><div><label>CEP</label><input type="text" id="mc-cep" placeholder="00000-000"></div><div><label>Estado (UF)</label><select id="mc-estado"><option value="">—</option><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div></div>
+  <div class="mr2"><div><label>CEP</label><input type="text" id="mc-cep" placeholder="00000-000" oninput="buscarCEP(this.value,{rua:'mc-rua',bairro:'mc-bairro',cidade:'mc-cidade',estado:'mc-estado'})"></div><div><label>Estado (UF)</label><select id="mc-estado"><option value="">—</option><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div></div>
   <label>Rua / Logradouro</label><input type="text" id="mc-rua">
   <div class="mr2"><div><label>Número</label><input type="text" id="mc-num"></div><div><label>Complemento</label><input type="text" id="mc-comp" placeholder="Apto, Bloco..."></div></div>
   <div class="mr2"><div><label>Bairro</label><input type="text" id="mc-bairro"></div><div><label>Cidade</label><input type="text" id="mc-cidade"></div></div>
@@ -618,7 +652,8 @@ tr:hover td{background:#fafaf8}
   <div class="mr2"><div><label>Qtd. Módulos</label><input type="number" id="mc-qm" min="1" value="0"></div><div><label>Marca</label><select id="mc-mm"><option value="">— Módulo —</option></select></div></div>
   <div class="mr2"><div><label>Potência do Módulo (W)</label><select id="mc-pm"><option value="">— W —</option></select></div><div></div></div>
   <div class="msec">Pagamento e valor</div>
-  <div class="mr2"><div><label>Valor total (R$)</label><input type="number" id="mc-valor"></div><div><label>Forma de pagamento</label><select id="mc-pgto"><option>À vista</option><option>Financiamento</option><option>Parcelado interno</option><option>Misto</option></select></div></div>
+  <div class="mr2"><div><label>Valor total (R$)</label><input type="number" id="mc-valor"></div><div><label>Forma de pagamento</label><select id="mc-pgto" onchange="toggleBancoField()"><option value="À Vista">À Vista</option><option value="Financiamento Bancário">Financiamento Bancário</option><option value="Cartão de Crédito">Cartão de Crédito</option><option value="Parcelamento Interno">Parcelamento Interno</option><option value="Misto (entrada + financiamento)">Misto (entrada + financiamento)</option></select></div></div>
+  <div id="mc-banco-row" style="display:none"><label>Banco financiador</label><select id="mc-banco"><option value="">— Selecione o banco —</option><option>Solfácil</option><option>Sol Agora</option><option>BV Financeira</option><option>Sicredi</option><option>Sicoob</option><option>Santander</option><option>Caixa Econômica Federal</option><option>Bradesco</option><option>Itaú</option><option>Banco do Brasil</option><option>Banco Pan</option><option>Nubank</option><option>C6 Bank</option><option>Banco Inter</option><option>BTG Pactual</option><option>Safra</option><option>Outro</option></select></div>
   <label>Descrição do pagamento</label><input type="text" id="mc-pgto-desc" placeholder="Ex: 50% entrada + 50% na instalação">
   <div class="msec">Status</div>
   <select id="mc-status"><option value="pendente">Pendente assinatura</option><option value="enviado">Enviado para assinatura</option><option value="assinado">Assinado</option><option value="instalando">Em instalação</option><option value="homologando">Em homologação</option><option value="concluido">Concluído</option></select>
@@ -635,6 +670,23 @@ tr:hover td{background:#fafaf8}
     <div id="cs-status-modal" style="display:none;margin-top:8px;font-size:11px;padding:8px 10px;border-radius:6px"></div>
   </div>
   <div class="mfooter"><button class="btn-c" onclick="closeM('mo-cont')">Cancelar</button><button class="btn-s" onclick="saveCont()">Salvar</button></div>
+</div></div>
+
+<!-- LOGÍSTICA -->
+<div class="overlay" id="mo-log"><div class="modal">
+  <h3 id="ml-t">Editar Logística</h3>
+  <div class="mr2"><div><label>Cliente</label><input type="text" id="ml-nome" readonly style="background:var(--gl);color:var(--g)"></div><div><label>kWp</label><input type="number" id="ml-kwp" readonly style="background:var(--gl);color:var(--g)"></div></div>
+  <div class="mr2"><div><label>Vendedor</label><input type="text" id="ml-vend" readonly style="background:var(--gl);color:var(--g)"></div><div><label>Valor (R$)</label><input type="number" id="ml-valor" readonly style="background:var(--gl);color:var(--g)"></div></div>
+  <label>Distribuidora</label><input type="text" id="ml-dist" list="list-distribuidoras" placeholder="Selecione ou digite o distribuidor">
+  <datalist id="list-distribuidoras"></datalist>
+  <label>Status da compra</label>
+  <select id="ml-status">
+    <option value="Aguardando compra">Aguardando compra</option>
+    <option value="Comprado">Comprado</option>
+    <option value="Enviado">Enviado</option>
+    <option value="Entregue">Entregue</option>
+  </select>
+  <div class="mfooter"><button class="btn-c" onclick="closeM('mo-log')">Cancelar</button><button class="btn-s" onclick="saveLog()">Salvar</button></div>
 </div></div>
 
 <!-- INSTALAÇÃO -->
@@ -668,12 +720,14 @@ tr:hover td{background:#fafaf8}
   <div class="mr2"><div><label>Qtd. Módulos</label><input type="number" id="mh-qm" min="0" value="0"></div><div><label>Marca dos Módulos</label><select id="mh-mm"><option value="">— Módulo —</option></select></div></div>
   <div class="msec">Documentos da homologação</div>
   <div style="display:grid;gap:8px;margin-bottom:4px">
-    <div class="doc-upload-row"><label class="doc-label">📄 Doc. do Homologador</label><input type="file" id="mh-f-homologador" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-homologador">Nenhum arquivo</div></div>
+    <div class="doc-upload-row"><label class="doc-label">📄 Procuração</label><input type="file" id="mh-f-homologador" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-homologador">Nenhum arquivo</div></div>
+    <div class="doc-upload-row"><label class="doc-label">📝 Contrato Assinado</label><input type="file" id="mh-f-contass" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-contass">Nenhum arquivo</div></div>
     <div class="doc-upload-row"><label class="doc-label">⚡ Fatura Geradora</label><input type="file" id="mh-f-fatger" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-fatger">Nenhum arquivo</div></div>
     <div class="doc-upload-row"><label class="doc-label">⚡ Fatura Beneficiária <span style="font-weight:400;color:var(--mu)">(quando houver)</span></label><input type="file" id="mh-f-fatben" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-fatben">Nenhum arquivo</div></div>
     <div class="doc-upload-row"><label class="doc-label">🔍 Doc. da Vistoria</label><input type="file" id="mh-f-vist" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-vist">Nenhum arquivo</div></div>
     <div class="doc-upload-row"><label class="doc-label">📋 Datasheet do Inversor</label><input type="file" id="mh-f-dsinv" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-dsinv">Nenhum arquivo</div></div>
     <div class="doc-upload-row"><label class="doc-label">📋 Datasheet do Módulo</label><input type="file" id="mh-f-dsmod" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-dsmod">Nenhum arquivo</div></div>
+    <div class="doc-upload-row"><label class="doc-label">🌤️ Análise de Sombreamento</label><input type="file" id="mh-f-sombra" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-sombra">Nenhum arquivo</div></div>
   </div>
   <div class="msec">Custos de cartório</div>
   <div class="mr2"><div><label>Qtd TRTs</label><input type="number" id="mh-tq" value="1" min="0" oninput="calcHomo()"></div><div><label>Qtd ARTs</label><input type="number" id="mh-aq" value="0" min="0" oninput="calcHomo()"></div></div>
@@ -776,19 +830,19 @@ tr:hover td{background:#fafaf8}
   <h3 id="mcad-t">Novo cadastro</h3>
   <div class="mr2"><div><label>Nome completo</label><input type="text" id="mcad-nome"></div><div><label>Tipo</label><select id="mcad-tipo"><option value="cliente">Cliente</option><option value="distribuidor">Distribuidor</option><option value="vendedor">Vendedor</option><option value="sdr">SDR</option><option value="supervisor">Supervisor</option><option value="gerente">Gerente</option><option value="tecnico">Técnico/Engenheiro</option><option value="instalador">Instalador</option><option value="diretor">Diretor</option><option value="vistoriador">Vistoriador</option></select></div></div>
   <div class="mr2"><div><label>WhatsApp / Telefone</label><input type="text" id="mcad-wpp"></div><div><label>E-mail</label><input type="email" id="mcad-email"></div></div>
-  <div class="mr2"><div><label>CPF / CNPJ</label><input type="text" id="mcad-doc"></div><div><label>CEP</label><input type="text" id="mcad-cep" placeholder="00000-000"></div></div>
+  <div class="mr2"><div><label>CPF / CNPJ</label><input type="text" id="mcad-doc" oninput="checkDoc(this)"></div><div><label>CEP</label><input type="text" id="mcad-cep" placeholder="00000-000" oninput="buscarCEP(this.value,{rua:'mcad-rua',cidade:'mcad-cidade',estado:'mcad-estado'})"></div></div>
   <label>Rua / Logradouro</label><input type="text" id="mcad-rua" placeholder="Nome da rua, avenida, etc.">
   <div class="mr2"><div><label>Número</label><input type="text" id="mcad-numero"></div><div><label>Complemento</label><input type="text" id="mcad-comp" placeholder="Apto, Bloco..."></div></div>
   <div class="mr2"><div><label>Cidade</label><input type="text" id="mcad-cidade"></div><div><label>Estado (UF)</label><select id="mcad-estado"><option value="">—</option><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div></div>
-  <label>Especialidade / Observações</label><input type="text" id="mcad-obs">
+  <div class="mr2"><div><label>Data de Nascimento</label><input type="date" id="mcad-nasc"></div><div><label>Especialidade / Observações</label><input type="text" id="mcad-obs"></div></div>
   <div id="mcad-extra"></div>
   <div class="mfooter"><button class="btn-c" onclick="closeM('mo-cad')">Cancelar</button><button class="btn-s" onclick="saveCad()">Salvar</button></div>
 </div></div>
 
 <script>
 // ===================== STORAGE =====================
-const SK={prop:'s6p',vist:'s6v',cont:'s6c',inst:'s6i',homo:'s6h',com:'s6com',fixo:'s6f',desp:'s6d',cad:'s6cad',equip:'s6eq',custoProj:'s6cp',rec:'s6rec'};
-const ei={prop:null,vist:null,cont:null,inst:null,homo:null,com:null,cad:null,equip:null,custoProj:null};
+const SK={prop:'s6p',vist:'s6v',cont:'s6c',log:'s6log',inst:'s6i',homo:'s6h',com:'s6com',fixo:'s6f',desp:'s6d',cad:'s6cad',equip:'s6eq',custoProj:'s6cp',rec:'s6rec'};
+const ei={prop:null,vist:null,cont:null,log:null,inst:null,homo:null,com:null,cad:null,equip:null,custoProj:null};
 const filt={prop:'all',vist:'all',cont:'all',inst:'all',homo:'all',com:'all',cad:'all'};
 let aceiteIdx=null;
 const TRT=68.17;
@@ -808,6 +862,7 @@ function def(k){
   if(k===SK.prop)return JSON.parse(JSON.stringify(DR.prop));
   if(k===SK.vist)return[];
   if(k===SK.cont)return JSON.parse(JSON.stringify(DR.cont));
+  if(k===SK.log)return[];
   if(k===SK.inst)return[];
   if(k===SK.homo)return JSON.parse(JSON.stringify(DR.homo));
   if(k===SK.com)return JSON.parse(JSON.stringify(DR.com));
@@ -826,8 +881,10 @@ const PAGES={
   propostas:{title:'Propostas',sub:'Gestão de propostas comerciais'},
   vistorias:{title:'Vistorias',sub:'Agendamento e controle de vistorias'},
   contratos:{title:'Contratos',sub:'Base de contratos assinados'},
+  logistica:{title:'Logística',sub:'Compra e entrega de equipamentos'},
   instalacao:{title:'Instalação',sub:'Acompanhamento de instalações'},
   homologacao:{title:'Homologação',sub:'Processo junto à concessionária'},
+  posvenda:{title:'Pós Venda',sub:'Acompanhamento de clientes instalados'},
   comissoes:{title:'Comissões',sub:'Controle de comissões e bônus'},
   financeiro:{title:'Financeiro',sub:'Análise financeira completa'},
   cadastro:{title:'Cadastros',sub:'Clientes, colaboradores e parceiros'},
@@ -839,7 +896,7 @@ const PAGE_CTA={
   propostas:{label:'+ Nova proposta',fn:'abrirGeradorProposta'},
   vistorias:{label:'+ Agendar vistoria',fn:'openVistModal'},
   contratos:{label:'+ Registrar contrato',fn:'abrirGeradContrato'},
-  instalacao:{label:'+ Nova instalação',fn:'openInstModal'},
+  logistica:{label:'',fn:''},instalacao:{label:'+ Nova instalação',fn:'openInstModal'},
   homologacao:{label:'+ Nova homologação',fn:'openHomoModal'},
   comissoes:{label:'+ Registrar comissão',fn:'openComModal'},
 };
@@ -859,16 +916,16 @@ function sw(id, noFetch){
   if(cta){btn.textContent=cta.label;btn.style.display='inline-block';}
   else{btn.style.display='none';}
   // Recarrega dados do Supabase ao trocar de aba
-  const renders={dashboard:renderDash,propostas:renderProp,vistorias:renderVist,contratos:renderCont,instalacao:renderInst,homologacao:renderHomo,comissoes:renderCom,financeiro:renderFin,cadastro:renderCad,usuarios:renderUsuarios};
+  const renders={dashboard:renderDash,propostas:renderProp,vistorias:renderVist,contratos:renderCont,logistica:renderLog,instalacao:renderInst,homologacao:renderHomo,posvenda:renderPV,comissoes:renderCom,financeiro:renderFin,cadastro:renderCad,usuarios:renderUsuarios};
   if(!noFetch && _user && _TBL) {
     // Determina qual tabela recarregar para esta aba
     const abaParaTabela={propostas:'propostas',vistorias:'vistorias',contratos:'contratos',
-      instalacao:'instalacoes',homologacao:'homologacoes',comissoes:'comissoes',
+      logistica:'logistica',instalacao:'instalacoes',homologacao:'homologacoes',posvenda:null,comissoes:'comissoes',
       financeiro:null,cadastro:'cadastros',usuarios:null};
     const tbl=abaParaTabela[id];
     if(tbl) {
       getSB().from(tbl).select('*').order('criado_em',{ascending:false}).then(({data})=>{
-        if(data){const p=(_cache[tbl]||[]).filter(r=>!r.id);_cache[tbl]=[...p,...data];renders[id]&&renders[id]();}
+        if(data){const p=(_cache[tbl]||[]).filter(r=>!r.id);if(data.length>0||p.length>0)_cache[tbl]=[...p,...data];renders[id]&&renders[id]();}
       });
       return; // render será chamado pelo then acima
     }
@@ -894,6 +951,7 @@ function updateNavCounts(){
     propostas: ld(SK.prop).length,
     vistorias: ld(SK.vist).length,
     contratos: ld(SK.cont).length,
+    logistica: ld(SK.log).length,
     instalacao: ld(SK.inst).length,
     homologacao: ld(SK.homo).length,
     comissoes: ld(SK.com).length,
@@ -981,6 +1039,68 @@ function populateDataLists(){
   const baterias=equips.filter(e=>e.tipo==='bateria').map(e=>`${e.marca} ${e.modelo||''} ${e.pot}kWh`.trim());
   fill('list-equip-modulo',modelos);fill('list-equip-inversor',inversores);fill('list-equip-bateria',baterias);
 }
+function autoFillCliente(nome,wppId,emailId){
+  if(!nome)return;
+  const cads=ld(SK.cad);
+  const match=cads.find(c=>c.nome&&c.nome.trim().toLowerCase()===nome.trim().toLowerCase());
+  if(!match)return;
+  const wppEl=document.getElementById(wppId);const emailEl=document.getElementById(emailId);
+  if(wppEl&&!wppEl.value&&match.wpp)wppEl.value=match.wpp;
+  if(emailEl&&!emailEl.value&&match.email)emailEl.value=match.email;
+}
+function toggleBancoField(){
+  const pgto=document.getElementById('mc-pgto').value;
+  const show=pgto==='Financiamento Bancário'||pgto==='Misto (entrada + financiamento)';
+  document.getElementById('mc-banco-row').style.display=show?'':'none';
+  if(!show)document.getElementById('mc-banco').value='';
+}
+function validarCPF(v){
+  const c=v.replace(/\D/g,'');
+  if(c.length!==11||/^(\d)\1{10}$/.test(c))return false;
+  let s=0;for(let i=0;i<9;i++)s+=+c[i]*(10-i);
+  let r=s%11;const d1=r<2?0:11-r;
+  if(+c[9]!==d1)return false;
+  s=0;for(let i=0;i<10;i++)s+=+c[i]*(11-i);
+  r=s%11;const d2=r<2?0:11-r;
+  return +c[10]===d2;
+}
+function validarCNPJ(v){
+  const c=v.replace(/\D/g,'');
+  if(c.length!==14||/^(\d)\1{13}$/.test(c))return false;
+  const calc=(c,n)=>{let s=0,p=n-7;for(let i=0;i<n;i++){s+=+c[i]*p--;if(p<2)p=9;}const r=s%11;return r<2?0:11-r;};
+  return +c[12]===calc(c,12)&&+c[13]===calc(c,13);
+}
+function checkCPF(el){
+  const v=el.value.replace(/\D/g,'');
+  if(!v){el.style.borderColor='';el.title='';return;}
+  if(v.length<11){el.style.borderColor='';return;}
+  const ok=validarCPF(v);
+  el.style.borderColor=ok?'#22c55e':'#ef4444';
+  el.title=ok?'CPF válido ✓':'CPF inválido ✗';
+}
+function checkDoc(el){
+  const v=el.value.replace(/\D/g,'');
+  if(!v){el.style.borderColor='';el.title='';return;}
+  if(v.length<11){el.style.borderColor='';return;}
+  if(v.length===11){const ok=validarCPF(v);el.style.borderColor=ok?'#22c55e':'#ef4444';el.title=ok?'CPF válido ✓':'CPF inválido ✗';return;}
+  if(v.length===14){const ok=validarCNPJ(v);el.style.borderColor=ok?'#22c55e':'#ef4444';el.title=ok?'CNPJ válido ✓':'CNPJ inválido ✗';return;}
+  el.style.borderColor='';
+}
+async function buscarCEP(cep,fields){
+  const digits=cep.replace(/\D/g,'');
+  if(digits.length!==8)return;
+  try{
+    const r=await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+    const d=await r.json();
+    if(d.erro)return;
+    const set=(id,val)=>{if(!id)return;const el=document.getElementById(id);if(el&&!el.value&&val)el.value=val;};
+    const setAlways=(id,val)=>{if(!id)return;const el=document.getElementById(id);if(el&&val)el.value=val;};
+    set(fields.rua,d.logradouro);
+    set(fields.bairro,d.bairro);
+    set(fields.cidade,d.localidade);
+    setAlways(fields.estado,d.uf);
+  }catch(e){}
+}
 
 // ===================== DASHBOARD =====================
 let _dashYear=new Date().getFullYear();
@@ -1010,9 +1130,9 @@ function setDashVend(v){_dashVend=v;renderDash();}
 function buildYearButtons(){
   const years=new Set();
   [...ld(SK.prop),...ld(SK.cont),...ld(SK.com)].forEach(x=>{
-    const raw=x.data||x.datasign||'';
-    const m=raw.match(/(\d{4})$/);
-    if(m)years.add(+m[1]);
+    const raw=x.data||x.datasign||x.criado_em||'';
+    const parsed=_parseDMY(raw);
+    if(parsed)years.add(parsed.y);
     if(x.ano)years.add(+x.ano);
   });
   if(!years.size)years.add(new Date().getFullYear());
@@ -1119,11 +1239,11 @@ function renderDash(){
 
   // Contratos filtrados por data+vendedor (usa x.data dd/mm/yyyy)
   const allConts=ld(SK.cont);
-  const contsF=filterDash(allConts,x=>_parseDMY(x.data),x=>x.vend);
+  const contsF=filterDash(allConts,x=>_parseDMY(x.data||x.criado_em||''),x=>x.vend);
 
   // Propostas filtradas
   const allProps=ld(SK.prop);
-  const propsF=filterDash(allProps,x=>_parseDMY(x.data),x=>x.vend);
+  const propsF=filterDash(allProps,x=>_parseDMY(x.data||x.criado_em||''),x=>x.vend);
 
   const props=ld(SK.prop),conts=ld(SK.cont),insts=ld(SK.inst),homos=ld(SK.homo);
   const fixos=ld(SK.fixo),desps=ld(SK.desp);
@@ -1164,12 +1284,14 @@ function renderDash(){
 
   // ── Rankings ──
   const fK=v=>'R$ '+(v>=1000?(v/1000).toFixed(0)+'k':Number(v).toLocaleString('pt-BR'));
+  // Normaliza nomes de pgto antigos para o padrão atual
+  const _normPgto=p=>{if(!p)return null;const m={'à vista':'À Vista','financiamento':'Financiamento Bancário','parcelado interno':'Parcelamento Interno','misto':'Misto (entrada + financiamento)'};return m[p.toLowerCase().trim()]||p.trim();};
   const vendRank=_rankItems(contsF,x=>(x.vend||'').trim()||null,x=>+x.valor||0);
   _renderRanking('dash-rank-vend',vendRank,fK,'Sem dados no período');
-  const bancoItems=contsF.map(x=>({...x,_banco:_extractBanco(x.pgtoDesc||'')||_extractBanco(x.pgto||'')||null})).filter(x=>x._banco);
+  const bancoItems=contsF.map(x=>({...x,_banco:x.banco||_extractBanco(x.pgtoDesc||x.pgto_desc||'')||_extractBanco(x.pgto||'')||null})).filter(x=>x._banco);
   const bancoRank=_rankItems(bancoItems,x=>x._banco,x=>+x.valor||0);
   _renderRanking('dash-rank-banco',bancoRank,fK,'Sem financiamento registrado');
-  const pgtoRank=_rankItems(contsF,x=>{const p=(x.pgto||'').trim();if(!p)return _extractBanco(x.pgtoDesc||'')?'Financiamento':null;return p||null;},x=>+x.valor||0);
+  const pgtoRank=_rankItems(contsF,x=>{const desc=x.pgtoDesc||x.pgto_desc||'';const raw=(x.pgto||'').trim();const p=_normPgto(raw||(_extractBanco(desc)?'Financiamento Bancário':null));return p||null;},x=>+x.valor||0);
   _renderRanking('dash-rank-pgto',pgtoRank,fK,'Sem dados no período');
 
   // Alertas
@@ -1196,16 +1318,10 @@ function renderDash(){
     meses=Object.keys(byMes).filter(k=>k.endsWith('/'+rangeInfo.ano)).sort();
     if(!meses.length)meses=Object.keys(byMes).sort().slice(-6);
   }
-  const maxVal=Math.max(...meses.map(m=>byMes[m]||0),1);
-  const MNAMES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  document.getElementById('dash-chart').innerHTML=meses.map(m=>{
-    const h=Math.round(((byMes[m]||0)/maxVal)*46)+4;
-    return`<div class="bar" style="height:${h}px" title="${m}: R$${((byMes[m]||0)/1000).toFixed(0)}k"></div>`;
-  }).join('');
-  document.getElementById('dash-chart-labels').innerHTML=meses.map(m=>{
-    const parts=m.split('/');
-    return`<div style="flex:1;font-size:9px;color:var(--mu);text-align:center">${MNAMES[parseInt(parts[0])-1]||parts[0]}</div>`;
-  }).join('');
+  // Ranking distribuidoras (logística — sem filtro de período para mostrar histórico completo)
+  const allLogs=ld(SK.log);
+  const distRank=_rankItems(allLogs,x=>(x.distribuidora||'').trim()||null,x=>1);
+  _renderRanking('dash-rank-dist',distRank,v=>v+' pedido'+(v!==1?'s':''),'Nenhuma distribuidora registrada na logística');
 
   // Últimas propostas
   const PSTAT={new:'Nova',neg:'Negociação',win:'Fechado',lost:'Perdido'};
@@ -1524,7 +1640,7 @@ function renderProp(){
     <td><div class="act-row">${wu?`<button class="ab ab-g" onclick="ol('${wu}')">WhatsApp</button>`:''}
     <button class="ab ab-b" onclick="prevPropIdx(${ri})">Proposta</button>
     <button class="ab ab-a" onclick="dlPropIdx(${ri})">⬇️</button>
-    ${ab}<button class="ab" onclick="editProp(${ri})">Editar</button></div></td></tr>`;
+    ${ab}<button class="ab" onclick="editProp(${ri})">Editar</button><button class="ab ab-r" onclick="delProp(${ri})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></div></td></tr>`;
   }).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhuma proposta</td></tr>`;
 }
 function _loadPropIntoForm(x){
@@ -1555,12 +1671,30 @@ function prevPropIdx(i){
 }
 function dlPropIdx(i){prevPropIdx(i);setTimeout(()=>window.print(),800);}
 function setFP(f){filt.prop=f;renderProp()}
-function chgP(i,v){const d=ld(SK.prop);d[i].status=v;sv(SK.prop,d);_hookSave('propostas',d[i]);renderProp()}
+function chgP(i,v){const d=ld(SK.prop);const prev=d[i].status;d[i].status=v;sv(SK.prop,d);_hookSave('propostas',d[i]);renderProp();if(v==='win'&&prev!=='win')_prefillContratoFromProp(d[i]);}
 function trigAceite(i){aceiteIdx=i;const x=ld(SK.prop)[i];document.getElementById('aceite-info').innerHTML=[{l:'Cliente',v:x.nome},{l:'Consumo',v:(x.kwh||'—')+' kWh/mês'},{l:'Valor',v:f(x.valor)},{l:'Vendedor',v:x.vend||'—'}].map(o=>`<div style="background:var(--sec);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--mu)">${o.l}</div><div style="font-size:13px;font-weight:500">${o.v}</div></div>`).join('');openM('mo-aceite')}
-function confirmarAceite(){const ps=ld(SK.prop);if(aceiteIdx===null||!ps[aceiteIdx])return;ps[aceiteIdx].aceito=true;ps[aceiteIdx].status='win';sv(SK.prop,ps);sbUpsert('propostas',ps[aceiteIdx]);const cs=ld(SK.cont);const x=ps[aceiteIdx];if(!cs.some(c=>c.nome===x.nome)){const nc={nome:x.nome,kwp:x.kwp||0,valor:x.valor,pgto:'Financiamento',pgtoDesc:'',vend:x.vend||'',wpp:x.wpp||'',status:'pendente',data:new Date().toLocaleDateString('pt-BR'),fase:'Monofásico',tensao:220,cpf:'',rg:'',rgorg:'',cep:'',estado:'',rua:'',num:'',comp:'',bairro:'',cidade:''};const cs2=ld(SK.cont);cs2.unshift(nc);sv(SK.cont,cs2);_hookSave('contratos',nc);}closeM('mo-aceite');renderProp();renderCont();updateNavCounts();sw('contratos',true)}
+function confirmarAceite(){const ps=ld(SK.prop);if(aceiteIdx===null||!ps[aceiteIdx])return;ps[aceiteIdx].aceito=true;ps[aceiteIdx].status='win';sv(SK.prop,ps);sbUpsert('propostas',ps[aceiteIdx]);const cs=ld(SK.cont);const x=ps[aceiteIdx];if(!cs.some(c=>c.nome===x.nome)){const nc={nome:x.nome,kwp:x.kwp||0,valor:x.valor,pgto:'Financiamento',pgtoDesc:'',vend:x.vend||'',wpp:x.wpp||'',status:'pendente',data:new Date().toLocaleDateString('pt-BR'),fase:'Monofásico',tensao:220,cpf:'',rg:'',rgorg:'',cep:'',estado:'',rua:'',num:'',comp:'',bairro:'',cidade:''};const cs2=ld(SK.cont);cs2.unshift(nc);sv(SK.cont,cs2);_hookSave('contratos',nc);}closeM('mo-aceite');renderProp();updateNavCounts();_prefillContratoFromProp(x);}
 function openPropModal(){ei.prop=null;['mp-nome','mp-wpp','mp-email','mp-vend','mp-vend-wpp','mp-vend-email','mp-kwh','mp-qm','mp-mm','mp-pm','mp-qi','mp-mi','mp-pi','mp-qb','mp-mb','mp-pb','mp-semsolar','mp-comsolar','mp-eco','mp-valor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('mp-qi').value=1;document.getElementById('mp-qm').value=0;document.getElementById('mp-pm').value='';document.getElementById('mp-pi').value='';document.getElementById('mp-qb').value=0;document.getElementById('mp-pb').value='';document.getElementById('mp-area').value=0;const vd=new Date();vd.setDate(vd.getDate()+7);document.getElementById('mp-validade').value='7 dias (até '+vd.toLocaleDateString('pt-BR')+')';document.getElementById('mp-status').value='new';document.getElementById('mp-nota').style.display='none';document.getElementById('mp-t').textContent='Nova proposta';populateDataLists();openM('mo-prop')}
-function editProp(i){ei.prop=i;const x=ld(SK.prop)[i];['nome','wpp','email','vend','vendWpp','vendEmail','validade'].forEach(k=>{const el=document.getElementById('mp-'+k.replace(/([A-Z])/g,'-$1').toLowerCase());if(el)el.value=x[k]||'';});document.getElementById('mp-kwh').value=x.kwh||0;document.getElementById('mp-qm').value=x.qm||0;document.getElementById('mp-mm').value=x.mm||'';document.getElementById('mp-pm').value=x.pm||0;document.getElementById('mp-qi').value=x.qi||1;document.getElementById('mp-mi').value=x.mi||'';document.getElementById('mp-pi').value=x.pi||0;document.getElementById('mp-qb').value=x.qb||0;document.getElementById('mp-mb').value=x.mb||'';document.getElementById('mp-pb').value=x.pb||0;document.getElementById('mp-area').value=x.area||0;document.getElementById('mp-semsolar').value=x.semsolar||0;document.getElementById('mp-comsolar').value=x.comsolar||0;document.getElementById('mp-eco').value=x.eco||0;document.getElementById('mp-valor').value=x.valor||0;document.getElementById('mp-status').value=x.status;document.getElementById('mp-t').textContent='Editar proposta';calcProposta();openM('mo-prop')}
-function saveProp(){const nome=document.getElementById('mp-nome').value.trim();if(!nome)return alert('Informe o nome');const p=getPropData();const e={...p,status:document.getElementById('mp-status').value,aceito:false};const d=ld(SK.prop);if(ei.prop!==null)d[ei.prop]=e;else d.unshift(e);sv(SK.prop,d);_hookSave('propostas',e);closeM('mo-prop');renderProp();updateNavCounts()}
+function editProp(i){ei.prop=i;populateDataLists();const x=ld(SK.prop)[i];['nome','wpp','email','vend','vendWpp','vendEmail','validade'].forEach(k=>{const el=document.getElementById('mp-'+k.replace(/([A-Z])/g,'-$1').toLowerCase());if(el)el.value=x[k]||'';});document.getElementById('mp-kwh').value=x.kwh||0;document.getElementById('mp-qm').value=x.qm||0;document.getElementById('mp-mm').value=x.mm||'';document.getElementById('mp-pm').value=x.pm||0;document.getElementById('mp-qi').value=x.qi||1;document.getElementById('mp-mi').value=x.mi||'';document.getElementById('mp-pi').value=x.pi||0;document.getElementById('mp-qb').value=x.qb||0;document.getElementById('mp-mb').value=x.mb||'';document.getElementById('mp-pb').value=x.pb||0;document.getElementById('mp-area').value=x.area||0;document.getElementById('mp-semsolar').value=x.semsolar||0;document.getElementById('mp-comsolar').value=x.comsolar||0;document.getElementById('mp-eco').value=x.eco||0;document.getElementById('mp-valor').value=x.valor||0;document.getElementById('mp-status').value=x.status;document.getElementById('mp-t').textContent='Editar proposta';calcProposta();openM('mo-prop')}
+function _prefillContratoFromProp(prop){
+  if(!prop||!prop.nome)return;
+  openContModal();
+  const sv2=(id,v)=>{if(v===undefined||v===null||v==='')return;const el=document.getElementById(id);if(el)el.value=v;};
+  sv2('mc-nome',prop.nome);
+  sv2('mc-wpp',prop.wpp);
+  sv2('mc-kwp',prop.kwp);
+  sv2('mc-valor',prop.valor);
+  sv2('mc-vend',prop.vend);
+  sv2('mc-qi',prop.qi||1);
+  sv2('mc-mi',prop.mi);
+  sv2('mc-pi',prop.pi);
+  sv2('mc-qm',prop.qm||0);
+  sv2('mc-mm',prop.mm);
+  sv2('mc-pm',prop.pm||0);
+  setTimeout(()=>alert('✅ Proposta fechada!\nDados do cliente pré-preenchidos.\nComplete as informações restantes e salve o contrato.'),150);
+}
+function saveProp(){const nome=document.getElementById('mp-nome').value.trim();if(!nome)return alert('Informe o nome');const existing=ei.prop!==null?ld(SK.prop)[ei.prop]:{};const p=getPropData();const e={...existing,...p,status:document.getElementById('mp-status').value,aceito:existing.aceito||false,data:existing.data||new Date().toLocaleDateString('pt-BR')};const d=ld(SK.prop);if(ei.prop!==null)d[ei.prop]=e;else d.unshift(e);sv(SK.prop,d);_hookSave('propostas',e);const _prevStatus=existing.status||'';closeM('mo-prop');renderProp();updateNavCounts();if(e.status==='win'&&_prevStatus!=='win')_prefillContratoFromProp(e);
+function delProp(i){const d=ld(SK.prop);const x=d[i];if(!confirm(`Excluir proposta de "${x.nome}"?\nEsta ação não pode ser desfeita.`))return;if(x.id)_hookDel('propostas',x.id);d.splice(i,1);sv(SK.prop,d);renderProp();renderDash();updateNavCounts();}
 
 // ===================== VISTORIAS =====================
 const VSTAT={agendada:'Agendada',realizada:'Realizada',cancelada:'Cancelada'};
@@ -1573,7 +1707,7 @@ function renderVist(){
   document.getElementById('tb-vist').innerHTML=fl.map(x=>{const ri=d.indexOf(x);const wu=`https://wa.me/55${(x.wpp||'').replace(/\D/g,'')}?text=${encodeURIComponent(`Olá ${x.nome}! Confirmando vistoria SER Energia em ${fD(x.data)} às ${x.hora||''}. Endereço: ${x.end||''}`)}`;
   return`<tr><td>${x.nome}</td><td>${fD(x.data)} ${x.hora||''}</td><td title="${x.end||''}">${x.end||'—'}</td><td>${x.tec||'—'}</td>
   <td><select class="sselect" onchange="chgV(${ri},this.value)">${Object.entries(VSTAT).map(([k,v])=>`<option value="${k}" ${x.status===k?'selected':''}>${v}</option>`).join('')}</select></td>
-  <td><div class="act-row"><button class="ab ab-g" onclick="ol('${wu}')">WhatsApp</button><button class="ab ab-b" onclick="ol('https://docs.google.com/document/d/1RhS7WAB_J6rQAmw6Hi7B4wHQot_Y-yf4r1FvZSwsu7I/edit')">Doc</button><button class="ab" onclick="editVist(${ri})">Editar</button></div></td></tr>`;
+  <td><div class="act-row"><button class="ab ab-g" onclick="ol('${wu}')">WhatsApp</button><button class="ab ab-b" onclick="ol('https://docs.google.com/document/d/1RhS7WAB_J6rQAmw6Hi7B4wHQot_Y-yf4r1FvZSwsu7I/edit')">Doc</button><button class="ab" onclick="editVist(${ri})">Editar</button><button class="ab ab-r" onclick="delVist(${ri})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></div></td></tr>`;
   }).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhuma vistoria</td></tr>`;
 }
 function setFV(f){filt.vist=f;renderVist()}
@@ -1581,6 +1715,7 @@ function chgV(i,v){const d=ld(SK.vist);d[i].status=v;sv(SK.vist,d);_hookSave('vi
 function openVistModal(){ei.vist=null;['mv-nome','mv-data','mv-hora','mv-end','mv-tec','mv-wpp','mv-obs'].forEach(id=>document.getElementById(id).value='');document.getElementById('mv-status').value='agendada';document.getElementById('mv-t').textContent='Agendar vistoria';populateDataLists();openM('mo-vist')}
 function editVist(i){ei.vist=i;const x=ld(SK.vist)[i];document.getElementById('mv-nome').value=x.nome;document.getElementById('mv-data').value=x.data;document.getElementById('mv-hora').value=x.hora;document.getElementById('mv-end').value=x.end;document.getElementById('mv-tec').value=x.tec||'';document.getElementById('mv-wpp').value=x.wpp||'';document.getElementById('mv-obs').value=x.obs||'';document.getElementById('mv-status').value=x.status;document.getElementById('mv-t').textContent='Editar vistoria';openM('mo-vist')}
 function saveVist(){const nome=document.getElementById('mv-nome').value.trim();if(!nome)return alert('Informe o nome');const e={nome,data:document.getElementById('mv-data').value,hora:document.getElementById('mv-hora').value,end:document.getElementById('mv-end').value.trim(),tec:document.getElementById('mv-tec').value.trim(),wpp:document.getElementById('mv-wpp').value.trim(),obs:document.getElementById('mv-obs').value.trim(),status:document.getElementById('mv-status').value};const d=ld(SK.vist);if(ei.vist!==null)d[ei.vist]=e;else d.unshift(e);sv(SK.vist,d);_hookSave('vistorias',e);closeM('mo-vist');renderVist();updateNavCounts()}
+function delVist(i){const d=ld(SK.vist);const x=d[i];if(!confirm(`Excluir vistoria de "${x.nome}"?\nEsta ação não pode ser desfeita.`))return;if(x.id)_hookDel('vistorias',x.id);d.splice(i,1);sv(SK.vist,d);renderVist();updateNavCounts();}
 
 // ===================== CONTRATOS =====================
 function getContData(){
@@ -1720,7 +1855,7 @@ function renderCont(){
   <button class="ab ab-a" onclick="prevContIdx(${ri})">👁️</button>
   <button class="ab ab-b" onclick="dlContIdx(${ri})">⬇️</button>
   <button class="ab" style="background:#EDE9FE;color:#6B46C1;border-color:#C4B5FD" onclick="enviarClickSign(${ri})">✍️</button>
-  <button class="ab" onclick="editCont(${ri})">Editar</button></div></td></tr>`;
+  <button class="ab" onclick="editCont(${ri})">Editar</button><button class="ab ab-r" onclick="delCont(${ri})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></div></td></tr>`;
   }).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhum contrato</td></tr>`;
 }
 // Preenche campos f-* do wizard com dados do objeto contrato salvo
@@ -1797,9 +1932,174 @@ function dlContIdx(i){
 function setFC(f){filt.cont=f;renderCont()}
 function chgC(i,v){const d=ld(SK.cont);d[i].status=v;sv(SK.cont,d);_hookSave('contratos',d[i]);renderCont()}
 function abrirTemplateContrato(){window.open('https://docs.google.com/document/d/1JmfNk2c4GSLs5HzFyBGkVsEGh4YCauksjHmvtxnF9h8/edit','_blank')}
-function openContModal(){ei.cont=null;['mc-nome','mc-cpf','mc-rg','mc-rgorg','mc-wpp','mc-cep','mc-rua','mc-num','mc-comp','mc-bairro','mc-cidade','mc-kwp','mc-vend','mc-qi','mc-mi','mc-pi','mc-tensao','mc-qm','mc-mm','mc-pm','mc-valor','mc-pgto-desc'].forEach(id=>document.getElementById(id).value='');document.getElementById('mc-qi').value=1;document.getElementById('mc-qm').value=0;document.getElementById('mc-pm').value='';document.getElementById('mc-tensao').value='220';document.getElementById('mc-estado').value='';document.getElementById('mc-pgto').value='À vista';document.getElementById('mc-fase').value='Monofásico';document.getElementById('mc-status').value='pendente';document.getElementById('mc-t').textContent='Registrar contrato';populateDataLists();openM('mo-cont')}
-function editCont(i){ei.cont=i;const x=ld(SK.cont)[i];document.getElementById('mc-nome').value=x.nome;document.getElementById('mc-cpf').value=x.cpf||'';document.getElementById('mc-rg').value=x.rg||'';document.getElementById('mc-rgorg').value=x.rgorg||'';document.getElementById('mc-wpp').value=x.wpp||'';document.getElementById('mc-cep').value=x.cep||'';document.getElementById('mc-estado').value=x.estado||'';document.getElementById('mc-rua').value=x.rua||'';document.getElementById('mc-num').value=x.num||'';document.getElementById('mc-comp').value=x.comp||'';document.getElementById('mc-bairro').value=x.bairro||'';document.getElementById('mc-cidade').value=x.cidade||'';document.getElementById('mc-kwp').value=x.kwp;document.getElementById('mc-vend').value=x.vend||'';document.getElementById('mc-qi').value=x.qtdInv||1;document.getElementById('mc-mi').value=x.marcaInv||'';document.getElementById('mc-pi').value=x.potInv||'';document.getElementById('mc-fase').value=x.fase||'Monofásico';document.getElementById('mc-tensao').value=x.tensao||220;document.getElementById('mc-qm').value=x.qtdMod||0;document.getElementById('mc-mm').value=x.marcaMod||'';document.getElementById('mc-pm').value=x.potMod||0;document.getElementById('mc-valor').value=x.valor;document.getElementById('mc-pgto').value=x.pgto||'À vista';document.getElementById('mc-pgto-desc').value=x.pgtoDesc||'';document.getElementById('mc-status').value=x.status;document.getElementById('mc-t').textContent='Editar contrato';openM('mo-cont')}
-function saveCont(){const nome=document.getElementById('mc-nome').value.trim();if(!nome)return alert('Informe o nome');const e={nome,cpf:document.getElementById('mc-cpf').value.trim(),rg:document.getElementById('mc-rg').value.trim(),rgorg:document.getElementById('mc-rgorg').value.trim(),wpp:document.getElementById('mc-wpp').value.trim(),cep:document.getElementById('mc-cep').value.trim(),estado:document.getElementById('mc-estado').value,rua:document.getElementById('mc-rua').value.trim(),num:document.getElementById('mc-num').value.trim(),comp:document.getElementById('mc-comp').value.trim(),bairro:document.getElementById('mc-bairro').value.trim(),cidade:document.getElementById('mc-cidade').value.trim(),kwp:+document.getElementById('mc-kwp').value||0,vend:document.getElementById('mc-vend').value.trim(),qtdInv:+document.getElementById('mc-qi').value||1,marcaInv:document.getElementById('mc-mi').value.trim(),potInv:+document.getElementById('mc-pi').value||0,fase:document.getElementById('mc-fase').value,tensao:+document.getElementById('mc-tensao').value||220,qtdMod:+document.getElementById('mc-qm').value||0,marcaMod:document.getElementById('mc-mm').value.trim(),potMod:+document.getElementById('mc-pm').value||0,valor:+document.getElementById('mc-valor').value||0,pgto:document.getElementById('mc-pgto').value,pgtoDesc:document.getElementById('mc-pgto-desc').value.trim(),status:document.getElementById('mc-status').value,data:new Date().toLocaleDateString('pt-BR')};const d=ld(SK.cont);if(ei.cont!==null)d[ei.cont]=e;else d.unshift(e);sv(SK.cont,d);_hookSave('contratos',e);closeM('mo-cont');renderCont();updateNavCounts()}
+function openContModal(){ei.cont=null;['mc-nome','mc-cpf','mc-rg','mc-rgorg','mc-wpp','mc-cep','mc-rua','mc-num','mc-comp','mc-bairro','mc-cidade','mc-kwp','mc-vend','mc-qi','mc-mi','mc-pi','mc-tensao','mc-qm','mc-mm','mc-pm','mc-valor','mc-pgto-desc'].forEach(id=>document.getElementById(id).value='');document.getElementById('mc-qi').value=1;document.getElementById('mc-qm').value=0;document.getElementById('mc-pm').value='';document.getElementById('mc-tensao').value='220';document.getElementById('mc-estado').value='';document.getElementById('mc-pgto').value='À Vista';document.getElementById('mc-banco').value='';document.getElementById('mc-banco-row').style.display='none';document.getElementById('mc-fase').value='Monofásico';document.getElementById('mc-status').value='pendente';document.getElementById('mc-t').textContent='Registrar contrato';populateDataLists();['mc-cpf'].forEach(id=>{const el=document.getElementById(id);if(el){el.style.borderColor='';el.title='';}}); openM('mo-cont')}
+function editCont(i){ei.cont=i;populateDataLists();const x=ld(SK.cont)[i];document.getElementById('mc-nome').value=x.nome;document.getElementById('mc-cpf').value=x.cpf||'';document.getElementById('mc-rg').value=x.rg||'';document.getElementById('mc-rgorg').value=x.rgorg||'';document.getElementById('mc-wpp').value=x.wpp||'';document.getElementById('mc-cep').value=x.cep||'';document.getElementById('mc-estado').value=x.estado||'';document.getElementById('mc-rua').value=x.rua||'';document.getElementById('mc-num').value=x.num||'';document.getElementById('mc-comp').value=x.comp||'';document.getElementById('mc-bairro').value=x.bairro||'';document.getElementById('mc-cidade').value=x.cidade||'';document.getElementById('mc-kwp').value=x.kwp;document.getElementById('mc-vend').value=x.vend||'';document.getElementById('mc-qi').value=x.qtdInv||1;document.getElementById('mc-mi').value=x.marcaInv||'';document.getElementById('mc-pi').value=x.potInv||'';document.getElementById('mc-fase').value=x.fase||'Monofásico';document.getElementById('mc-tensao').value=x.tensao||220;document.getElementById('mc-qm').value=x.qtdMod||0;document.getElementById('mc-mm').value=x.marcaMod||'';document.getElementById('mc-pm').value=x.potMod||0;document.getElementById('mc-valor').value=x.valor;const _pgtoNorm={'À vista':'À Vista','à vista':'À Vista','financiamento':'Financiamento Bancário','Financiamento':'Financiamento Bancário','parcelado interno':'Parcelamento Interno','Parcelado interno':'Parcelamento Interno','misto':'Misto (entrada + financiamento)','Misto':'Misto (entrada + financiamento)'};const _pgtoVal=x.pgto||'À Vista';document.getElementById('mc-pgto').value=_pgtoNorm[_pgtoVal]||_pgtoVal;document.getElementById('mc-pgto-desc').value=x.pgtoDesc||'';document.getElementById('mc-banco').value=x.banco||'';toggleBancoField();document.getElementById('mc-status').value=x.status;document.getElementById('mc-t').textContent='Editar contrato';openM('mo-cont')}
+function saveCont(){const nome=document.getElementById('mc-nome').value.trim();if(!nome)return alert('Informe o nome');const existing=ei.cont!==null?ld(SK.cont)[ei.cont]:{};const e={...existing,nome,cpf:document.getElementById('mc-cpf').value.trim(),rg:document.getElementById('mc-rg').value.trim(),rgorg:document.getElementById('mc-rgorg').value.trim(),wpp:document.getElementById('mc-wpp').value.trim(),cep:document.getElementById('mc-cep').value.trim(),estado:document.getElementById('mc-estado').value,rua:document.getElementById('mc-rua').value.trim(),num:document.getElementById('mc-num').value.trim(),comp:document.getElementById('mc-comp').value.trim(),bairro:document.getElementById('mc-bairro').value.trim(),cidade:document.getElementById('mc-cidade').value.trim(),kwp:+document.getElementById('mc-kwp').value||0,vend:document.getElementById('mc-vend').value.trim(),qtdInv:+document.getElementById('mc-qi').value||1,marcaInv:document.getElementById('mc-mi').value.trim(),potInv:+document.getElementById('mc-pi').value||0,fase:document.getElementById('mc-fase').value,tensao:+document.getElementById('mc-tensao').value||220,qtdMod:+document.getElementById('mc-qm').value||0,marcaMod:document.getElementById('mc-mm').value.trim(),potMod:+document.getElementById('mc-pm').value||0,valor:+document.getElementById('mc-valor').value||0,pgto:document.getElementById('mc-pgto').value,banco:document.getElementById('mc-banco').value,pgtoDesc:document.getElementById('mc-pgto-desc').value.trim(),status:document.getElementById('mc-status').value,data:existing.data||new Date().toLocaleDateString('pt-BR')};const d=ld(SK.cont);if(ei.cont!==null)d[ei.cont]=e;else d.unshift(e);sv(SK.cont,d);_hookSave('contratos',e);
+  // Automação: status assinado → Logística + Homologação
+  if(e.status==='assinado'){
+    // → Logística
+    const logs=ld(SK.log);
+    if(!logs.some(l=>l.contratoId===e.id||(l.nome===e.nome&&l.contratoId))){
+      const nLog={nome:e.nome,kwp:e.kwp,wpp:e.wpp,vend:e.vend,valor:e.valor,end:((e.rua||'')+(e.num?' '+e.num:'')).trim(),statusCompra:'Aguardando compra',distribuidora:'',contratoId:e.id||'',data:e.data||new Date().toLocaleDateString('pt-BR')};
+      logs.unshift(nLog);sv(SK.log,logs);_hookSave('logistica',nLog);
+    }
+    // → Homologação
+    const homos=ld(SK.homo);
+    if(!homos.some(h=>h.contratoId===e.id||(h.nome===e.nome&&h.contratoId))){
+      const nHomo={nome:e.nome,kwp:e.kwp,wpp:e.wpp,vend:e.vend,datasign:e.data||'',qtdInv:e.qtdInv||1,marcaInv:e.marcaInv||'',qtdMod:e.qtdMod||0,marcaMod:e.marcaMod||'',trtQtd:1,artQtd:0,artVal:'',tecVal:'',pago:'',status:'aguardando',contratoId:e.id||''};
+      homos.unshift(nHomo);sv(SK.homo,homos);_hookSave('homologacoes',nHomo);
+    }
+  }
+  closeM('mo-cont');renderCont();updateNavCounts()}
+function delCont(i){const d=ld(SK.cont);const x=d[i];if(!confirm(`Excluir contrato de "${x.nome}"?\nEsta ação não pode ser desfeita.`))return;if(x.id)_hookDel('contratos',x.id);d.splice(i,1);sv(SK.cont,d);renderCont();renderDash();updateNavCounts();}
+
+// ===================== PÓS VENDA =====================
+function _parseDMYtoDate(str){
+  if(!str)return null;
+  // Accepts DD/MM/YYYY or YYYY-MM-DD
+  if(/^\d{4}-\d{2}-\d{2}/.test(str)){const p=str.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
+  const m=str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(!m)return null;
+  return new Date(+m[3]<100?2000+ +m[3]:+m[3],+m[2]-1,+m[1]);
+}
+function _daysUntilBirthday(nasc){
+  if(!nasc)return null;
+  const today=new Date();today.setHours(0,0,0,0);
+  const d=_parseDMYtoDate(nasc);if(!d)return null;
+  let next=new Date(today.getFullYear(),d.getMonth(),d.getDate());
+  if(next<today)next.setFullYear(today.getFullYear()+1);
+  return Math.ceil((next-today)/86400000);
+}
+function _daysUntilManutencao(dataInst){
+  if(!dataInst)return null;
+  const today=new Date();today.setHours(0,0,0,0);
+  const inst=_parseDMYtoDate(dataInst);if(!inst)return null;
+  let next=new Date(inst);next.setDate(next.getDate()+300);
+  while(next<today)next.setDate(next.getDate()+300);
+  return Math.ceil((next-today)/86400000);
+}
+function _daysFrom(dataInst,n){
+  if(!dataInst)return null;
+  const today=new Date();today.setHours(0,0,0,0);
+  const inst=_parseDMYtoDate(dataInst);if(!inst)return null;
+  const t=new Date(inst);t.setDate(t.getDate()+n);
+  return Math.ceil((t-today)/86400000);
+}
+function _pvBadge(days){
+  if(days===null)return'<span style="color:var(--mu);font-size:12px">—</span>';
+  if(days<0)return`<span style="color:var(--mu);font-size:11px">✓ há ${Math.abs(days)}d</span>`;
+  if(days===0)return'<span style="background:#ef4444;color:#fff;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">HOJE</span>';
+  if(days<=5)return`<span style="background:#ef444420;color:#ef4444;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${days}d 🔴</span>`;
+  if(days<=15)return`<span style="background:#f59e0b20;color:#d97706;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${days}d ⚡</span>`;
+  return`<span style="font-size:12px;color:var(--tx)">${days}d</span>`;
+}
+function renderPV(){
+  const insts=ld(SK.inst);
+  const cads=ld(SK.cad);
+  const tb=document.getElementById('tb-pv');if(!tb)return;
+  if(!insts.length){
+    tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:32px">Nenhuma instalação registrada</td></tr>';
+    return;
+  }
+  // Sort by most urgent (smallest days across all columns)
+  const rows=insts.map((x,origIdx)=>{
+    const cad=cads.find(c=>c.nome&&c.nome.trim().toLowerCase()===(x.nome||'').trim().toLowerCase());
+    const nasc=cad?.nascimento||null;
+    const dataInst=x.data||null;
+    const dAniv=_daysUntilBirthday(nasc);
+    const dManut=_daysUntilManutencao(dataInst);
+    const dBV=_daysFrom(dataInst,5);
+    const dGrat=_daysFrom(dataInst,30);
+    const dEmb=_daysFrom(dataInst,90);
+    const wppNum=(x.wpp||'').replace(/\D/g,'');
+    const wppBtn=wppNum?`<a href="https://wa.me/55${wppNum}" target="_blank" class="ab" style="text-decoration:none;padding:4px 8px" title="WhatsApp">💬</a>`:'';
+    return{html:`<tr>
+      <td><strong>${x.nome}</strong><br><small style="color:var(--mu)">${dataInst?'📅 '+dataInst:'sem data de instalação'}</small></td>
+      <td style="text-align:center">${nasc?_pvBadge(dAniv):'<span style="color:var(--mu);font-size:11px">cadastre nasc.</span>'}</td>
+      <td style="text-align:center">${_pvBadge(dManut)}</td>
+      <td style="text-align:center">${_pvBadge(dBV)}</td>
+      <td style="text-align:center">${_pvBadge(dGrat)}</td>
+      <td style="text-align:center">${_pvBadge(dEmb)}</td>
+      <td>${wppBtn}<button class="ab ab-e" onclick="editInst(${origIdx})" title="Editar instalação">✏️</button></td>
+    </tr>`};
+  });
+  tb.innerHTML=rows.map(r=>r.html).join('');
+  const ct=document.getElementById('c-pv');if(ct)ct.textContent='Pós Venda ('+insts.length+')';
+}
+
+// ===================== LOGÍSTICA =====================
+function renderLog(){
+  const d=ld(SK.log);
+  const statusColor={'Aguardando compra':'#f59e0b','Comprado':'#3b82f6','Enviado':'#8b5cf6','Entregue':'#22c55e'};
+  const tb=document.getElementById('tb-log');
+  if(!tb)return;
+  tb.innerHTML=d.length?d.map((x,i)=>`<tr>
+    <td><strong>${x.nome}</strong><br><small style="color:var(--g)">${x.wpp||''}</small></td>
+    <td>${x.kwp||'—'}</td>
+    <td>${x.vend||'—'}</td>
+    <td>${x.distribuidora||'—'}</td>
+    <td><span style="background:${statusColor[x.statusCompra]||'#6b7280'}20;color:${statusColor[x.statusCompra]||'#6b7280'};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">${x.statusCompra||'—'}</span></td>
+    <td><button class="ab ab-e" onclick="editLog(${i})">✏️</button><button class="ab ab-r" onclick="delLog(${i})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></td>
+  </tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--g);padding:24px">Nenhum contrato assinado na logística</td></tr>';
+  // Metrics
+  const total=d.length;
+  const ag=d.filter(x=>x.statusCompra==='Aguardando compra').length;
+  const env=d.filter(x=>x.statusCompra==='Enviado').length;
+  const ent=d.filter(x=>x.statusCompra==='Entregue').length;
+  const mm=document.getElementById('m-log');
+  if(mm)mm.innerHTML=`<div class="metric-card"><div class="metric-label">Total</div><div class="metric-val">${total}</div></div><div class="metric-card"><div class="metric-label">Aguardando</div><div class="metric-val">${ag}</div></div><div class="metric-card"><div class="metric-label">Enviado</div><div class="metric-val">${env}</div></div><div class="metric-card"><div class="metric-label">Entregue</div><div class="metric-val">${ent}</div></div>`;
+  const ct=document.getElementById('c-log');if(ct)ct.textContent=`Logística (${total})`;
+}
+function editLog(i){
+  ei.log=i;
+  const x=ld(SK.log)[i];
+  document.getElementById('ml-nome').value=x.nome||'';
+  document.getElementById('ml-kwp').value=x.kwp||'';
+  document.getElementById('ml-vend').value=x.vend||'';
+  document.getElementById('ml-valor').value=x.valor||'';
+  document.getElementById('ml-dist').value=x.distribuidora||'';
+  document.getElementById('ml-status').value=x.statusCompra||'Aguardando compra';
+  // Populate distribuidoras datalist
+  const dists=ld(SK.cad).filter(c=>c.tipo==='distribuidor').map(c=>c.nome);
+  const dl=document.getElementById('list-distribuidoras');
+  if(dl)dl.innerHTML=dists.map(d=>`<option value="${d}">`).join('');
+  document.getElementById('ml-t').textContent='Logística — '+x.nome;
+  openM('mo-log');
+}
+function saveLog(){
+  const d=ld(SK.log);
+  const i=ei.log;
+  if(i===null||i===undefined)return;
+  const x={...d[i]};
+  x.distribuidora=document.getElementById('ml-dist').value.trim();
+  x.statusCompra=document.getElementById('ml-status').value;
+  d[i]=x;
+  sv(SK.log,d);
+  _hookSave('logistica',x);
+  // Automation: Entregue → pre-fill Instalação
+  if(x.statusCompra==='Entregue'){
+    const insts=ld(SK.inst);
+    const jaExiste=insts.some(inst=>inst.contratoId===x.contratoId||inst.nome===x.nome);
+    if(!jaExiste){
+      const novaInst={nome:x.nome,kwp:x.kwp,wpp:x.wpp,end:x.end||'',tec:'',data:'',poste:{ativo:false,val:0},padrao:{ativo:false,val:0},estimado:0,pago:0,status:'agendada',contratoId:x.contratoId};
+      insts.unshift(novaInst);
+      sv(SK.inst,insts);
+      _hookSave('instalacoes',novaInst);
+      renderInst();
+      alert('✅ Cliente "'+x.nome+'" adicionado automaticamente em Instalação!');
+    }
+  }
+  closeM('mo-log');
+  renderLog();
+  updateNavCounts();
+}
+function delLog(i){
+  const d=ld(SK.log);const x=d[i];
+  if(!confirm(`Excluir logística de "${x.nome}"?
+Esta ação não pode ser desfeita.`))return;
+  if(x.id)_hookDel('logistica',x.id);
+  d.splice(i,1);sv(SK.log,d);renderLog();updateNavCounts();
+}
 
 // ===================== INSTALAÇÃO =====================
 function calcEstInst(kwp,ckwp,poste,padrao){let t=(+kwp||0)*(+ckwp||0);if(poste&&poste.ativo)t+=+poste.val||0;if(padrao&&padrao.ativo)t+=+padrao.val||0;return t}
@@ -1863,20 +2163,21 @@ function renderHomo(){
   document.getElementById('tb-homo').innerHTML=fl.map(x=>{const ri=d.indexOf(x);const wu=`https://wa.me/55${(x.wpp||'').replace(/\D/g,'')}?text=${encodeURIComponent(`Olá ${x.nome}! Atualização homologação SER Energia.`)}`;
   return`<tr><td>${x.nome}</td><td>${x.kwp} kWp</td><td>${fD(x.datasign)}</td><td style="color:var(--g);font-weight:500">${f(x.tecVal||0)}</td><td>${f((x.trtQtd||0)*TRT)}</td><td style="color:var(--g);font-weight:500">${f(x.estimado||0)}</td>
   <td><select class="sselect" onchange="chgH(${ri},this.value)">${Object.entries(HSTAT).map(([k,v])=>`<option value="${k}" ${x.status===k?'selected':''}>${v}</option>`).join('')}</select></td>
-  <td><div class="act-row"><button class="ab ab-g" onclick="ol('${wu}')">WhatsApp</button><button class="ab" onclick="editHomo(${ri})">Editar</button></div></td></tr>`;
+  <td><div class="act-row"><button class="ab ab-g" onclick="ol('${wu}')">WhatsApp</button><button class="ab" onclick="editHomo(${ri})">Editar</button><button class="ab ab-r" onclick="delHomo(${ri})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></div></td></tr>`;
   }).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--mu);padding:20px">Nenhuma</td></tr>`;
 }
 function setFH(f){filt.homo=f;renderHomo()}
 function chgH(i,v){const d=ld(SK.homo);d[i].status=v;sv(SK.homo,d);_hookSave('homologacoes',d[i]);renderHomo()}
 function togDoc(i,k,val){const d=ld(SK.homo);if(!d[i].docs)d[i].docs={};d[i].docs[k]=val;sv(SK.homo,d);renderHomo()}
-function openHomoModal(){ei.homo=null;['mh-nome','mh-kwp','mh-vend','mh-ds','mh-wpp','mh-mi','mh-mm','mh-av','mh-pago'].forEach(id=>document.getElementById(id).value='');document.getElementById('mh-qi').value=1;document.getElementById('mh-qm').value=0;document.getElementById('mh-tq').value=1;document.getElementById('mh-aq').value=0;document.getElementById('mh-status').value='aguardando';['homologador','fatger','fatben','vist','dsinv','dsmod'].forEach(id=>{const el=document.getElementById('mh-f-'+id);if(el)el.value='';document.getElementById('mh-fn-'+id).textContent='Nenhum arquivo';});document.getElementById('mh-t').textContent='Nova homologação';calcHomo();populateDataLists();openM('mo-homo')}
+function openHomoModal(){ei.homo=null;['mh-nome','mh-kwp','mh-vend','mh-ds','mh-wpp','mh-mi','mh-mm','mh-av','mh-pago'].forEach(id=>document.getElementById(id).value='');document.getElementById('mh-qi').value=1;document.getElementById('mh-qm').value=0;document.getElementById('mh-tq').value=1;document.getElementById('mh-aq').value=0;document.getElementById('mh-status').value='aguardando';['homologador','contass','fatger','fatben','vist','dsinv','dsmod','sombra'].forEach(id=>{const el=document.getElementById('mh-f-'+id);if(el)el.value='';document.getElementById('mh-fn-'+id).textContent='Nenhum arquivo';});document.getElementById('mh-t').textContent='Nova homologação';calcHomo();populateDataLists();openM('mo-homo')}
 function editHomo(i){ei.homo=i;const x=ld(SK.homo)[i];document.getElementById('mh-nome').value=x.nome;document.getElementById('mh-kwp').value=x.kwp;document.getElementById('mh-vend').value=x.vend||'';document.getElementById('mh-ds').value=x.datasign||'';document.getElementById('mh-wpp').value=x.wpp||'';document.getElementById('mh-qi').value=x.qtdInv||1;document.getElementById('mh-mi').value=x.marcaInv||'';document.getElementById('mh-qm').value=x.qtdMod||0;document.getElementById('mh-mm').value=x.marcaMod||'';document.getElementById('mh-tv').value=x.tecVal||'';document.getElementById('mh-tq').value=x.trtQtd||0;document.getElementById('mh-aq').value=x.artQtd||0;document.getElementById('mh-av').value=x.artVal||'';document.getElementById('mh-pago').value=x.pago||'';document.getElementById('mh-status').value=x.status;// Mostrar nomes de arquivos já salvos
-['homologador','fatger','fatben','vist','dsinv','dsmod'].forEach(id=>{const keyMap={homologador:'procuracao',fatger:'fatura_ger',fatben:'fatura_ben',vist:'arquivo_vist',dsinv:'datasheet_inv',dsmod:'datasheet_mod'};const fn=x.fileNames&&x.fileNames[keyMap[id]];document.getElementById('mh-fn-'+id).textContent=fn||'Nenhum arquivo';});document.getElementById('mh-t').textContent='Editar homologação';calcHomo();openM('mo-homo')}
+['homologador','contass','fatger','fatben','vist','dsinv','dsmod','sombra'].forEach(id=>{const keyMap={homologador:'procuracao',contass:'contrato_assinado',fatger:'fatura_ger',fatben:'fatura_ben',vist:'arquivo_vist',dsinv:'datasheet_inv',dsmod:'datasheet_mod',sombra:'analise_sombra'};const fn=x.fileNames&&x.fileNames[keyMap[id]];document.getElementById('mh-fn-'+id).textContent=fn||'Nenhum arquivo';});document.getElementById('mh-t').textContent='Editar homologação';calcHomo();openM('mo-homo')}
 function saveHomo(){const nome=document.getElementById('mh-nome').value.trim();if(!nome)return alert('Informe o nome');const tq=+document.getElementById('mh-tq').value||0;const aq=+document.getElementById('mh-aq').value||0;const av=+document.getElementById('mh-av').value||0;const est=tq*TRT+aq*av;
-const docs={procuracao:false,fatura_ger:false,fatura_ben:false,datasheet_inv:false,datasheet_mod:false,arquivo_vist:false};
-const fileMap={homologador:'procuracao',fatger:'fatura_ger',fatben:'fatura_ben',vist:'arquivo_vist',dsinv:'datasheet_inv',dsmod:'datasheet_mod'};
+const docs={procuracao:false,contrato_assinado:false,fatura_ger:false,fatura_ben:false,datasheet_inv:false,datasheet_mod:false,arquivo_vist:false,analise_sombra:false};
+const fileMap={homologador:'procuracao',contass:'contrato_assinado',fatger:'fatura_ger',fatben:'fatura_ben',vist:'arquivo_vist',dsinv:'datasheet_inv',dsmod:'datasheet_mod',sombra:'analise_sombra'};
 const fileNames={};Object.entries(fileMap).forEach(([id,key])=>{const el=document.getElementById('mh-f-'+id);if(el&&el.files&&el.files.length>0){docs[key]=true;fileNames[key]=el.files[0].name;}});
-const e={nome,kwp:+document.getElementById('mh-kwp').value||0,vend:document.getElementById('mh-vend').value.trim(),datasign:document.getElementById('mh-ds').value,wpp:document.getElementById('mh-wpp').value.trim(),qtdInv:+document.getElementById('mh-qi').value||1,marcaInv:document.getElementById('mh-mi').value.trim(),qtdMod:+document.getElementById('mh-qm').value||0,marcaMod:document.getElementById('mh-mm').value.trim(),trtQtd:tq,artQtd:aq,artVal:av,estimado:est,pago:+document.getElementById('mh-pago').value||0,status:document.getElementById('mh-status').value,docs,fileNames};const d=ld(SK.homo);if(ei.homo!==null)d[ei.homo]=e;else d.unshift(e);sv(SK.homo,d);closeM('mo-homo');renderHomo()}
+const e={nome,kwp:+document.getElementById('mh-kwp').value||0,vend:document.getElementById('mh-vend').value.trim(),datasign:document.getElementById('mh-ds').value,wpp:document.getElementById('mh-wpp').value.trim(),qtdInv:+document.getElementById('mh-qi').value||1,marcaInv:document.getElementById('mh-mi').value.trim(),qtdMod:+document.getElementById('mh-qm').value||0,marcaMod:document.getElementById('mh-mm').value.trim(),trtQtd:tq,artQtd:aq,artVal:av,estimado:est,pago:+document.getElementById('mh-pago').value||0,status:document.getElementById('mh-status').value,docs,fileNames};const d=ld(SK.homo);if(ei.homo!==null)d[ei.homo]=e;else d.unshift(e);sv(SK.homo,d);_hookSave('homologacoes',e);closeM('mo-homo');renderHomo()}
+function delHomo(i){const d=ld(SK.homo);const x=d[i];if(!confirm(`Excluir homologação de "${x.nome}"?\nEsta ação não pode ser desfeita.`))return;if(x.id)_hookDel('homologacoes',x.id);d.splice(i,1);sv(SK.homo,d);renderHomo();updateNavCounts();}
 
 // ===================== COMISSÕES =====================
 function calcComSaidas(x){
@@ -2258,9 +2559,9 @@ function renderCad(){
   }).join(''):`<div style="padding:32px;text-align:center;color:var(--mu)">Nenhum cadastro encontrado</div>`;
 }
 function setCadFilter(k){cadFilter=k;renderCad()}
-function openCadModal(){ei.cad=null;['mcad-nome','mcad-wpp','mcad-email','mcad-doc','mcad-cep','mcad-rua','mcad-numero','mcad-comp','mcad-cidade','mcad-obs'].forEach(id=>document.getElementById(id).value='');document.getElementById('mcad-tipo').value='cliente';document.getElementById('mcad-estado').value='';document.getElementById('mcad-t').textContent='Novo cadastro';openM('mo-cad')}
-function editCad(i){ei.cad=i;const x=ld(SK.cad)[i];document.getElementById('mcad-nome').value=x.nome;document.getElementById('mcad-tipo').value=x.tipo;document.getElementById('mcad-wpp').value=x.wpp||'';document.getElementById('mcad-email').value=x.email||'';document.getElementById('mcad-doc').value=x.doc||'';document.getElementById('mcad-cep').value=x.cep||'';document.getElementById('mcad-rua').value=x.rua||'';document.getElementById('mcad-numero').value=x.numero||'';document.getElementById('mcad-comp').value=x.comp||'';document.getElementById('mcad-cidade').value=x.cidade||'';document.getElementById('mcad-estado').value=x.estado||'';document.getElementById('mcad-obs').value=x.obs||'';document.getElementById('mcad-t').textContent='Editar cadastro';openM('mo-cad')}
-function saveCad(){const nome=document.getElementById('mcad-nome').value.trim();if(!nome)return alert('Informe o nome');const e={nome,tipo:document.getElementById('mcad-tipo').value,wpp:document.getElementById('mcad-wpp').value.trim().replace(/\D/g,''),email:document.getElementById('mcad-email').value.trim(),doc:document.getElementById('mcad-doc').value.trim(),cep:document.getElementById('mcad-cep').value.trim(),rua:document.getElementById('mcad-rua').value.trim(),numero:document.getElementById('mcad-numero').value.trim(),comp:document.getElementById('mcad-comp').value.trim(),cidade:document.getElementById('mcad-cidade').value.trim(),estado:document.getElementById('mcad-estado').value,obs:document.getElementById('mcad-obs').value.trim()};const d=ld(SK.cad);if(ei.cad!==null)d[ei.cad]=e;else d.unshift(e);sv(SK.cad,d);_hookSave('cadastros',e);closeM('mo-cad');renderCad();populateDataLists();updateNavCounts()}
+function openCadModal(){ei.cad=null;['mcad-nome','mcad-wpp','mcad-email','mcad-doc','mcad-cep','mcad-rua','mcad-numero','mcad-comp','mcad-cidade','mcad-obs','mcad-nasc'].forEach(id=>document.getElementById(id).value='');document.getElementById('mcad-tipo').value='cliente';document.getElementById('mcad-estado').value='';document.getElementById('mcad-t').textContent='Novo cadastro';['mcad-doc'].forEach(id=>{const el=document.getElementById(id);if(el){el.style.borderColor='';el.title='';}}); openM('mo-cad')}
+function editCad(i){ei.cad=i;const x=ld(SK.cad)[i];document.getElementById('mcad-nome').value=x.nome;document.getElementById('mcad-tipo').value=x.tipo;document.getElementById('mcad-wpp').value=x.wpp||'';document.getElementById('mcad-email').value=x.email||'';document.getElementById('mcad-doc').value=x.doc||'';document.getElementById('mcad-cep').value=x.cep||'';document.getElementById('mcad-rua').value=x.rua||'';document.getElementById('mcad-numero').value=x.numero||'';document.getElementById('mcad-comp').value=x.comp||'';document.getElementById('mcad-cidade').value=x.cidade||'';document.getElementById('mcad-estado').value=x.estado||'';document.getElementById('mcad-obs').value=x.obs||'';document.getElementById('mcad-nasc').value=x.nascimento||'';document.getElementById('mcad-t').textContent='Editar cadastro';openM('mo-cad')}
+function saveCad(){const nome=document.getElementById('mcad-nome').value.trim();if(!nome)return alert('Informe o nome');const e={nome,tipo:document.getElementById('mcad-tipo').value,wpp:document.getElementById('mcad-wpp').value.trim().replace(/\D/g,''),email:document.getElementById('mcad-email').value.trim(),doc:document.getElementById('mcad-doc').value.trim(),cep:document.getElementById('mcad-cep').value.trim(),rua:document.getElementById('mcad-rua').value.trim(),numero:document.getElementById('mcad-numero').value.trim(),comp:document.getElementById('mcad-comp').value.trim(),cidade:document.getElementById('mcad-cidade').value.trim(),estado:document.getElementById('mcad-estado').value,obs:document.getElementById('mcad-obs').value.trim(),nascimento:document.getElementById('mcad-nasc').value};const d=ld(SK.cad);if(ei.cad!==null)d[ei.cad]=e;else d.unshift(e);sv(SK.cad,d);_hookSave('cadastros',e);closeM('mo-cad');renderCad();populateDataLists();updateNavCounts()}
 function delCad(i){if(!confirm('Remover este cadastro?'))return;const d=ld(SK.cad);const it=d[i];d.splice(i,1);sv(SK.cad,d);if(it?.id)_hookDel('cadastros',it.id);renderCad();updateNavCounts()}
 
 // ===================== EQUIPAMENTOS =====================
@@ -2324,7 +2625,7 @@ const _pending={};  // itens confirmados localmente mas ainda não no Supabase
 
 function _initTBL(){
   _TBL[SK.prop]='propostas';_TBL[SK.vist]='vistorias';_TBL[SK.cont]='contratos';
-  _TBL[SK.inst]='instalacoes';_TBL[SK.homo]='homologacoes';_TBL[SK.com]='comissoes';
+  _TBL[SK.log]='logistica';_TBL[SK.inst]='instalacoes';_TBL[SK.homo]='homologacoes';_TBL[SK.com]='comissoes';
   _TBL[SK.fixo]='custos_fixos';_TBL[SK.desp]='despesas';_TBL[SK.rec]='receitas';_TBL[SK.cad]='cadastros';
   _TBL[SK.equip]='equipamentos';
 }
@@ -2341,8 +2642,8 @@ function ld(k){
 }
 function sv(k,arr){
   const tbl=_TBL[k];
-  if(!tbl){try{localStorage.setItem(k,JSON.stringify(arr));}catch(e){}return;}
-  _cache[tbl]=arr;
+  try{localStorage.setItem(k,JSON.stringify(arr));}catch(e){}
+  if(tbl)_cache[tbl]=arr;
 }
 
 async function sbUpsert(tbl,item){
@@ -2364,17 +2665,27 @@ async function sbUpsert(tbl,item){
   if(e.id){
     const{error}=await getSB().from(tbl).update(e).eq('id',e.id);
     if(error){console.error('sbUpsert update error',tbl,error);_sbErrAlert(tbl,error);}
+    else _syncLS(tbl);
   } else {
     const {data,error}=await getSB().from(tbl).insert(e).select().single();
     if(data){
       item.id=data.id;
-      if(_cache[tbl]&&!_cache[tbl].some(c=>c.id===data.id))_cache[tbl].unshift(data);
+      if(_cache[tbl]){
+        const idx=_cache[tbl].findIndex(c=>!c.id&&c.nome===item.nome);
+        if(idx>=0)_cache[tbl][idx]=data;
+        else if(!_cache[tbl].some(c=>c.id===data.id))_cache[tbl].unshift(data);
+      }
       if(_pending[tbl])_pending[tbl]=_pending[tbl].filter(p=>p.nome!==item.nome);
+      _syncLS(tbl);
     } else if(error){
       console.error('sbUpsert insert error',tbl,error);
       _sbErrAlert(tbl,error);
     }
   }
+}
+function _syncLS(tbl){
+  const skKey=Object.keys(_TBL).find(k=>_TBL[k]===tbl);
+  if(skKey&&_cache[tbl])try{localStorage.setItem(skKey,JSON.stringify(_cache[tbl]));}catch(e){}
 }
 function _sbErrAlert(tbl,error){
   const msg=error?.message||'';
@@ -2390,10 +2701,16 @@ function _hookSave(tbl,item){setTimeout(()=>sbUpsert(tbl,item),0);}
 function _hookDel(tbl,id){setTimeout(()=>sbDel(tbl,id),0);}
 
 async function carregarDados(){
+  const skByTbl=Object.fromEntries(Object.entries(_TBL).map(([k,t])=>[t,k]));
   const tbls=[...new Set(Object.values(_TBL))];
   await Promise.all(tbls.map(async t=>{
     const{data}=await getSB().from(t).select('*').order('criado_em',{ascending:false});
-    _cache[t]=data||[];
+    if(data&&data.length>0){_cache[t]=data;}
+    else{
+      const sk=skByTbl[t];
+      const local=sk?(()=>{try{const d=localStorage.getItem(sk);return d?JSON.parse(d):null;}catch(e){return null;}})():null;
+      _cache[t]=local&&local.length>0?local:(_cache[t]||[]);
+    }
   }));
   await migrarSeVazio();
 }
@@ -2408,7 +2725,12 @@ async function migrarSeVazio(){
     for(let i=0;i<rows.length;i+=50)await getSB().from(t).insert(rows.slice(i,i+50));
   }
   const tbls=[...new Set(Object.values(_TBL))];
-  await Promise.all(tbls.map(async t=>{const{data}=await getSB().from(t).select('*').order('criado_em',{ascending:false});_cache[t]=data||[];}));
+  const skByTbl2=Object.fromEntries(Object.entries(_TBL).map(([k,t])=>[t,k]));
+  await Promise.all(tbls.map(async t=>{
+    const{data}=await getSB().from(t).select('*').order('criado_em',{ascending:false});
+    if(data&&data.length>0){_cache[t]=data;}
+    else{const sk=skByTbl2[t];const local=sk?(()=>{try{const d=localStorage.getItem(sk);return d?JSON.parse(d):null;}catch(e){return null;}})():null;_cache[t]=local&&local.length>0?local:(_cache[t]||[]);}
+  }));
   console.log('Migracao concluida!');
 }
 
@@ -3346,7 +3668,7 @@ setInterval(async () => {
      <input type="text" id="f-nome" placeholder="Ex: Maria da Silva Santos">
     </div></div>
     <div class="fr c2">
-     <div class="fd req"><label>CPF do cliente</label><input type="text" id="f-cpf" placeholder="000.000.000-00"></div>
+     <div class="fd req"><label>CPF do cliente</label><input type="text" id="f-cpf" placeholder="000.000.000-00" oninput="checkCPF(this)"></div>
      <div class="fd"><label>RG do cliente</label><input type="text" id="f-rg" placeholder="0000000"></div>
     </div>
     <div class="fr c3">
@@ -3377,7 +3699,7 @@ setInterval(async () => {
     </div>
     <div class="fr c2">
      <div class="fd"><label>Bairro</label><input type="text" id="f-bairro" placeholder="Ex: Marco"></div>
-     <div class="fd"><label>CEP</label><input type="text" id="f-cep" placeholder="00000-000"></div>
+     <div class="fd"><label>CEP</label><input type="text" id="f-cep" placeholder="00000-000" oninput="buscarCEP(this.value,{rua:'f-rua',bairro:'f-bairro',cidade:'f-cidade',estado:'f-estado'})"></div>
     </div>
     <div class="fr c2">
      <div class="fd req"><label>Cidade</label><input type="text" id="f-cidade" placeholder="Ex: Belém"></div>
@@ -3478,7 +3800,7 @@ setInterval(async () => {
     </div></div>
     <div class="fr c1"><div class="fd">
      <label>CPF do vendedor</label>
-     <input type="text" id="f-vend-cpf" placeholder="000.000.000-00">
+     <input type="text" id="f-vend-cpf" placeholder="000.000.000-00" oninput="checkCPF(this)">
     </div></div>
     <div class="wnote" style="margin-top:12px">✅ Tudo pronto! Clique em <strong>Gerar Contrato</strong> para visualizar o documento completo.</div>
    </div>
@@ -4505,7 +4827,9 @@ function genContract(viewOnly) {
       _origem: 'SER_Contrato'
     };
     // 1. Salva direto no Supabase (independe do Hub estar aberto)
-    salvarContratoNoSupabase({...entry,id:crypto.randomUUID()});
+    const _saveId = entry.id || crypto.randomUUID();
+    entry.id = _saveId;
+    salvarContratoNoSupabase({...entry, id: _saveId});
 
     // 2. Mantém localStorage para compatibilidade com Hub (evento storage)
     // Sinal para o Hub importar automaticamente
