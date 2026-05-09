@@ -672,6 +672,20 @@ tr:hover td{background:#fafaf8}
   <div class="mfooter"><button class="btn-c" onclick="closeM('mo-cont')">Cancelar</button><button class="btn-s" onclick="saveCont()">Salvar</button></div>
 </div></div>
 
+<!-- PROPOSTA FECHADA -->
+<div class="overlay" id="mo-propfechada"><div class="modal" style="max-width:380px;text-align:center">
+  <div style="font-size:32px;margin-bottom:8px">🎉</div>
+  <h3 style="margin-bottom:4px">Proposta Fechada!</h3>
+  <div id="pf-nome" style="color:var(--g);font-size:13px;margin-bottom:20px"></div>
+  <div style="font-size:13px;color:var(--mu);margin-bottom:16px">O que deseja registrar agora?</div>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <button class="btn-s" onclick="_pfAbrirContrato()">📑 Registrar Contrato</button>
+    <button class="btn-s" style="background:var(--a)" onclick="_pfAbrirVistoria()">🔍 Agendar Vistoria</button>
+    <button class="btn-s" style="background:#7c3aed" onclick="_pfAbrirAmbos()">⚡ Ambos</button>
+    <button class="btn-c" onclick="closeM('mo-propfechada')">Agora não</button>
+  </div>
+</div></div>
+
 <!-- LOGÍSTICA -->
 <div class="overlay" id="mo-log"><div class="modal">
   <h3 id="ml-t">Editar Logística</h3>
@@ -1676,23 +1690,42 @@ function trigAceite(i){aceiteIdx=i;const x=ld(SK.prop)[i];document.getElementByI
 function confirmarAceite(){const ps=ld(SK.prop);if(aceiteIdx===null||!ps[aceiteIdx])return;ps[aceiteIdx].aceito=true;ps[aceiteIdx].status='win';sv(SK.prop,ps);sbUpsert('propostas',ps[aceiteIdx]);const cs=ld(SK.cont);const x=ps[aceiteIdx];if(!cs.some(c=>c.nome===x.nome)){const nc={nome:x.nome,kwp:x.kwp||0,valor:x.valor,pgto:'Financiamento',pgtoDesc:'',vend:x.vend||'',wpp:x.wpp||'',status:'pendente',data:new Date().toLocaleDateString('pt-BR'),fase:'Monofásico',tensao:220,cpf:'',rg:'',rgorg:'',cep:'',estado:'',rua:'',num:'',comp:'',bairro:'',cidade:''};const cs2=ld(SK.cont);cs2.unshift(nc);sv(SK.cont,cs2);_hookSave('contratos',nc);}closeM('mo-aceite');renderProp();updateNavCounts();_prefillContratoFromProp(x);}
 function openPropModal(){ei.prop=null;['mp-nome','mp-wpp','mp-email','mp-vend','mp-vend-wpp','mp-vend-email','mp-kwh','mp-qm','mp-mm','mp-pm','mp-qi','mp-mi','mp-pi','mp-qb','mp-mb','mp-pb','mp-semsolar','mp-comsolar','mp-eco','mp-valor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('mp-qi').value=1;document.getElementById('mp-qm').value=0;document.getElementById('mp-pm').value='';document.getElementById('mp-pi').value='';document.getElementById('mp-qb').value=0;document.getElementById('mp-pb').value='';document.getElementById('mp-area').value=0;const vd=new Date();vd.setDate(vd.getDate()+7);document.getElementById('mp-validade').value='7 dias (até '+vd.toLocaleDateString('pt-BR')+')';document.getElementById('mp-status').value='new';document.getElementById('mp-nota').style.display='none';document.getElementById('mp-t').textContent='Nova proposta';populateDataLists();openM('mo-prop')}
 function editProp(i){ei.prop=i;populateDataLists();const x=ld(SK.prop)[i];['nome','wpp','email','vend','vendWpp','vendEmail','validade'].forEach(k=>{const el=document.getElementById('mp-'+k.replace(/([A-Z])/g,'-$1').toLowerCase());if(el)el.value=x[k]||'';});document.getElementById('mp-kwh').value=x.kwh||0;document.getElementById('mp-qm').value=x.qm||0;document.getElementById('mp-mm').value=x.mm||'';document.getElementById('mp-pm').value=x.pm||0;document.getElementById('mp-qi').value=x.qi||1;document.getElementById('mp-mi').value=x.mi||'';document.getElementById('mp-pi').value=x.pi||0;document.getElementById('mp-qb').value=x.qb||0;document.getElementById('mp-mb').value=x.mb||'';document.getElementById('mp-pb').value=x.pb||0;document.getElementById('mp-area').value=x.area||0;document.getElementById('mp-semsolar').value=x.semsolar||0;document.getElementById('mp-comsolar').value=x.comsolar||0;document.getElementById('mp-eco').value=x.eco||0;document.getElementById('mp-valor').value=x.valor||0;document.getElementById('mp-status').value=x.status;document.getElementById('mp-t').textContent='Editar proposta';calcProposta();openM('mo-prop')}
-function _prefillContratoFromProp(prop){
+let _pfProp=null;
+function _onPropostaFechada(prop){
   if(!prop||!prop.nome)return;
-  openContModal();
-  const sv2=(id,v)=>{if(v===undefined||v===null||v==='')return;const el=document.getElementById(id);if(el)el.value=v;};
-  sv2('mc-nome',prop.nome);
-  sv2('mc-wpp',prop.wpp);
-  sv2('mc-kwp',prop.kwp);
-  sv2('mc-valor',prop.valor);
-  sv2('mc-vend',prop.vend);
-  sv2('mc-qi',prop.qi||1);
-  sv2('mc-mi',prop.mi);
-  sv2('mc-pi',prop.pi);
-  sv2('mc-qm',prop.qm||0);
-  sv2('mc-mm',prop.mm);
-  sv2('mc-pm',prop.pm||0);
-  setTimeout(()=>alert('✅ Proposta fechada!\nDados do cliente pré-preenchidos.\nComplete as informações restantes e salve o contrato.'),150);
+  _pfProp=prop;
+  document.getElementById('pf-nome').textContent=prop.nome+' — R$ '+(+prop.valor||0).toLocaleString('pt-BR');
+  openM('mo-propfechada');
 }
+function _pfFillContrato(){
+  const prop=_pfProp;if(!prop)return;
+  openContModal();
+  const s=(id,v)=>{if(v===undefined||v===null||v==='')return;const el=document.getElementById(id);if(el)el.value=v;};
+  s('mc-nome',prop.nome);s('mc-wpp',prop.wpp);s('mc-kwp',prop.kwp);
+  s('mc-valor',prop.valor);s('mc-vend',prop.vend);
+  s('mc-qi',prop.qi||1);s('mc-mi',prop.mi);s('mc-pi',prop.pi);
+  s('mc-qm',prop.qm||0);s('mc-mm',prop.mm);s('mc-pm',prop.pm||0);
+}
+function _pfFillVistoria(){
+  const prop=_pfProp;if(!prop)return;
+  openVistModal();
+  const s=(id,v)=>{if(v===undefined||v===null||v==='')return;const el=document.getElementById(id);if(el)el.value=v;};
+  s('mv-nome',prop.nome);s('mv-wpp',prop.wpp);
+}
+function _pfAbrirContrato(){closeM('mo-propfechada');_pfFillContrato();}
+function _pfAbrirVistoria(){closeM('mo-propfechada');_pfFillVistoria();}
+function _pfAbrirAmbos(){
+  closeM('mo-propfechada');
+  // Cria vistoria em background e abre modal de contrato
+  const prop=_pfProp;if(!prop)return;
+  const vists=ld(SK.vist);
+  if(!vists.some(v=>v.nome===prop.nome&&!v.data)){
+    const nv={nome:prop.nome,wpp:prop.wpp||'',data:'',hora:'',end:'',tec:'',obs:'',status:'agendada'};
+    vists.unshift(nv);sv(SK.vist,vists);_hookSave('vistorias',nv);renderVist();
+  }
+  _pfFillContrato();
+}
+function _prefillContratoFromProp(prop){_onPropostaFechada(prop);}
 function saveProp(){const nome=document.getElementById('mp-nome').value.trim();if(!nome)return alert('Informe o nome');const existing=ei.prop!==null?ld(SK.prop)[ei.prop]:{};const p=getPropData();const e={...existing,...p,status:document.getElementById('mp-status').value,aceito:existing.aceito||false,data:existing.data||new Date().toLocaleDateString('pt-BR')};const d=ld(SK.prop);if(ei.prop!==null)d[ei.prop]=e;else d.unshift(e);sv(SK.prop,d);_hookSave('propostas',e);const _prevStatus=existing.status||'';closeM('mo-prop');renderProp();updateNavCounts();if(e.status==='win'&&_prevStatus!=='win')_prefillContratoFromProp(e);}
 function delProp(i){const d=ld(SK.prop);const x=d[i];if(!confirm(`Excluir proposta de "${x.nome}"?\nEsta ação não pode ser desfeita.`))return;if(x.id)_hookDel('propostas',x.id);d.splice(i,1);sv(SK.prop,d);renderProp();renderDash();updateNavCounts();}
 
