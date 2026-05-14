@@ -6,9 +6,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISTEMA SER · SER Energia Renovável</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a2e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -205,6 +210,8 @@ tr:hover td{background:#fafaf8}
 .doc-label{font-size:12px;font-weight:500;flex:0 0 220px;color:var(--tx)}
 .doc-file-input{font-size:12px;flex:1;border:none;background:transparent;cursor:pointer}
 .doc-file-name{font-size:11px;color:var(--mu);flex:0 0 120px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-view-link{font-size:11px;font-weight:600;color:var(--a);text-decoration:none;white-space:nowrap;padding:2px 8px;border:1px solid var(--a);border-radius:5px;flex-shrink:0}
+.doc-view-link:hover{background:var(--al)}
 
 /* ACEITE */
 .aceite-m{background:#fff;border-radius:var(--rad-lg);padding:24px;width:420px;max-width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18)}
@@ -229,9 +236,10 @@ tr:hover td{background:#fafaf8}
   .dash-grid{grid-template-columns:1fr}
 }
 /* ── Print: oculta tudo exceto o overlay ativo ── */
+@page{margin:0}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  .shell,.login-screen,button[onclick*="fechar"]{display:none!important}
+  .shell,.login-screen,button[onclick*="fechar"],#user-bar{display:none!important}
   body{background:#fff!important;margin:0!important;padding:0!important}
   /* Overlay ativo vira bloco estático */
   #proposta-overlay,#contrato-overlay{
@@ -268,6 +276,8 @@ tr:hover td{background:#fafaf8}
   <div class="nav-section">Principal</div>
   <button class="nav-item active" onclick="sw('dashboard')" id="ni-dashboard"><span class="ni">📊</span> Dashboard <span class="nav-count" id="nc-dashboard"></span></button>
   <div class="nav-section">Pipeline</div>
+  <button class="nav-item" onclick="sw('leads')" id="ni-leads"><span class="ni">🎯</span> Leads <span class="nav-count" id="nc-leads"></span></button>
+  <button class="nav-item" onclick="sw('remarketing')" id="ni-remarketing"><span class="ni">🔁</span> Remarketing <span class="nav-count" id="nc-remarketing"></span></button>
   <button class="nav-item" onclick="sw('propostas')" id="ni-propostas"><span class="ni">📋</span> Propostas <span class="nav-count" id="nc-propostas"></span></button>
   <button class="nav-item" onclick="sw('vistorias')" id="ni-vistorias"><span class="ni">🔍</span> Vistorias <span class="nav-count" id="nc-vistorias"></span></button>
   <button class="nav-item" onclick="sw('contratos')" id="ni-contratos"><span class="ni">📑</span> Contratos <span class="nav-count" id="nc-contratos"></span></button>
@@ -302,13 +312,35 @@ tr:hover td{background:#fafaf8}
     <!-- Filtros de período -->
     <!-- Filtros: Ano -->
     <div class="filters" style="margin-bottom:8px" id="dpf-years"></div>
-    <!-- Filtros: Trimestre -->
-    <div class="filters" style="margin-bottom:8px">
-      <button class="fb active" onclick="setDashQuarter(null)" id="dpf-q0">Ano todo</button>
-      <button class="fb" onclick="setDashQuarter(1)" id="dpf-q1">Q1 Jan–Mar</button>
-      <button class="fb" onclick="setDashQuarter(2)" id="dpf-q2">Q2 Abr–Jun</button>
-      <button class="fb" onclick="setDashQuarter(3)" id="dpf-q3">Q3 Jul–Set</button>
-      <button class="fb" onclick="setDashQuarter(4)" id="dpf-q4">Q4 Out–Dez</button>
+    <!-- Filtros: Semestre / Trimestre -->
+    <div class="filters" style="margin-bottom:4px;flex-wrap:wrap;gap:4px">
+      <button class="fb active" onclick="setDashPer('ano')" id="dpf-q0">Ano todo</button>
+      <button class="fb" onclick="setDashPer('s',1)" id="dpf-s1">S1 Jan–Jun</button>
+      <button class="fb" onclick="setDashPer('s',2)" id="dpf-s2">S2 Jul–Dez</button>
+      <button class="fb" onclick="setDashPer('q',1)" id="dpf-q1">Q1 Jan–Mar</button>
+      <button class="fb" onclick="setDashPer('q',2)" id="dpf-q2">Q2 Abr–Jun</button>
+      <button class="fb" onclick="setDashPer('q',3)" id="dpf-q3">Q3 Jul–Set</button>
+      <button class="fb" onclick="setDashPer('q',4)" id="dpf-q4">Q4 Out–Dez</button>
+    </div>
+    <!-- Filtros: Mês e Dia -->
+    <div class="filters" style="margin-bottom:8px;flex-wrap:wrap;gap:4px">
+      <span style="font-size:10px;font-weight:700;color:var(--mu);align-self:center;text-transform:uppercase;letter-spacing:.06em">Mês:</span>
+      <button class="fb" onclick="setDashPer('m',1)"  id="dpf-m1">Jan</button>
+      <button class="fb" onclick="setDashPer('m',2)"  id="dpf-m2">Fev</button>
+      <button class="fb" onclick="setDashPer('m',3)"  id="dpf-m3">Mar</button>
+      <button class="fb" onclick="setDashPer('m',4)"  id="dpf-m4">Abr</button>
+      <button class="fb" onclick="setDashPer('m',5)"  id="dpf-m5">Mai</button>
+      <button class="fb" onclick="setDashPer('m',6)"  id="dpf-m6">Jun</button>
+      <button class="fb" onclick="setDashPer('m',7)"  id="dpf-m7">Jul</button>
+      <button class="fb" onclick="setDashPer('m',8)"  id="dpf-m8">Ago</button>
+      <button class="fb" onclick="setDashPer('m',9)"  id="dpf-m9">Set</button>
+      <button class="fb" onclick="setDashPer('m',10)" id="dpf-m10">Out</button>
+      <button class="fb" onclick="setDashPer('m',11)" id="dpf-m11">Nov</button>
+      <button class="fb" onclick="setDashPer('m',12)" id="dpf-m12">Dez</button>
+      <span style="color:var(--bd);align-self:center;margin:0 2px">│</span>
+      <span style="font-size:10px;font-weight:700;color:var(--mu);align-self:center;text-transform:uppercase;letter-spacing:.06em">Dia:</span>
+      <input type="date" id="dpf-day" onchange="setDashPer('d',this.value)" style="font-size:11px;padding:3px 8px;border:1.5px solid var(--bd);border-radius:6px;background:var(--sec);color:var(--tx);cursor:pointer;font-family:inherit">
+      <button class="fb" id="dpf-clear-day" onclick="setDashPer('ano')" style="display:none">✕ limpar</button>
     </div>
     <!-- Filtro: Vendedor -->
     <div class="dash-vend-bar">
@@ -344,6 +376,14 @@ tr:hover td{background:#fafaf8}
       </div>
     </div>
 
+    <div class="sl">Evolução de contratos</div>
+    <div class="card" style="padding:16px;margin-bottom:16px">
+      <canvas id="dash-chart-evolucao" height="80"></canvas>
+    </div>
+
+    <div class="sl">Metas do mês</div>
+    <div id="dash-metas" style="margin-bottom:16px"></div>
+
     <div class="dash-grid">
       <div>
         <div class="sl">Alertas e pendências</div>
@@ -362,13 +402,36 @@ tr:hover td{background:#fafaf8}
     </div>
   </div>
 
+  <!-- ===== LEADS ===== -->
+  <div class="tab-panel" id="tab-leads">
+    <div class="metrics c4" id="m-lead" style="margin-bottom:16px"></div>
+    <div class="filters" id="f-lead"></div>
+    <div class="card">
+      <div class="ch"><span class="ct" id="c-lead">Leads</span><button class="add-btn" onclick="openLeadModal()">+ Novo lead</button></div>
+      <table><thead><tr><th style="width:22%">Nome</th><th style="width:15%">Telefone</th><th style="width:16%">Canal</th><th style="width:20%">Tentativa de contato</th><th style="width:27%">Ações</th></tr></thead><tbody id="tb-lead"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ===== REMARKETING ===== -->
+  <div class="tab-panel" id="tab-remarketing">
+    <div class="metrics c4" id="m-remark" style="margin-bottom:16px"></div>
+    <div class="card">
+      <div class="ch"><span class="ct">Leads e Propostas para Reativar</span></div>
+      <table>
+        <thead><tr><th>Nome</th><th>Tipo</th><th>Motivo da perda</th><th>Último contato</th><th>Recontato em</th><th>Ações</th></tr></thead>
+        <tbody id="tb-remark"></tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- ===== PROPOSTAS ===== -->
   <div class="tab-panel" id="tab-propostas">
     <div class="metrics c4" id="m-prop" style="margin-bottom:16px"></div>
     <div class="filters" id="f-prop"></div>
     <div class="card">
-      <div class="ch"><span class="ct" id="c-prop">Propostas</span><button class="add-btn" onclick="abrirGeradorProposta()">+ Nova proposta</button></div>
-      <table><thead><tr><th style="width:18%">Cliente</th><th style="width:10%">kWh/mês</th><th style="width:13%">Valor</th><th style="width:13%">Economia</th><th style="width:13%">Status</th><th style="width:33%">Ações</th></tr></thead><tbody id="tb-prop"></tbody></table>
+      <div class="ch"><span class="ct" id="c-prop">Propostas</span><button class="ab ab-b" id="prop-view-toggle" onclick="togglePropView()" style="margin-left:auto">⊞ Kanban</button><button class="add-btn" style="margin-left:8px" onclick="abrirGeradorProposta()">+ Nova proposta</button></div>
+      <div id="prop-table-view"><table><thead><tr><th style="width:18%">Cliente</th><th style="width:10%">kWh/mês</th><th style="width:13%">Valor</th><th style="width:13%">Economia</th><th style="width:13%">Status</th><th style="width:33%">Ações</th></tr></thead><tbody id="tb-prop"></tbody></table></div>
+      <div id="prop-kanban-view" style="display:none;padding:16px"></div>
     </div>
   </div>
 
@@ -387,8 +450,9 @@ tr:hover td{background:#fafaf8}
     <div class="metrics c4" id="m-cont" style="margin-bottom:16px"></div>
     <div class="filters" id="f-cont"></div>
     <div class="card">
-      <div class="ch"><span class="ct" id="c-cont">Contratos</span><button class="add-btn" onclick="abrirGeradContrato()">+ Registrar</button></div>
-      <table><thead><tr><th style="width:20%">Cliente</th><th style="width:10%">kWp</th><th style="width:14%">Valor</th><th style="width:14%">Pagamento</th><th style="width:14%">Status</th><th style="width:28%">Ações</th></tr></thead><tbody id="tb-cont"></tbody></table>
+      <div class="ch"><span class="ct" id="c-cont">Contratos</span><button class="ab ab-b" id="cont-view-toggle" onclick="toggleContView()" style="margin-left:auto">⊞ Kanban</button><button class="add-btn" style="margin-left:8px" onclick="abrirGeradContrato()">+ Registrar</button></div>
+      <div id="cont-table-view"><table><thead><tr><th style="width:20%">Cliente</th><th style="width:10%">kWp</th><th style="width:14%">Valor</th><th style="width:14%">Pagamento</th><th style="width:14%">Status</th><th style="width:28%">Ações</th></tr></thead><tbody id="tb-cont"></tbody></table></div>
+      <div id="cont-kanban-view" style="display:none;padding:16px"></div>
     </div>
   </div>
 
@@ -419,7 +483,7 @@ tr:hover td{background:#fafaf8}
     <div class="chk-grid" id="chk-grid"></div>
     <div class="card">
       <div class="ch"><span class="ct" id="c-homo">Homologações</span><button class="add-btn" onclick="openHomoModal()">+ Nova</button></div>
-      <table><thead><tr><th style="width:17%">Cliente</th><th style="width:9%">kWp</th><th style="width:12%">Assinatura</th><th style="width:13%">Técnico</th><th style="width:10%">TRT</th><th style="width:13%">Estimado</th><th style="width:11%">Status</th><th style="width:15%">Ações</th></tr></thead><tbody id="tb-homo"></tbody></table>
+      <table><thead><tr><th style="width:17%">Cliente</th><th style="width:9%">kWp</th><th style="width:12%">Assinatura</th><th style="width:13%">Profissional</th><th style="width:10%">TRT/ART</th><th style="width:13%">Total</th><th style="width:11%">Status</th><th style="width:15%">Ações</th></tr></thead><tbody id="tb-homo"></tbody></table>
     </div>
   </div>
 
@@ -566,6 +630,14 @@ tr:hover td{background:#fafaf8}
 
 <!-- ====== MODALS ====== -->
 <!-- PROPOSTA -->
+<div class="overlay" id="mo-lead"><div class="modal" style="width:480px">
+  <h3 id="ml-t">Novo lead</h3>
+  <div class="mr2"><div><label>Nome do lead</label><input type="text" id="ml-nome"></div><div><label>Telefone</label><input type="text" id="ml-tel"></div></div>
+  <div class="mr2"><div><label>Canal de aquisição</label><select id="ml-canal"><option value="">— Selecione —</option><option>PAP</option><option>Network</option><option>Captação</option><option>Indicação</option><option>Tráfego pago</option><option>Redes sociais</option></select></div><div><label>Vendedor</label><select id="ml-vend"><option value="">— Vendedor —</option></select></div></div>
+  <div><label>Tentativa de contato</label><select id="ml-status"><option value="aguardando">Aguardando contato</option><option value="primeira">Primeira tentativa</option><option value="segunda">Segunda tentativa</option><option value="terceira">Terceira tentativa</option><option value="proposta">Proposta</option><option value="sem_interesse">Não tem interesse</option></select></div>
+  <div class="mfooter"><button class="btn-c" onclick="closeM('mo-lead')">Cancelar</button><button class="btn-s" onclick="saveLead()">Salvar</button></div>
+</div></div>
+
 <div class="overlay" id="mo-prop"><div class="modal" style="width:620px">
   <h3 id="mp-t">Nova proposta</h3>
   <div class="msec">Dados do cliente</div>
@@ -637,7 +709,7 @@ tr:hover td{background:#fafaf8}
   <div class="mr2"><div><label>RG</label><input type="text" id="mc-rg"></div><div><label>Órgão / UF do RG</label><input type="text" id="mc-rgorg" placeholder="SSP/PA"></div></div>
   <label>WhatsApp</label><input type="text" id="mc-wpp">
   <div class="msec">Endereço de instalação</div>
-  <div class="mr2"><div><label>CEP</label><input type="text" id="mc-cep" placeholder="00000-000" oninput="buscarCEP(this.value,{rua:'mc-rua',bairro:'mc-bairro',cidade:'mc-cidade',estado:'mc-estado'})"></div><div><label>Estado (UF)</label><select id="mc-estado"><option value="">—</option><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div></div>
+  <div class="mr2"><div><label>CEP</label><input type="text" id="mc-cep" placeholder="00000-000" oninput="buscarCEP(this.value,{rua:'mc-rua',bairro:'mc-bairro',cidade:'mc-cidade',estado:'mc-estado'})" onblur="buscaCEP_cont()"></div><div><label>Estado (UF)</label><select id="mc-estado"><option value="">—</option><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div></div>
   <label>Rua / Logradouro</label><input type="text" id="mc-rua">
   <div class="mr2"><div><label>Número</label><input type="text" id="mc-num"></div><div><label>Complemento</label><input type="text" id="mc-comp" placeholder="Apto, Bloco..."></div></div>
   <div class="mr2"><div><label>Bairro</label><input type="text" id="mc-bairro"></div><div><label>Cidade</label><input type="text" id="mc-cidade"></div></div>
@@ -726,30 +798,43 @@ tr:hover td{background:#fafaf8}
 <div class="overlay" id="mo-homo"><div class="modal" style="width:580px">
   <h3 id="mh-t">Nova homologação</h3>
   <label>Cliente</label><input type="text" id="mh-nome">
+  <div class="msec">Homologador</div>
+  <div class="tog-row"><span class="tog-label">Homologador é o mesmo que o cliente?</span><label class="tog"><input type="checkbox" id="mh-mesmo" checked onchange="toggleHomologador()"><span class="tog-sl"></span></label></div>
+  <div id="mh-homologador-manual" style="display:none">
+    <div class="mr2"><div><label>Nome do homologador</label><input type="text" id="mh-h-nome"></div><div><label>CPF</label><input type="text" id="mh-h-cpf"></div></div>
+    <div class="mr2"><div><label>RG</label><input type="text" id="mh-h-rg"></div><div><label>Data de nascimento</label><input type="date" id="mh-h-nasc"></div></div>
+  </div>
   <div class="mr2"><div><label>kWp</label><input type="number" id="mh-kwp" step="0.1"></div><div><label>Data assinatura</label><input type="date" id="mh-ds"></div></div>
   <div class="mr2"><div><label>Vendedor</label><select id="mh-vend"><option value="">— Vendedor —</option></select></div><div><label>WhatsApp</label><input type="text" id="mh-wpp"></div></div>
   <datalist id="list-vendedores2"></datalist>
+  <div style="display:flex;align-items:flex-end;gap:8px"><div style="flex:1"><label>Localizador Google</label><input type="url" id="mh-gmaps" placeholder="https://maps.google.com/..."></div><a id="mh-gmaps-link" href="#" target="_blank" style="display:none;margin-bottom:4px;flex-shrink:0" class="doc-view-link">Abrir ↗</a></div>
   <div class="msec">Equipamentos do projeto</div>
   <div class="mr2"><div><label>Qtd. Inversores</label><input type="number" id="mh-qi" min="0" value="1"></div><div><label>Marca dos Inversores</label><select id="mh-mi"><option value="">— Inversor —</option></select></div></div>
   <div class="mr2"><div><label>Qtd. Módulos</label><input type="number" id="mh-qm" min="0" value="0"></div><div><label>Marca dos Módulos</label><select id="mh-mm"><option value="">— Módulo —</option></select></div></div>
   <div class="msec">Documentos da homologação</div>
   <div style="display:grid;gap:8px;margin-bottom:4px">
-    <div class="doc-upload-row"><label class="doc-label">📄 Procuração</label><input type="file" id="mh-f-homologador" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-homologador">Nenhum arquivo</div></div>
-    <div class="doc-upload-row"><label class="doc-label">📝 Contrato Assinado</label><input type="file" id="mh-f-contass" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-contass">Nenhum arquivo</div></div>
-    <div class="doc-upload-row"><label class="doc-label">⚡ Fatura Geradora</label><input type="file" id="mh-f-fatger" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-fatger">Nenhum arquivo</div></div>
-    <div class="doc-upload-row"><label class="doc-label">⚡ Fatura Beneficiária <span style="font-weight:400;color:var(--mu)">(quando houver)</span></label><input type="file" id="mh-f-fatben" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-fatben">Nenhum arquivo</div></div>
-    <div class="doc-upload-row"><label class="doc-label">🔍 Doc. da Vistoria</label><input type="file" id="mh-f-vist" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-vist">Nenhum arquivo</div></div>
-    <div class="doc-upload-row"><label class="doc-label">📋 Datasheet do Inversor</label><input type="file" id="mh-f-dsinv" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-dsinv">Nenhum arquivo</div></div>
-    <div class="doc-upload-row"><label class="doc-label">📋 Datasheet do Módulo</label><input type="file" id="mh-f-dsmod" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-dsmod">Nenhum arquivo</div></div>
-    <div class="doc-upload-row"><label class="doc-label">🌤️ Análise de Sombreamento</label><input type="file" id="mh-f-sombra" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-sombra">Nenhum arquivo</div></div>
+    <div class="doc-upload-row"><label class="doc-label">📄 Procuração</label><input type="file" id="mh-f-homologador" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-homologador">Nenhum arquivo</div><a id="mh-fu-homologador" href="#" target="_blank" class="doc-view-link" style="display:none">Ver ↗</a></div>
+    <div class="doc-upload-row"><label class="doc-label">🪪 RG ou CNH</label><input type="file" id="mh-f-rgcnh" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-rgcnh">Nenhum arquivo</div><a id="mh-fu-rgcnh" href="#" target="_blank" class="doc-view-link" style="display:none">Ver ↗</a></div>
+    <div class="doc-upload-row"><label class="doc-label">📝 Contrato Assinado</label><input type="file" id="mh-f-contass" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-contass">Nenhum arquivo</div><a id="mh-fu-contass" href="#" target="_blank" class="doc-view-link" style="display:none">Ver ↗</a></div>
+    <div class="doc-upload-row"><label class="doc-label">⚡ Fatura Geradora</label><input type="file" id="mh-f-fatger" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-fatger">Nenhum arquivo</div><a id="mh-fu-fatger" href="#" target="_blank" class="doc-view-link" style="display:none">Ver ↗</a></div>
+    <div class="doc-upload-row"><label class="doc-label">⚡ Fatura Beneficiária <span style="font-weight:400;color:var(--mu)">(quando houver)</span></label><input type="file" id="mh-f-fatben" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-fatben">Nenhum arquivo</div><a id="mh-fu-fatben" href="#" target="_blank" class="doc-view-link" style="display:none">Ver ↗</a></div>
+    <div class="doc-upload-row"><label class="doc-label">🔍 Doc. da Vistoria</label><input type="file" id="mh-f-vist" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-vist">Nenhum arquivo</div><a id="mh-fu-vist" href="#" target="_blank" class="doc-view-link" style="display:none">Ver ↗</a></div>
+    <div class="doc-upload-row"><label class="doc-label">📋 Datasheet do Inversor</label><input type="file" id="mh-f-dsinv" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-dsinv">Nenhum arquivo</div><a id="mh-fu-dsinv" href="#" target="_blank" class="doc-view-link" style="display:none">Ver ↗</a></div>
+    <div class="doc-upload-row"><label class="doc-label">📋 Datasheet do Módulo</label><input type="file" id="mh-f-dsmod" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-dsmod">Nenhum arquivo</div><a id="mh-fu-dsmod" href="#" target="_blank" class="doc-view-link" style="display:none">Ver ↗</a></div>
+    <div class="doc-upload-row"><label class="doc-label">🌤️ Análise de Sombreamento</label><input type="file" id="mh-f-sombra" accept=".pdf,.jpg,.jpeg,.png" class="doc-file-input"><div class="doc-file-name" id="mh-fn-sombra">Nenhum arquivo</div><a id="mh-fu-sombra" href="#" target="_blank" class="doc-view-link" style="display:none">Ver ↗</a></div>
   </div>
   <div class="msec">Custos de cartório</div>
-  <div class="mr2"><div><label>Qtd TRTs</label><input type="number" id="mh-tq" value="1" min="0" oninput="calcHomo()"></div><div><label>Qtd ARTs</label><input type="number" id="mh-aq" value="0" min="0" oninput="calcHomo()"></div></div>
-  <div class="mr2"><div><label>Valor unitário ART (R$)</label><input type="number" id="mh-av" oninput="calcHomo()"></div><div></div></div>
-  <div class="nota-box" id="mh-nota"><div style="font-size:10px;font-weight:700;color:var(--g);text-transform:uppercase;margin-bottom:6px;letter-spacing:.06em">Nota — Custo estimado</div><div id="mh-nr"></div></div>
-  <label>Status</label><select id="mh-status"><option value="aguardando">Aguardando docs</option><option value="analise">Em análise</option><option value="aprovada">Aprovada</option><option value="reprovada">Reprovada</option><option value="concluida">Concluída</option></select>
-  <label>Valor pago (R$)</label><input type="number" id="mh-pago">
+  <div class="mr2"><div><label>Valor TRT/ART (R$)</label><input type="number" id="mh-trt" step="0.01" oninput="calcHomo()"></div><div><label>Valor do profissional (R$)</label><input type="number" id="mh-prof" step="0.01" oninput="calcHomo()"></div></div>
+  <div class="nota-box" id="mh-nota"><div style="font-size:10px;font-weight:700;color:var(--g);text-transform:uppercase;margin-bottom:6px;letter-spacing:.06em">Nota — Custo total</div><div id="mh-nr"></div></div>
+  <label>Status</label><select id="mh-status"><option value="aguardando">Aguardando docs</option><option value="analise">Em análise</option><option value="trt_art">TRT/ART PG</option><option value="parecer">Parecer de acesso</option><option value="vistoria_final">Vistoria Final</option><option value="aprovada">Aprovada</option><option value="reprovada">Reprovada</option><option value="concluida">Concluída</option></select>
   <div class="mfooter"><button class="btn-c" onclick="closeM('mo-homo')">Cancelar</button><button class="btn-s" onclick="saveHomo()">Salvar</button></div>
+</div></div>
+
+<!-- DOCS HOMOLOGAÇÃO VIEWER -->
+<div class="overlay" id="mo-homo-docs"><div class="modal" style="width:500px">
+  <h3>📎 Documentos — <span id="mhd-nome"></span></h3>
+  <div id="mhd-list" style="display:grid;gap:8px;margin:14px 0"></div>
+  <div class="mfooter"><button class="btn-c" onclick="closeM('mo-homo-docs')">Fechar</button></div>
 </div></div>
 
 <!-- COMISSÃO -->
@@ -844,7 +929,7 @@ tr:hover td{background:#fafaf8}
   <h3 id="mcad-t">Novo cadastro</h3>
   <div class="mr2"><div><label>Nome completo</label><input type="text" id="mcad-nome"></div><div><label>Tipo</label><select id="mcad-tipo"><option value="cliente">Cliente</option><option value="distribuidor">Distribuidor</option><option value="vendedor">Vendedor</option><option value="sdr">SDR</option><option value="supervisor">Supervisor</option><option value="gerente">Gerente</option><option value="tecnico">Técnico/Engenheiro</option><option value="instalador">Instalador</option><option value="diretor">Diretor</option><option value="vistoriador">Vistoriador</option></select></div></div>
   <div class="mr2"><div><label>WhatsApp / Telefone</label><input type="text" id="mcad-wpp"></div><div><label>E-mail</label><input type="email" id="mcad-email"></div></div>
-  <div class="mr2"><div><label>CPF / CNPJ</label><input type="text" id="mcad-doc" oninput="checkDoc(this)"></div><div><label>CEP</label><input type="text" id="mcad-cep" placeholder="00000-000" oninput="buscarCEP(this.value,{rua:'mcad-rua',cidade:'mcad-cidade',estado:'mcad-estado'})"></div></div>
+  <div class="mr2"><div><label>CPF / CNPJ</label><input type="text" id="mcad-doc" oninput="checkDoc(this)"></div><div><label>CEP</label><input type="text" id="mcad-cep" placeholder="00000-000" oninput="buscarCEP(this.value,{rua:'mcad-rua',cidade:'mcad-cidade',estado:'mcad-estado'})" onblur="buscaCEP_cad()"></div></div>
   <label>Rua / Logradouro</label><input type="text" id="mcad-rua" placeholder="Nome da rua, avenida, etc.">
   <div class="mr2"><div><label>Número</label><input type="text" id="mcad-numero"></div><div><label>Complemento</label><input type="text" id="mcad-comp" placeholder="Apto, Bloco..."></div></div>
   <div class="mr2"><div><label>Cidade</label><input type="text" id="mcad-cidade"></div><div><label>Estado (UF)</label><select id="mcad-estado"><option value="">—</option><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div></div>
@@ -854,10 +939,12 @@ tr:hover td{background:#fafaf8}
 </div></div>
 
 <script>
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
 // ===================== STORAGE =====================
-const SK={prop:'s6p',vist:'s6v',cont:'s6c',log:'s6log',inst:'s6i',homo:'s6h',com:'s6com',fixo:'s6f',desp:'s6d',cad:'s6cad',equip:'s6eq',custoProj:'s6cp',rec:'s6rec'};
-const ei={prop:null,vist:null,cont:null,log:null,inst:null,homo:null,com:null,cad:null,equip:null,custoProj:null};
-const filt={prop:'all',vist:'all',cont:'all',inst:'all',homo:'all',com:'all',cad:'all'};
+const SK={lead:'s6lead',prop:'s6p',vist:'s6v',cont:'s6c',log:'s6log',inst:'s6i',homo:'s6h',com:'s6com',fixo:'s6f',desp:'s6d',cad:'s6cad',equip:'s6eq',custoProj:'s6cp',rec:'s6rec'};
+const ei={lead:null,prop:null,vist:null,cont:null,log:null,inst:null,homo:null,com:null,cad:null,equip:null,custoProj:null};
+const filt={lead:'all',prop:'all',vist:'all',cont:'all',inst:'all',homo:'all',com:'all',cad:'all'};
 let aceiteIdx=null;
 const TRT=68.17;
 
@@ -873,6 +960,7 @@ const ol=url=>window.open(url,'_blank');
 const DR={prop:[{"nome": "ALVARO DO TSTE SILVA", "kwp": 7.0, "valor": 89000.0, "eco": 861.44, "vend": "MESMO TESTANDO SILVA", "wpp": "", "status": "new", "aceito": false, "data": "15/12/2025"}, {"nome": "TESTANDO O SEGUNDO", "kwp": 4.88, "valor": 78000.0, "eco": 600.55, "vend": "O CARA DE ANTES", "wpp": "", "status": "new", "aceito": false, "data": "15/12/2025"}, {"nome": "helena", "kwp": 161.0, "valor": 280000.0, "eco": 19813.14, "vend": "helena macedo", "wpp": "", "status": "new", "aceito": false, "data": "15/12/2025"}, {"nome": "HEITO", "kwp": 3.51, "valor": 15000.0, "eco": 431.95, "vend": "HEITORZAO", "wpp": "", "status": "new", "aceito": false, "data": "15/12/2025"}, {"nome": "Lucas Lisboa Pinho", "kwp": 4.96, "valor": 18000.0, "eco": 610.39, "vend": "LUCAS PINHO", "wpp": "", "status": "new", "aceito": false, "data": "16/12/2025"}, {"nome": "Armando Carlos De Assunção Santos", "kwp": 9.3, "valor": 27800.0, "eco": 1144.49, "vend": "BRUNA MORAES", "wpp": "", "status": "new", "aceito": false, "data": "16/12/2025"}, {"nome": "ARNALDO CARLOS DE ASSUNÇÃO SANTOS", "kwp": 9.3, "valor": 27800.0, "eco": 1144.49, "vend": "BRUNA MORAES", "wpp": "", "status": "new", "aceito": false, "data": "16/12/2025"}, {"nome": "ARNALDO CARLOS DE ASSUNÇÃO", "kwp": 9.3, "valor": 27800.0, "eco": 1144.49, "vend": "BRUNA MORAES", "wpp": "", "status": "new", "aceito": false, "data": "16/12/2025"}, {"nome": "ARNALDO CARLOS DE ASSUNÇÃO", "kwp": 9.3, "valor": 27800.0, "eco": 1144.49, "vend": "BRUNA MORAES", "wpp": "", "status": "new", "aceito": false, "data": "16/12/2025"}, {"nome": "José Ribamar dos Santos Nogueira", "kwp": 11.78, "valor": 35000.0, "eco": 1449.68, "vend": "ROGÉRIO BARBOSA", "wpp": "", "status": "win", "aceito": true, "data": "16/12/2025"}, {"nome": "Carlos Alberto Souza oreste", "kwp": 7.44, "valor": 23000.0, "eco": 915.59, "vend": "MOISES OLIVEIRA", "wpp": "", "status": "new", "aceito": false, "data": "16/12/2025"}, {"nome": "PAULO ROBERTO AURELIANO", "kwp": 10.0, "valor": 45000.0, "eco": 1230.63, "vend": "FERNANDA FROES", "wpp": "", "status": "new", "aceito": false, "data": "16/12/2025"}, {"nome": "PORTO DE MÓS", "kwp": 140.12, "valor": 355000.0, "eco": 17243.59, "vend": "ROGÉRIO BARBOSA", "wpp": "", "status": "new", "aceito": false, "data": "16/12/2025"}, {"nome": "PORTO DE MÓS", "kwp": 140.12, "valor": 420000.0, "eco": 17243.59, "vend": "ROGÉRIO BARBOSA", "wpp": "", "status": "new", "aceito": false, "data": "16/12/2025"}, {"nome": "PORTO DE MOZ 01", "kwp": 140.0, "valor": 355000.0, "eco": 17228.82, "vend": "ÁLVARO NASCIMENTO", "wpp": "", "status": "new", "aceito": false, "data": "16/12/2025"}, {"nome": "PORTO DE MOZ", "kwp": 140.0, "valor": 425000.0, "eco": 17228.82, "vend": "ÁLVARO NASCIMENTO", "wpp": "", "status": "new", "aceito": false, "data": "16/12/2025"}, {"nome": "JOEL REIS DA SILVA", "kwp": 3.72, "valor": 14000.0, "eco": 457.79, "vend": "MOISES OLIVEIRA", "wpp": "91993602886", "status": "win", "aceito": true, "data": "19/12/2025"}, {"nome": "CRISTIAN AMARAL", "kwp": 2.46, "valor": 31462.5, "eco": 302.73, "vend": "ÁLVARO NASCIMENTO", "wpp": "", "status": "new", "aceito": false, "data": "19/12/2025"}, {"nome": "ANTONIO EDIVALDO CHAVES", "kwp": 6.2, "valor": 23800.0, "eco": 762.99, "vend": "BRUNA MORAES", "wpp": "", "status": "new", "aceito": false, "data": "19/12/2025"}, {"nome": "CRISTIAN AMARAL", "kwp": 2.46, "valor": 55902.07, "eco": 302.73, "vend": "ÁLVARO NASCIMENTO", "wpp": "", "status": "new", "aceito": false, "data": "19/12/2025"}, {"nome": "ALESSANDRA (BELO TRAJE)", "kwp": 8.54, "valor": 22500.0, "eco": 1050.96, "vend": "LUCAS PINHO", "wpp": "", "status": "new", "aceito": false, "data": "19/12/2025"}, {"nome": "ALESSANDRA (BELO TRAJE) MAIOR", "kwp": 8.54, "valor": 24993.47, "eco": 1050.96, "vend": "LUCAS PINHO", "wpp": "", "status": "new", "aceito": false, "data": "19/12/2025"}, {"nome": "CARLOS ALBERTO FURTADO DA COSTA", "kwp": 6.2, "valor": 20000.0, "eco": 762.99, "vend": "MOISES OLIVEIRA", "wpp": "91982625335", "status": "win", "aceito": true, "data": "23/12/2025"}, {"nome": "MARIA DAS GRAÇAS", "kwp": 3.66, "valor": 14800.0, "eco": 450.41, "vend": "BRUNA MORAES", "wpp": "", "status": "new", "aceito": false, "data": "26/12/2025"}, {"nome": "Lauricelia Morais", "kwp": 7.44, "valor": 22000.0, "eco": 915.59, "vend": "ÁLVARO NASCIMENTO", "wpp": "91981196382", "status": "new", "aceito": false, "data": "13/01/2026"}, {"nome": "GLAILZA NANCY RODRIGUES DA CONCEICAO", "kwp": 6.71, "valor": 23750.0, "eco": 825.75, "vend": "FERNANDA FROES", "wpp": "", "status": "new", "aceito": false, "data": "14/01/2026"}, {"nome": "ALLAN CRISTIAN CHUCRE ROCHA", "kwp": 8.06, "valor": 27000.0, "eco": 991.89, "vend": "ROGÉRIO BARBOSA", "wpp": "91986052727", "status": "win", "aceito": true, "data": "26/01/2026"}, {"nome": "Sr. Ediney", "kwp": 14.04, "valor": 43255.27, "eco": 1727.8, "vend": "ÁLVARO NASCIMENTO", "wpp": "", "status": "new", "aceito": false, "data": "26/01/2026"}, {"nome": "NOMY MARIA BARROS ANDRADE", "kwp": 5.27, "valor": 30000.0, "eco": 647.93, "vend": "FERNANDA FROES", "wpp": "", "status": "new", "aceito": false, "data": "28/01/2026"}, {"nome": "JOSENILSON ANTONIO DA SILVA", "kwp": 22.4, "valor": 68000.0, "eco": 2756.61, "vend": "BRUNA MORAES", "wpp": "", "status": "new", "aceito": false, "data": "30/01/2026"}, {"nome": "ALVARO NASCIMENTO", "kwp": 109.98, "valor": 321079.08, "eco": 13534.47, "vend": "ÁLVARO NASCIMENTO", "wpp": "", "status": "new", "aceito": false, "data": "02/02/2026"}, {"nome": "FERNANDO PORTELA", "kwp": 109.9, "valor": 298500.0, "eco": 13524.62, "vend": "ÁLVARO NASCIMENTO", "wpp": "", "status": "new", "aceito": false, "data": "02/02/2026"}, {"nome": "ZILMARA CAXIAS MACHADO", "kwp": 5.26, "valor": 35000.0, "eco": 647.93, "vend": "FERNANDA FROES", "wpp": "", "status": "new", "aceito": false, "data": "07/02/2026"}, {"nome": "ANTÔNIO FERREIRA DE AVIZ", "kwp": 13.46, "valor": 44360.4, "eco": 1655.81, "vend": "ÁLVARO NASCIMENTO", "wpp": "91981825180", "status": "new", "aceito": false, "data": "09/02/2026"}, {"nome": "Amaro Aguiar Caneiro", "kwp": 6.3, "valor": 18000.0, "eco": 775.3, "vend": "DYEGO BELÉM", "wpp": "91981555484", "status": "new", "aceito": false, "data": "10/02/2026"}, {"nome": "Jão Victor", "kwp": 12.87, "valor": 0, "eco": 1583.82, "vend": "DYEGO BELÉM", "wpp": "", "status": "new", "aceito": false, "data": "13/02/2026"}, {"nome": "Tania Maria Costa Santiago", "kwp": 8.78, "valor": 31000.0, "eco": 1079.88, "vend": "DYEGO BELÉM", "wpp": "", "status": "new", "aceito": false, "data": "14/02/2026"}, {"nome": "JOSELITO SILVA", "kwp": 10.53, "valor": 200000.0, "eco": 1295.85, "vend": "FERNANDA FROES", "wpp": "", "status": "new", "aceito": false, "data": "23/02/2026"}, {"nome": "MARINETH BARBOSA", "kwp": 8.19, "valor": 160000.0, "eco": 1007.89, "vend": "FERNANDA FROES", "wpp": "", "status": "new", "aceito": false, "data": "23/02/2026"}, {"nome": "RANIELE MAIANY DA LUZ RIBEIRO", "kwp": 5.26, "valor": 20000.0, "eco": 647.93, "vend": "FERNANDA FROES", "wpp": "", "status": "new", "aceito": false, "data": "27/02/2026"}, {"nome": "CRISTIANE DE SOUZA FROES", "kwp": 5.62, "valor": 140000.0, "eco": 692.23, "vend": "FERNANDA FROES", "wpp": "", "status": "new", "aceito": false, "data": "27/02/2026"}, {"nome": "MARIA LUCIA FARIAS PEROTE", "kwp": 8.4, "valor": 26439.73, "eco": 1033.73, "vend": "ÁLVARO NASCIMENTO", "wpp": "", "status": "win", "aceito": true, "data": "28/02/2026"}, {"nome": "Josiane De Nazaré Conceição Campos", "kwp": 5.85, "valor": 22000.0, "eco": 719.92, "vend": "KURT LEMOS", "wpp": "", "status": "new", "aceito": false, "data": "12/03/2026"}, {"nome": "JORDANA DO SOCORRO SOUZA DIAS", "kwp": 6.43, "valor": 22800.0, "eco": 791.91, "vend": "LUCAS PINHO", "wpp": "", "status": "win", "aceito": true, "data": "25/03/2026"}, {"nome": "Mario Barros Estrada Filho", "kwp": 5.26, "valor": 23000.0, "eco": 647.93, "vend": "DYEGO BELÉM", "wpp": "", "status": "new", "aceito": false, "data": "02/04/2026"}, {"nome": "Maria Lenice Dias Dos Santos", "kwp": 6.42, "valor": 20500.0, "eco": 790.06, "vend": "DYEGO BELÉM", "wpp": "", "status": "win", "aceito": true, "data": "16/04/2026"}],cont:[{"nome": "JORGINO JUNIOR MORAES VERGOLINO", "kwp": 5.85, "valor": 19000.0, "pgto": "FINANCIADO PELO BANCO SOLFACIL EM 48 PARCELAS COM A PRIMEIRA PARA O DIA 25 DE JU", "vend": "ARENILDA MELO DE SOUZA", "wpp": "91989417066", "status": "assinado", "data": "21/04/2026"}, {"nome": "Maria Lenice Dias Dos Santos", "kwp": 7.02, "valor": 20000.0, "pgto": "FINANCIADO PELO SOL FÁCIL NO VALOR DE R$\n20.000,00 (VINTE MIL), EM 84 (OITENTA E", "vend": "JONNHY DYEGO BELÉM SILVA", "wpp": "91981716603", "status": "assinado", "data": "16/04/2026"}, {"nome": "GUSTAVO SIMONASSI PORCHERA", "kwp": 7.49, "valor": 24900.0, "pgto": "PAGAMENTO FEITO:\n14.900,00$ A VISTA (PIX) E 10.000,00$ NO CARTÃO EM 10 VEZES.", "vend": "MOISÉS LIMA DE OLIVEIRA", "wpp": "91984276796", "status": "assinado", "data": "15/04/2026"}, {"nome": "André Luís Barbosa", "kwp": 5.49, "valor": 17800.0, "pgto": "Financiamento pelo Solfácil em 60x de R$787,63, com primeira parcela para dia 01", "vend": "ROGÉRIO COSTA BARBOSA", "wpp": "91985326690", "status": "assinado", "data": "02/04/2026"}, {"nome": "André Luís Barbosa da Silva", "kwp": 5.85, "valor": 19000.0, "pgto": "Financiado pelo Banco Solfácil em 48x de R$886,25 - Primeira Parcela dia 01/08/2", "vend": "ROGÉRIO COSTA BARBOSA", "wpp": "91985326690", "status": "assinado", "data": "01/04/2026"}, {"nome": "André Luís Barbosa da Silva", "kwp": 5.85, "valor": 19000.0, "pgto": "Financiado pelo Banco Solfácil em 48x de R$886,25 - Primeira Parcela dia 01/08/2", "vend": "ROGÉRIO COSTA BARBOSA", "wpp": "91985326690", "status": "assinado", "data": "01/04/2026"}, {"nome": "JORDANA DO SOCORRO SOUZA DIAS", "kwp": 6.43, "valor": 22800.0, "pgto": "FINANCIADO PELO SOL AGORA NO VALOR DE R$ 22.800,00 (VINTE E DOIS MIL E OITOCENTO", "vend": "LUCAS LISBOA PINHO", "wpp": "91980940804", "status": "assinado", "data": "25/03/2026"}, {"nome": "NILMA ROSANA SOUSA DO AMARAL", "kwp": 7.02, "valor": 28000.0, "pgto": "FINANCIADO PELO BANCO SOLFÁCIL, COM 4 (QUATRO) MESES DE CARÊNCIA PARA O PRIMEIRO", "vend": "MOISÉS LIMA DE OLIVEIRA", "wpp": "91988854708", "status": "assinado", "data": "17/03/2026"}, {"nome": "NADIA REJANE SOUZA DO AMARAL SANTOS", "kwp": 8.78, "valor": 33000.0, "pgto": "DEZ MIL REAIS(10.000,00$) NO PIX, VINTE E TRES MIL REAIS FINANCIADO PELO SOL FAC", "vend": "MOISÉS LIMA DE OLIVEIRA", "wpp": "91984449343", "status": "assinado", "data": "16/03/2026"}, {"nome": "ALCY MENDES DA SILVA", "kwp": 4.34, "valor": 19500.0, "pgto": "O VALOR SERÁ FINANCIADO PELO BANCO SANTANDER, COM CARÊNCIA DE 3 (TRÊS) MESES PAR", "vend": "LUCAS LISBOA PINHO", "wpp": "91985586588", "status": "assinado", "data": "13/03/2026"}, {"nome": "Alcy Mendes da Silva", "kwp": 4.34, "valor": 19500.0, "pgto": "Financiamento", "vend": "LUCAS LISBOA PINHO", "wpp": "91985586588", "status": "assinado", "data": "13/03/2026"}, {"nome": "BRUNO FURTADO DA SILVA LOPES", "kwp": 4.68, "valor": 16762.25, "pgto": "Financiado pelo Sol Fácil.\n84x De 565,35$, com primeiro pagamento previsto para ", "vend": "ROGÉRIO COSTA BARBOSA", "wpp": "91981169218", "status": "assinado", "data": "06/03/2026"}, {"nome": "MARIA LUCIA FARIAS PEROTE", "kwp": 8.4, "valor": 26439.73, "pgto": "FINANCIADO PELO BANCO SOLFÁCIL EM 60X VEZES, COM A PRIMEIRA PARCELA PARA 120 DIA", "vend": "ÁLVARO FERNANDO DO NASCIMENTO SILVA", "wpp": "91982691059", "status": "assinado", "data": "10/02/2026"}, {"nome": "DANIEL CARLOS PIRES FARIAS", "kwp": 5.6, "valor": 20000.0, "pgto": "PAGAMENTO FINANCIADO PELO SOLFACIL EM 60 VEZES DE R$ 718,78, COM PRIMEIRO PAGAME", "vend": "BRUNA MORAES PEREIRA", "wpp": "93991361866", "status": "assinado", "data": "23/02/2026"}, {"nome": "SONIA MARIA GUEDES DOS SANTOS", "kwp": 6.3, "valor": 22000.0, "pgto": "O PAGAMENTO SERÁ REALIZADO DA SEGUINTE FORMA: R$ 5.000,00 (CINCO MIL REAIS) EM E", "vend": "LUCAS LISBOA PINHO", "wpp": "81999608913", "status": "assinado", "data": "20/02/2026"}, {"nome": "MICHEL DOS SANTOS SOARES", "kwp": 5.6, "valor": 20000.0, "pgto": "FINANCIADO PELA SOLFACIL EM 72X DE 759,49 / COM PRIMEIRA PARCELA PARA DIA 15/06/", "vend": "MOISÉS LIMA DE OLIVEIRA", "wpp": "91983201029", "status": "assinado", "data": "12/02/2026"}, {"nome": "GILVANA BARRETO DOS SANTOS", "kwp": 4.9, "valor": 22000.0, "pgto": "FINANCIADO PELA SOLFACIL, A SER PAGO EM 96 PARCELAS DE R$ 692,48, COM PRIMEIRA P", "vend": "MOISÉS LIMA DE OLIVEIRA", "wpp": "91989380466", "status": "assinado", "data": "28/01/2026"}, {"nome": "Allan Cristian Chucre Rocha", "kwp": 8.06, "valor": 27000.0, "pgto": "O PAGAMENTO SERA REALIZADO POR MEIO DE FINANCIAMENTO BANCARIO PELO SOL AGORA, 61", "vend": "ROGÉRIO COSTA BARBOSA", "wpp": "91986052727", "status": "assinado", "data": "27/01/2026"}, {"nome": "JOÃO GERALDO DE SOUZA", "kwp": 4.34, "valor": 14378.05, "pgto": "FINANCIADO PELA SOL FÁCIL, EM 96 PARCELAS DE R$ 463,56, COM CARÊNCIA DE 120 DIAS", "vend": "MOISÉS LIMA DE OLIVEIRA", "wpp": "91991536646", "status": "assinado", "data": "26/01/2025"}, {"nome": "JAIRO DA SILVA CORREA", "kwp": 8.78, "valor": 35000.0, "pgto": "FINANCIADO PELA CREDSOLARIS BANCO PORTO BANK, EM 60 VEZES DE R$ 1.150,55, SENDO ", "vend": "FERNANDA DE SOUZA FROES", "wpp": "91980151612", "status": "assinado", "data": "20/01/2026"}, {"nome": "PAULO RICARDO CARDOSO SOUZA", "kwp": 4.96, "valor": 18181.82, "pgto": "FINANCIAMENTO PELO SANTANDER EM 48 VEZES E 90 DIAS DE CARENCIA", "vend": "FERNANDA DE SOUZA FROES", "wpp": "91988556508", "status": "assinado", "data": "20/01/2026"}, {"nome": "CARLOS ALBERTO FURTADO DA COSTA", "kwp": 6.2, "valor": 20000.0, "pgto": "FINANCIMANETO , SOL AGORA ,DE 84 X 620,17 E CARENCIA 6 MESES", "vend": "MOISÉS LIMA DE OLIVEIRA", "wpp": "91980291829", "status": "assinado", "data": "22/12/2025"}, {"nome": "JOEL REIS DA SILVA", "kwp": 3.72, "valor": 14000.0, "pgto": "FINACIAMENTO, PELA SOL AGORA, EM 52 PARCELAS DE 634,03 COM CARENCIA DE 172 DIAS.", "vend": "MOISÉS LIMA DE OLIVEIRA", "wpp": "91993602886", "status": "assinado", "data": "24/12/2025"}, {"nome": "José Ribamar dos Santos Nogueira", "kwp": 11.78, "valor": 35000.0, "pgto": "VALOR A VISTA, SENDO A METADE(17.500,00) PAGA NO DIA 08 DE DEZEMBRO E A SEGUNDA ", "vend": "ROGÉRIO COSTA BARBOSA", "wpp": "91999499251", "status": "assinado", "data": "09/12/2025"}],com:[{"nome": "JORGINO JUNIOR MORAES VERGOLINO", "cpf": "008.480.552-84", "ref": 17011.67, "vendido": 19000.0, "status": "pendente", "fonte": "SOLFACIL", "banco": "SOLFACIL", "mes": "4", "ano": "2026", "vend": {"nome": "ARENILDA", "pct": 0.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": true, "val": 2000.0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.0}}, {"nome": "GUSTAVO SIMONASSI PORCHERA", "cpf": "693.115.103-78", "ref": 21976.1, "vendido": 24900.0, "status": "pendente", "fonte": "SOUENERGY", "banco": "A VISTA", "mes": "4", "ano": "2026", "vend": {"nome": "MOISES", "pct": 0.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "R$ 1.000,00", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.0}}, {"nome": "RUTH HELENA FURTADO DA SILVA", "cpf": "831.019.502-87", "ref": 16762.25, "vendido": 16762.25, "status": "pendente", "fonte": "SOUENERGY", "banco": "SOLFACIL", "mes": "3", "ano": "2026", "vend": {"nome": "ROGÉRIO", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.0}}, {"nome": "Alcy Mendes da Silva", "cpf": "701.387.292-04", "ref": 15453.47, "vendido": 19500.0, "status": "pendente", "fonte": "FOTUS", "banco": "SANTANDER", "mes": "3", "ano": "2026", "vend": {"nome": "BELÉM", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "R$ 99,00", "pct": 0}, "obra": {"ativo": true, "val": 4596.0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.4}}, {"nome": "NILMA ROSANA SOUSA DO AMARAL", "cpf": "208.115.512-53", "ref": 22928.25, "vendido": 28000.0, "status": "pendente", "fonte": "SOLFACIL", "banco": "SOLFACIL", "mes": "3", "ano": "2026", "vend": {"nome": "MOISES", "pct": 2.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.4}}, {"nome": "NADIA REJANE SOUZA DO AMARAL SANTOS", "cpf": "117.710.892-53", "ref": 27498.65, "vendido": 33000.0, "status": "pendente", "fonte": "SOLFACIL", "banco": "SOLFACIL", "mes": "3", "ano": "2026", "vend": {"nome": "MOISES", "pct": 2.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "R$ 1.500,00", "pct": 0}, "obra": {"ativo": true, "val": 1200.0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.4}}, {"nome": "Jordana Do Socorro Souza Dias", "cpf": "016.086.912-92", "ref": 22422.1, "vendido": 22800.0, "status": "pendente", "fonte": "FOTUS", "banco": "SOL AGORA", "mes": "3", "ano": "2026", "vend": {"nome": "BELÉM", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.4}}, {"nome": "MARIA LUCIA FARIAS PEROTE", "cpf": "235.808.872-20", "ref": 12500.0, "vendido": 12500.0, "status": "pendente", "fonte": "SOUENERGY", "banco": "SOLFACIL", "mes": "2", "ano": "2026", "vend": {"nome": "ALVARO", "pct": 0.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.0}}, {"nome": "MICHAEL DOS SANTOS SOARES", "cpf": "840.308.362-91", "ref": 18469.65, "vendido": 20000.0, "status": "pendente", "fonte": "SOUENERGY", "banco": "SOLFACIL", "mes": "2", "ano": "2026", "vend": {"nome": "MOISES", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "DANIEL CARLOS PIRES FARIAS", "cpf": "305.632.592-72", "ref": 19641.88, "vendido": 20000.0, "status": "pendente", "fonte": "SOUENERGY", "banco": "SOLFACIL", "mes": "2", "ano": "2026", "vend": {"nome": "BRUNA", "pct": 4.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "SONIA MARIA GUEDES DOS SANTOS", "cpf": "106.235.232-72", "ref": 22019.03, "vendido": 22000.0, "status": "pendente", "fonte": "SOUENERGY", "banco": "CARTÃO", "mes": "2", "ano": "2026", "vend": {"nome": "BELÉM", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "Jairo Da Silva Correa", "cpf": "772.705.842-49", "ref": 27628.3, "vendido": 35000.0, "status": "pendente", "fonte": "CREDSOLARES", "banco": "PORTOBANK", "mes": "1", "ano": "2026", "vend": {"nome": "FERNANDA", "pct": 1.5, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "R$ 600,00", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "JOAO GERALDO DE SOUZA", "cpf": "056.925.552-04", "ref": 14378.05, "vendido": 14378.05, "status": "pendente", "fonte": "FOTUS", "banco": "SOLFACIL", "mes": "1", "ano": "2026", "vend": {"nome": "MOISES", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": true, "nome": "R$ 143,78", "pct": 1.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "ALAN CRISTIAN CHUCRE ROCHA", "cpf": "033.858.862-01", "ref": 26274.65, "vendido": 27000.0, "status": "pendente", "fonte": "RAFAEL", "banco": "SOL AGORA", "mes": "1", "ano": "2026", "vend": {"nome": "ROGÉRIO", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": true, "nome": "R$ 270,00", "pct": 1.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "GILVANA BARRETO DOS SANTOS", "cpf": "429.857.572-15", "ref": 17530.85, "vendido": 22000.0, "status": "pendente", "fonte": "SOUENERGY", "banco": "SOLFACIL", "mes": "1", "ano": "2026", "vend": {"nome": "MOISES", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "R$ 1.500,00", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "PAULO RICARDO CARDOSO SOUZA", "cpf": "001.543.522-92", "ref": 18228.75, "vendido": 18181.82, "status": "pendente", "fonte": "77SOL", "banco": "SANTANDER", "mes": "1", "ano": "2026", "vend": {"nome": "FERNANDA", "pct": 1.5, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "RAFAEL DOS REIS DE SOUZA", "cpf": "218.952.22-85", "ref": 0, "vendido": 34000.0, "status": "pendente", "fonte": "FOTUS", "banco": "SANTANDER", "mes": "12", "ano": "2025", "vend": {"nome": "PEDRO", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "JOEL REIS DA SILVA", "cpf": "481.270.272-00", "ref": 0, "vendido": 14000.0, "status": "pendente", "fonte": "RAFAEL", "banco": "SOL AGORA", "mes": "12", "ano": "2025", "vend": {"nome": "MOISES", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": true, "nome": "R$ 140,00", "pct": 1.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "CARLOS ALBERTO FURTADO DA COSTA", "cpf": "251.758.232-72", "ref": 0, "vendido": 20000.0, "status": "pendente", "fonte": "RAFAEL", "banco": "SOL AGORA", "mes": "12", "ano": "2025", "vend": {"nome": "MOISES", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": true, "nome": "R$ 200,00", "pct": 1.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "MARIA CICERA CUNHA DE OLIVEIRA DE SOUZA", "cpf": "612.529.052-20", "ref": 0, "vendido": 21000.0, "status": "pendente", "fonte": "RAFAEL", "banco": "SOL AGORA", "mes": "12", "ano": "2025", "vend": {"nome": "LUCAS", "pct": 4.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": true, "nome": "R$ 210,00", "pct": 1.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "JOSE RIBAMAR DOS SANTOS NOGUEIRA", "cpf": "097.113.412-04", "ref": 0, "vendido": 35000.0, "status": "pendente", "fonte": "FOTUS", "banco": "A VISTA", "mes": "12", "ano": "2025", "vend": {"nome": "ROGÉRIO", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "DEIVISON ERICK DIAS RAMOS", "cpf": "028.770.632-08", "ref": 0, "vendido": 23300.0, "status": "pendente", "fonte": "RAFAEL", "banco": "SOL AGORA", "mes": "12", "ano": "2025", "vend": {"nome": "BRUNA", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "VAGNO MORAES DA SILVA", "cpf": "334.951.478-29", "ref": 0, "vendido": 29000.0, "status": "pendente", "fonte": "FOTUS", "banco": "A VISTA", "mes": "12", "ano": "2025", "vend": {"nome": "FERNANDA", "pct": 2.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "RAFAELA SANTANA MUNIZ CAETANO", "cpf": "942.012.182-87", "ref": 0, "vendido": 35000.0, "status": "pendente", "fonte": "FOTUS", "banco": "BV", "mes": "11", "ano": "2025", "vend": {"nome": "AMARAL", "pct": 5.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.0}}, {"nome": "JOAO DA SILVA MIRANDA", "cpf": "264.262.772-15", "ref": 0, "vendido": 18956.4, "status": "pendente", "fonte": "RAFAEL", "banco": "SOL AGORA", "mes": "11", "ano": "2025", "vend": {"nome": "GABRIEL", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": true, "nome": "R$ 189,56", "pct": 1.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "Jairo Da Silva Correa", "cpf": "772.705.842-49", "ref": 0, "vendido": 21000.0, "status": "pendente", "fonte": "RAFAEL", "banco": "SOL AGORA", "mes": "11", "ano": "2025", "vend": {"nome": "FERNANDA", "pct": 2.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "LUCILEIDE PEREIRA DA SILVA AURELIANO", "cpf": "528.548.921-00", "ref": 0, "vendido": 35000.0, "status": "pendente", "fonte": "CLEBER", "banco": "SOL AGORA", "mes": "11", "ano": "2025", "vend": {"nome": "FERNANDA", "pct": 2.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.4}}, {"nome": "TALIS BELEM GAMA", "cpf": "091.795.932-91", "ref": 0, "vendido": 21200.0, "status": "pendente", "fonte": "BENEDITO", "banco": "SOLFACIL", "mes": "10", "ano": "2025", "vend": {"nome": "GABRIEL", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "LUANE", "pct": 0.0}, "cap": {"ativo": true, "nome": "R$ 212,00", "pct": 1.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.5}}, {"nome": "MARIA DA CRUZ DA SILVA MONTEIRO", "cpf": "147.286.722-04", "ref": 0, "vendido": 14860.0, "status": "pendente", "fonte": "BENEDITO", "banco": "SOLFACIL", "mes": "10", "ano": "2025", "vend": {"nome": "BRUNA", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "LUANE", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.5}}, {"nome": "Ezequiel Brito Garcia", "cpf": "219.176.202-68", "ref": 0, "vendido": 13860.0, "status": "pendente", "fonte": "BENEDITO", "banco": "SOL AGORA", "mes": "10", "ano": "2025", "vend": {"nome": "BRUNA", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "LUANE", "pct": 0.0}, "cap": {"ativo": true, "nome": "R$ 138,60", "pct": 1.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "Lucas", "pct": 0.5}}, {"nome": "sandra gonçalves da silva", "cpf": "488.930.052-04", "ref": 0, "vendido": 30590.0, "status": "pendente", "fonte": "BENEDITO", "banco": "SOL AGORA", "mes": "10", "ano": "2025", "vend": {"nome": "PEDRO", "pct": 1.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "BÁRBARA", "pct": 0.0}, "cap": {"ativo": true, "nome": "R$ 305,90", "pct": 1.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.4}}, {"nome": "REGINA CRISTINA SOARES DA CUNHA", "cpf": "379.702.592-00", "ref": 0, "vendido": 56000.0, "status": "pendente", "fonte": "BENEDITO", "banco": "SOL AGORA", "mes": "10", "ano": "2025", "vend": {"nome": "PEDRO", "pct": 0.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.4}}, {"nome": "PAULO RICARDO CARDOSO SOUZA", "cpf": "001.543.522-92", "ref": 0, "vendido": 29990.0, "status": "pendente", "fonte": "RED", "banco": "SOL AGORA", "mes": "10", "ano": "2025", "vend": {"nome": "FERNANDA", "pct": 2.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.4}}, {"nome": "GEOVANE DO CARMO MONTEIRO", "cpf": "029.046.332-78", "ref": 0, "vendido": 31000.0, "status": "pendente", "fonte": "RED", "banco": "SOL AGORA", "mes": "10", "ano": "2025", "vend": {"nome": "ROGÉRIO", "pct": 2.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "BÁRBARA", "pct": 0.0}, "cap": {"ativo": true, "nome": "R$ 310,00", "pct": 1.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.4}}, {"nome": "OLIVIA DOS SANTOS LOPES", "cpf": "257.831.812-34", "ref": 0, "vendido": 15800.0, "status": "pendente", "fonte": "RED", "banco": "SOL AGORA", "mes": "10", "ano": "2025", "vend": {"nome": "ROGÉRIO", "pct": 2.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": true, "nome": "R$ 158,00", "pct": 1.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.4}}, {"nome": "MARIA JOSE DOS SANTOS", "cpf": "065.823.382-34", "ref": 0, "vendido": 20000.0, "status": "pendente", "fonte": "FOTUS", "banco": "SANTANDER", "mes": "10", "ano": "2025", "vend": {"nome": "ROGÉRIO", "pct": 2.0, "majorPct": 0}, "sdr": {"ativo": false, "nome": "", "pct": 0.0}, "cap": {"ativo": false, "nome": "", "pct": 0.0}, "ind": {"ativo": false, "nome": "", "pct": 0}, "obra": {"ativo": false, "val": 0}, "pres": {"ativo": false, "val": 0}, "sup": {"nome": "", "pct": 0.4}}],homo:[{"nome": "JORGINO JUNIOR MORAES VERGOLINO", "kwp": 5.85, "vend": "ARENILDA MELO DE SOUZA", "datasign": "25/04/2026", "wpp": "91989417066", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "GUSTAVO SIMONASSI PORCHERA", "kwp": 7.49, "vend": "MOISÉS LIMA DE OLIVEIRA", "datasign": "15/04/2026", "wpp": "91984276796", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": true, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "Maria De Belém Lucena De Souza", "kwp": 6.43, "vend": "JONNHY DYEGO BELÉM SILVA", "datasign": "09/04/2026", "wpp": "91981774871", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "Alcy Mendes da Silva", "kwp": 4.34, "vend": "LUCAS LISBOA PINHO", "datasign": "13/03/2026", "wpp": "91985586588", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": false}}, {"nome": "NILMA  ROSANA SOUSA DO AMARAL", "kwp": 7.02, "vend": "MOISÉS LIMA DE OLIVEIRA", "datasign": "17/03/2026", "wpp": "91988854708", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "NADIA REJANE SOUZA DO AMARAL SANTOS", "kwp": 8.78, "vend": "MOISÉS LIMA DE OLIVEIRA", "datasign": "16/03/2026", "wpp": "91984449343", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "RUTH HELENA FURTADO DA SILVA", "kwp": 4.68, "vend": "ROGÉRIO COSTA BARBOSA", "datasign": "06/03/2026", "wpp": "91981169218", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "SONIA MARIA GUEDES DOS SANTOS", "kwp": 6.3, "vend": "LUCAS LISBOA PINHO", "datasign": "21/02/2026", "wpp": "81999608913", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": false}}, {"nome": "DANIEL CARLOS PIRES FARIAS", "kwp": 5.6, "vend": "BRUNA MORAES PEREIRA", "datasign": "23/02/2026", "wpp": "93991361866", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": true, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "PAULO RICARDO CARDOSO DE SOUZA", "kwp": 8.68, "vend": "FERNANDA DE SOUZA FROES", "datasign": "18/02/2026", "wpp": "91988556508", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": true, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "MARIA LUCIA FARIAS PEROTE", "kwp": 8.4, "vend": "LUCAS LISBOA PINHO", "datasign": "16/02/2026", "wpp": "91982691059", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": false}}, {"nome": "MICHAEL  DOS SANTOS SOARES", "kwp": 5.6, "vend": "MOISÉS LIMA DE OLIVEIRA", "datasign": "12/02/2026", "wpp": "91983201029", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "LIA MARIA DIAS PINHEIRO", "kwp": 8.54, "vend": "LUCAS LISBOA PINHO", "datasign": "06/02/2026", "wpp": "91988329136", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": true, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": false}}, {"nome": "RAFAEL DOS REIS DE SOUZA", "kwp": 11.16, "vend": "LUCAS LISBOA PINHO", "datasign": "18/12/2025", "wpp": "91982445204", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": false}}, {"nome": "JOÃO GERALDO DE SOUZA", "kwp": 4.34, "vend": "MOISÉS LIMA DE OLIVEIRA", "datasign": "28/01/2026", "wpp": "91991536646", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "GILVANA BARRETO DOS SANTOS", "kwp": 4.9, "vend": "MOISÉS LIMA DE OLIVEIRA", "datasign": "29/01/2026", "wpp": "91989380466", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": true, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "ALLAN CRISTIAN CHUCRE ROCHA", "kwp": 8.06, "vend": "ROGÉRIO COSTA BARBOSA", "datasign": "27/01/2026", "wpp": "91986052727", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "ANA ALICE LOBO RENDEIRO", "kwp": 3.72, "vend": "MOISÉS LIMA DE OLIVEIRA", "datasign": "26/12/2025", "wpp": "91993602886", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "REGINALDO FURTADO DA COSTA", "kwp": 6.2, "vend": "MOISÉS LIMA DE OLIVEIRA", "datasign": "23/12/2025", "wpp": "91981156944", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "ROSILENE CALDAS DIAS", "kwp": 7.44, "vend": "BRUNA MORAES PEREIRA", "datasign": "17/12/2025", "wpp": "91989891644", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "JOAO DA SILVA MIRANDA", "kwp": 6.82, "vend": "GABRIEL MARQUES DE PAULA", "datasign": "04/12/2025", "wpp": "91988637590", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "MARIA CICERA CUNHA DE OLIVEIRA", "kwp": 7.44, "vend": "LUCAS LISBOA PINHO", "datasign": "11/12/2025", "wpp": "91981545176", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": false, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}, {"nome": "José Ribamar dos Santos Nogueira", "kwp": 11.78, "vend": "ROGÉRIO COSTA BARBOSA", "datasign": "10/12/2025", "wpp": "91999499251", "tecVal": 0, "trtQtd": 1, "artQtd": 0, "artVal": 0, "estimado": 68.17, "pago": 0, "status": "aguardando", "docs": {"procuracao": true, "fatura_ger": true, "fatura_ben": true, "datasheet_inv": true, "datasheet_mod": true, "arquivo_vist": true}}],cad:[{"nome": "Alvaro", "tipo": "vendedor", "wpp": "", "email": "", "doc": "", "cidade": "Belém", "obs": ""}, {"nome": "Amaral", "tipo": "vendedor", "wpp": "", "email": "", "doc": "", "cidade": "Belém", "obs": ""}, {"nome": "Arenilda", "tipo": "vendedor", "wpp": "", "email": "", "doc": "", "cidade": "Belém", "obs": ""}, {"nome": "Belém", "tipo": "vendedor", "wpp": "", "email": "", "doc": "", "cidade": "Belém", "obs": ""}, {"nome": "Bruna", "tipo": "vendedor", "wpp": "", "email": "", "doc": "", "cidade": "Belém", "obs": ""}, {"nome": "Fernanda", "tipo": "vendedor", "wpp": "", "email": "", "doc": "", "cidade": "Belém", "obs": ""}, {"nome": "Gabriel", "tipo": "vendedor", "wpp": "", "email": "", "doc": "", "cidade": "Belém", "obs": ""}, {"nome": "Lucas", "tipo": "vendedor", "wpp": "", "email": "", "doc": "", "cidade": "Belém", "obs": ""}, {"nome": "Moises", "tipo": "vendedor", "wpp": "", "email": "", "doc": "", "cidade": "Belém", "obs": ""}, {"nome": "Pedro", "tipo": "vendedor", "wpp": "", "email": "", "doc": "", "cidade": "Belém", "obs": ""}, {"nome": "Rogério", "tipo": "vendedor", "wpp": "", "email": "", "doc": "", "cidade": "Belém", "obs": ""}]};
 
 function def(k){
+  if(k===SK.lead)return[];
   if(k===SK.prop)return JSON.parse(JSON.stringify(DR.prop));
   if(k===SK.vist)return[];
   if(k===SK.cont)return JSON.parse(JSON.stringify(DR.cont));
@@ -892,6 +980,8 @@ function def(k){
 // ===================== NAVIGATION =====================
 const PAGES={
   dashboard:{title:'Dashboard',sub:'Visão geral do negócio'},
+  leads:{title:'Leads',sub:'Gestão de leads e prospecção'},
+  remarketing:{title:'Remarketing',sub:'Leads e propostas para reativar'},
   propostas:{title:'Propostas',sub:'Gestão de propostas comerciais'},
   vistorias:{title:'Vistorias',sub:'Agendamento e controle de vistorias'},
   contratos:{title:'Contratos',sub:'Base de contratos assinados'},
@@ -922,7 +1012,7 @@ function sw(id, noFetch){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
   document.getElementById('ni-'+id).classList.add('active');
-  const pg=PAGES[id];
+  const pg=PAGES[id]||{title:id,sub:''};
   document.getElementById('page-title').textContent=pg.title;
   document.getElementById('page-sub').textContent=pg.sub;
   const btn=document.getElementById('topbar-cta');
@@ -930,16 +1020,16 @@ function sw(id, noFetch){
   if(cta){btn.textContent=cta.label;btn.style.display='inline-block';}
   else{btn.style.display='none';}
   // Recarrega dados do Supabase ao trocar de aba
-  const renders={dashboard:renderDash,propostas:renderProp,vistorias:renderVist,contratos:renderCont,logistica:renderLog,instalacao:renderInst,homologacao:renderHomo,posvenda:renderPV,comissoes:renderCom,financeiro:renderFin,cadastro:renderCad,usuarios:renderUsuarios};
+  const renders={dashboard:renderDash,leads:renderLead,remarketing:renderRemark,propostas:renderProp,vistorias:renderVist,contratos:renderCont,logistica:renderLog,instalacao:renderInst,homologacao:renderHomo,posvenda:renderPV,comissoes:renderCom,financeiro:renderFin,cadastro:renderCad,usuarios:renderUsuarios};
   if(!noFetch && _user && _TBL) {
     // Determina qual tabela recarregar para esta aba
-    const abaParaTabela={propostas:'propostas',vistorias:'vistorias',contratos:'contratos',
+    const abaParaTabela={leads:'leads',remarketing:null,propostas:'propostas',vistorias:'vistorias',contratos:'contratos',
       logistica:'logistica',instalacao:'instalacoes',homologacao:'homologacoes',posvenda:null,comissoes:'comissoes',
       financeiro:null,cadastro:'cadastros',usuarios:null};
     const tbl=abaParaTabela[id];
     if(tbl) {
       getSB().from(tbl).select('*').order('criado_em',{ascending:false}).then(({data})=>{
-        if(data){const p=(_cache[tbl]||[]).filter(r=>!r.id);if(data.length>0||p.length>0)_cache[tbl]=[...p,...data];renders[id]&&renders[id]();}
+        if(data){const norm=_normData(tbl,data);const sbNames=new Set(norm.map(r=>r.nome).filter(Boolean));const p=(_cache[tbl]||[]).filter(r=>!r.id&&!sbNames.has(r.nome));const merged=_mergePU(tbl,norm);if(merged.length>0||p.length>0)_cache[tbl]=[...p,...merged];renders[id]&&renders[id]();}
       });
       return; // render será chamado pelo then acima
     }
@@ -961,7 +1051,11 @@ document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',fu
 
 // Update nav counts
 function updateNavCounts(){
+  const _leadsPerda=ld(SK.lead).filter(x=>x.status==='sem_interesse').length;
+  const _propsPerda=ld(SK.prop).filter(x=>x.status==='lost').length;
   const counts={
+    leads: ld(SK.lead).filter(x=>x.status!=='sem_interesse').length,
+    remarketing: _leadsPerda+_propsPerda||'',
     propostas: ld(SK.prop).length,
     vistorias: ld(SK.vist).length,
     contratos: ld(SK.cont).length,
@@ -1009,6 +1103,7 @@ function populateDataLists(){
   // Vendedores — merge estático + cadastros
   const vends=[...new Set([..._OPTS.vendedores,...(byType.vendedor||[]),...(byType.supervisor||[]),...(byType.gerente||[])])];
   fill('list-vendedores',vends);fill('list-vendedores2',vends);fill('list-vendedores3',vends);fill('list-vend-prop',vends);
+  fillSel('ml-vend',vends,'— Vendedor —');
   fillSel('mp-vend',vends,'— Vendedor —');
   fillSel('mc-vend',vends,'— Vendedor —');
   fillSel('mh-vend',vends,'— Vendedor —');
@@ -1115,12 +1210,40 @@ async function buscarCEP(cep,fields){
     setAlways(fields.estado,d.uf);
   }catch(e){}
 }
+async function _buscaCEP(cepId,ruaId,bairroId,cidadeId,estadoId){
+  const cep=document.getElementById(cepId).value.replace(/\D/g,'');
+  if(cep.length!==8)return;
+  try{
+    const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d=await r.json();
+    if(d.erro)return;
+    if(ruaId)document.getElementById(ruaId).value=d.logradouro||'';
+    if(bairroId)document.getElementById(bairroId).value=d.bairro||'';
+    if(cidadeId)document.getElementById(cidadeId).value=d.localidade||'';
+    if(estadoId)document.getElementById(estadoId).value=d.uf||'';
+  }catch(e){}
+}
+function buscaCEP_cont(){_buscaCEP('mc-cep','mc-rua','mc-bairro','mc-cidade','mc-estado');}
+function buscaCEP_cad(){_buscaCEP('mcad-cep','mcad-rua',null,'mcad-cidade','mcad-estado');}
 
 // ===================== DASHBOARD =====================
 let _dashYear=new Date().getFullYear();
-let _dashQuarter=null; // null=ano todo, 1-4=trimestre
-let _dashVend='';      // ''=todos
+let _dashPerType='ano'; // 'ano' | 's' | 'q' | 'm' | 'd'
+let _dashPerVal=null;   // semestre(1-2) | trimestre(1-4) | mês(1-12) | dia('yyyy-mm-dd')
+let _dashVend='';
 
+// Compat: _dashQuarter lido por outros trechos legados
+Object.defineProperty(window,'_dashQuarter',{get:()=>_dashPerType==='q'?_dashPerVal:null,set:()=>{}});
+
+const _MESES_NOME=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function _perMonths(){
+  if(_dashPerType==='q')return[(_dashPerVal-1)*3+1,(_dashPerVal-1)*3+2,(_dashPerVal-1)*3+3];
+  if(_dashPerType==='s')return _dashPerVal===1?[1,2,3,4,5,6]:[7,8,9,10,11,12];
+  if(_dashPerType==='m')return[_dashPerVal];
+  return null;
+}
+// legacy
 function _quarterMonths(q){return q?[(q-1)*3+1,(q-1)*3+2,(q-1)*3+3]:null;}
 
 function setDashYear(y){
@@ -1130,14 +1253,30 @@ function setDashYear(y){
   });
   renderDash();
 }
-function setDashQuarter(q){
-  _dashQuarter=q;
-  ['q0','q1','q2','q3','q4'].forEach(k=>{
-    const el=document.getElementById('dpf-'+k);
-    if(el)el.classList.toggle('active',(q===null&&k==='q0')||(q!==null&&k==='q'+q));
-  });
+
+function setDashPer(type,val=null){
+  _dashPerType=type;
+  _dashPerVal=val;
+  // limpa todos os botões de período
+  const ids=['q0','s1','s2','q1','q2','q3','q4',
+    'm1','m2','m3','m4','m5','m6','m7','m8','m9','m10','m11','m12'];
+  ids.forEach(k=>{const el=document.getElementById('dpf-'+k);if(el)el.classList.remove('active');});
+  // marca o ativo
+  let aid=null;
+  if(type==='ano')aid='dpf-q0';
+  else if(type==='s')aid=`dpf-s${val}`;
+  else if(type==='q')aid=`dpf-q${val}`;
+  else if(type==='m')aid=`dpf-m${val}`;
+  if(aid){const el=document.getElementById(aid);if(el)el.classList.add('active');}
+  // botão limpar dia
+  const cb=document.getElementById('dpf-clear-day');
+  if(cb)cb.style.display=type==='d'?'':'none';
+  if(type!=='d'){const inp=document.getElementById('dpf-day');if(inp)inp.value='';}
   renderDash();
 }
+
+// Compat: mantém setDashQuarter funcionando
+function setDashQuarter(q){setDashPer(q===null?'ano':'q',q);}
 function setDashVend(v){_dashVend=v;renderDash();}
 
 // Build year buttons from all data (called after data loads)
@@ -1166,36 +1305,42 @@ function buildVendDropdown(){
   sel.innerHTML='<option value="">Todos</option>'+[...vends].sort().map(v=>`<option value="${v}"${v===cur?' selected':''}>${v}</option>`).join('');
 }
 
-// Parse dd/mm/yyyy → {m,y}
+// Parse dd/mm/yyyy ou yyyy-mm-dd → {d,m,y}
 function _parseDMY(s){
   if(!s)return null;
-  // dd/mm/yyyy (local format)
   let p=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(p)return{m:+p[2],y:+p[3]};
-  // yyyy-mm-dd (ISO from Supabase)
+  if(p)return{d:+p[1],m:+p[2],y:+p[3]};
   p=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if(p)return{m:+p[2],y:+p[1]};
+  if(p)return{d:+p[3],m:+p[2],y:+p[1]};
   return null;
 }
 
-// Generic filter: supports year+quarter+vendedor
+// Filtro principal: ano + período + vendedor
 function filterDash(arr,getDate,getVend){
-  const months=_quarterMonths(_dashQuarter);
+  const months=_perMonths();
   return arr.filter(x=>{
     const d=getDate(x);
     if(!d||+d.y!==_dashYear)return false;
     if(months&&!months.includes(+d.m))return false;
+    if(_dashPerType==='d'&&_dashPerVal){
+      const[dy,dm,dd]=_dashPerVal.split('-').map(Number);
+      if(!d||d.y!==dy||d.m!==dm||d.d!==dd)return false;
+    }
     if(_dashVend&&getVend&&(getVend(x)||'').trim()!==_dashVend)return false;
     return true;
   });
 }
 
-// Legacy compat: filterByPeriod (used by older code)
+// Legacy compat
 let _dashPeriod='ano';
 function setDashPeriod(p){_dashPeriod=p;renderDash();}
 function getDashDateRange(){
-  const months=_quarterMonths(_dashQuarter);
-  const lbl=months?`Q${_dashQuarter} ${_dashYear}`:`${_dashYear}`;
+  const months=_perMonths();
+  let lbl=`${_dashYear}`;
+  if(_dashPerType==='q')lbl=`Q${_dashPerVal} ${_dashYear}`;
+  else if(_dashPerType==='s')lbl=`S${_dashPerVal} ${_dashYear}`;
+  else if(_dashPerType==='m')lbl=`${_MESES_NOME[_dashPerVal-1]} ${_dashYear}`;
+  else if(_dashPerType==='d'&&_dashPerVal){const[dy,dm,dd]=_dashPerVal.split('-');lbl=`${dd}/${dm}/${dy}`;}
   return{ano:_dashYear,months,label:lbl};
 }
 function filterByPeriod(arr,_p,getDate){
@@ -1308,16 +1453,7 @@ function renderDash(){
   const pgtoRank=_rankItems(contsF,x=>{const desc=x.pgtoDesc||x.pgto_desc||'';const raw=(x.pgto||'').trim();const p=_normPgto(raw||(_extractBanco(desc)?'Financiamento Bancário':null));return p||null;},x=>+x.valor||0);
   _renderRanking('dash-rank-pgto',pgtoRank,fK,'Sem dados no período');
 
-  // Alertas
-  const pendComissoes=coms.filter(x=>x.status==='pendente').length;
-  const docsIncompletos=homos.filter(x=>{const d=x.docs||{};return Object.values(d).some(v=>!v)}).length;
-  const instPendentes=insts.filter(x=>x.status==='agendada').length;
-  let alerts='';
-  if(pendComissoes>0) alerts+=`<div class="alert-card"><span class="alert-icon">💰</span><div><div class="alert-text">${pendComissoes} comissão(ões) pendente(s)</div><div class="alert-sub">Aguardando pagamento</div></div></div>`;
-  if(docsIncompletos>0) alerts+=`<div class="alert-card"><span class="alert-icon">📄</span><div><div class="alert-text">${docsIncompletos} homologação(ões) com docs incompletos</div><div class="alert-sub">Verificar checklist</div></div></div>`;
-  if(instPendentes>0) alerts+=`<div class="alert-card green"><span class="alert-icon">🔧</span><div><div class="alert-text">${instPendentes} instalação(ões) agendada(s)</div><div class="alert-sub">Pendentes de execução</div></div></div>`;
-  if(!alerts) alerts=`<div class="alert-card green"><span class="alert-icon">✅</span><div><div class="alert-text">Tudo em ordem!</div><div class="alert-sub">Nenhuma pendência crítica</div></div></div>`;
-  document.getElementById('dash-alerts').innerHTML=alerts;
+  // Alertas — handled by _renderAlertas() called at end of renderDash
 
   // Mini chart por mês — uses allComs to always show full month bars within period range
   const byMes={};
@@ -1348,6 +1484,145 @@ function renderDash(){
     <td><span class="sp ${PCSS[x.status]||'sb'}">${PSTAT[x.status]||x.status}</span></td>
     <td><div class="act-row"><button class="ab ab-g" onclick="ol('${wu}')">WhatsApp</button><button class="ab ab-b" onclick="sw('propostas')">Ver todas</button></div></td></tr>`;
   }).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhuma proposta</td></tr>';
+
+  // Feature 3: Evolução de contratos chart
+  _renderEvolucaoChart();
+  // Feature 7: Metas por vendedor
+  _renderMetas();
+  // Feature 4: Alertas melhorados
+  _renderAlertas(conts,homos,insts);
+}
+
+function _renderEvolucaoChart(){
+  const canvas=document.getElementById('dash-chart-evolucao');
+  if(!canvas||typeof Chart==='undefined')return;
+  const allConts=ld(SK.cont).filter(c=>c.data);
+  const byMes={};
+  allConts.forEach(c=>{
+    const d=_parseDMY(c.data||c.criado_em||'');
+    if(!d||d.y!==_dashYear)return;
+    const k=String(d.m).padStart(2,'0');
+    if(!byMes[k])byMes[k]={contratos:0,valor:0};
+    byMes[k].contratos++;
+    byMes[k].valor+=+c.valor||0;
+  });
+  const labels=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const dataContratos=Array.from({length:12},(_,i)=>(byMes[String(i+1).padStart(2,'0')]?.contratos||0));
+  const dataValor=Array.from({length:12},(_,i)=>(byMes[String(i+1).padStart(2,'0')]?.valor||0));
+  if(canvas._chart)canvas._chart.destroy();
+  canvas._chart=new Chart(canvas,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Contratos',data:dataContratos,backgroundColor:'#3B6D1180',borderColor:'#3B6D11',borderWidth:2,yAxisID:'y',order:2},
+        {label:'Valor (R$)',data:dataValor,type:'line',borderColor:'#6B46C1',backgroundColor:'#6B46C120',borderWidth:2,tension:0.4,yAxisID:'y1',order:1,pointRadius:4,pointBackgroundColor:'#6B46C1'}
+      ]
+    },
+    options:{
+      responsive:true,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{font:{size:11},color:'#666'}}},
+      scales:{
+        y:{type:'linear',position:'left',ticks:{stepSize:1,color:'#666',font:{size:10}},grid:{color:'#eee'}},
+        y1:{type:'linear',position:'right',grid:{display:false},ticks:{color:'#6B46C1',font:{size:10},callback:v=>'R$'+new Intl.NumberFormat('pt-BR',{notation:'compact'}).format(v)}}
+      }
+    }
+  });
+}
+
+function _renderMetas(){
+  const el=document.getElementById('dash-metas');
+  if(!el)return;
+  const allConts=ld(SK.cont);
+  const contsF=filterDash(allConts,x=>_parseDMY(x.data||x.criado_em||''),x=>x.vend);
+  const vendMap={};
+  contsF.forEach(c=>{
+    const v=(c.vend||'').trim();if(!v)return;
+    if(!vendMap[v])vendMap[v]={valor:0,n:0};
+    vendMap[v].valor+=+c.valor||0;
+    vendMap[v].n++;
+  });
+  const vends=Object.keys(vendMap);
+  if(!vends.length){el.innerHTML='<div style="color:var(--mu);font-size:12px;padding:8px">Nenhum contrato no período para exibir metas.</div>';return;}
+  el.innerHTML=vends.map(v=>{
+    const metaKey='_meta_vend_'+v;
+    const meta=+(localStorage.getItem(metaKey)||50000);
+    const atual=vendMap[v].valor;
+    const pct=Math.min(100,Math.round(atual/meta*100));
+    const barColor=pct>=100?'#3B6D11':pct>=60?'#BA7517':'#A32D2D';
+    return`<div style="background:var(--card);border:1px solid var(--bd);border-radius:var(--rad);padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:12px;font-weight:600;min-width:160px">${v}</div>
+      <div style="flex:1">
+        <div style="height:8px;background:#eee;border-radius:4px;overflow:hidden">
+          <div style="height:8px;background:${barColor};border-radius:4px;width:${pct}%;transition:width .4s"></div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--mu);min-width:80px;text-align:right">${vendMap[v].n} ctto(s)</div>
+      <div style="font-size:11px;font-weight:600;min-width:120px;text-align:right">R$ ${atual.toLocaleString('pt-BR')} / <span style="color:var(--mu);cursor:pointer;text-decoration:underline dotted" onclick="editarMeta('${v}')" title="Clique para editar a meta">R$ ${meta.toLocaleString('pt-BR')}</span></div>
+      <div style="font-size:12px;font-weight:700;color:${barColor};min-width:38px;text-align:right">${pct}%</div>
+    </div>`;
+  }).join('');
+}
+function editarMeta(vend){
+  const metaKey='_meta_vend_'+vend;
+  const atual=+(localStorage.getItem(metaKey)||50000);
+  const nova=prompt(`Meta mensal para ${vend} (R$):`,atual);
+  if(nova===null)return;
+  const v=+nova.replace(/\D/g,'');
+  if(!v||v<1)return;
+  localStorage.setItem(metaKey,v);
+  _renderMetas();
+}
+
+function _renderAlertas(conts,homos,insts){
+  const el=document.getElementById('dash-alerts');
+  if(!el)return;
+  const hoje=new Date();hoje.setHours(0,0,0,0);
+  const toDate=s=>{if(!s)return null;const p=_parseDMY(s);if(!p)return null;return new Date(p.y,p.m-1,p.d);};
+  const diffDias=(d1,d2)=>Math.round((d2-d1)/(1000*60*60*24));
+  let alerts='';
+
+  // Vistorias agendadas para HOJE
+  const vistsHoje=ld(SK.vist).filter(v=>{
+    if(v.status!=='agendada'||!v.data)return false;
+    const d=toDate(v.data.includes('/')? v.data : v.data.replace(/-/g,'/').replace(/(\d{4})\/(\d{2})\/(\d{2})/,'$3/$2/$1'));
+    return d&&d.getTime()===hoje.getTime();
+  });
+  if(vistsHoje.length>0)alerts+=`<div class="alert-card green"><span class="alert-icon">🔍</span><div><div class="alert-text">${vistsHoje.length} vistoria(s) agendada(s) para HOJE</div><div class="alert-sub" style="cursor:pointer" onclick="sw('vistorias')">${vistsHoje.map(v=>v.nome).join(', ')} — Ver vistorias →</div></div></div>`;
+
+  // Contratos pendentes há mais de 7 dias
+  const contsPend=conts.filter(c=>{
+    if(c.status!=='pendente'||!c.data)return false;
+    const d=toDate(c.data);
+    return d&&diffDias(d,hoje)>7;
+  });
+  if(contsPend.length>0)alerts+=`<div class="alert-card"><span class="alert-icon">📑</span><div><div class="alert-text">${contsPend.length} contrato(s) pendente(s) há mais de 7 dias</div><div class="alert-sub" style="cursor:pointer" onclick="sw('contratos')">Ver contratos →</div></div></div>`;
+
+  // Leads sem contato há mais de 3 dias
+  const leadsAguard=ld(SK.lead).filter(l=>{
+    if(!['aguardando','primeira'].includes(l.status)||!l.data)return false;
+    const d=toDate(l.data);
+    return d&&diffDias(d,hoje)>3;
+  });
+  if(leadsAguard.length>0)alerts+=`<div class="alert-card"><span class="alert-icon">🎯</span><div><div class="alert-text">${leadsAguard.length} lead(s) sem contato há mais de 3 dias</div><div class="alert-sub" style="cursor:pointer" onclick="sw('leads')">Ver leads →</div></div></div>`;
+
+  // Homologações aguardando há mais de 30 dias
+  const homosPend=homos.filter(h=>{
+    if(!['aguardando','analise'].includes(h.status)||!h.datasign)return false;
+    const d=toDate(h.datasign.includes('/')? h.datasign : h.datasign.replace(/-/g,'/').replace(/(\d{4})\/(\d{2})\/(\d{2})/,'$3/$2/$1'));
+    return d&&diffDias(d,hoje)>30;
+  });
+  if(homosPend.length>0)alerts+=`<div class="alert-card red"><span class="alert-icon">⚡</span><div><div class="alert-text">${homosPend.length} homologação(ões) aguardando há mais de 30 dias</div><div class="alert-sub" style="cursor:pointer" onclick="sw('homologacao')">Ver homologações →</div></div></div>`;
+
+  // Legados
+  const pendComissoes=ld(SK.com).filter(x=>x.status==='pendente').length;
+  const docsIncompletos=homos.filter(x=>{const d=x.docs||{};return Object.values(d).some(v=>!v)}).length;
+  const instPendentes=insts.filter(x=>x.status==='agendada').length;
+  if(pendComissoes>0)alerts+=`<div class="alert-card"><span class="alert-icon">💰</span><div><div class="alert-text">${pendComissoes} comissão(ões) pendente(s)</div><div class="alert-sub">Aguardando pagamento</div></div></div>`;
+  if(docsIncompletos>0)alerts+=`<div class="alert-card"><span class="alert-icon">📄</span><div><div class="alert-text">${docsIncompletos} homologação(ões) com docs incompletos</div><div class="alert-sub">Verificar checklist</div></div></div>`;
+  if(instPendentes>0)alerts+=`<div class="alert-card green"><span class="alert-icon">🔧</span><div><div class="alert-text">${instPendentes} instalação(ões) agendada(s)</div><div class="alert-sub">Pendentes de execução</div></div></div>`;
+  if(!alerts)alerts=`<div class="alert-card green"><span class="alert-icon">✅</span><div><div class="alert-text">Tudo em ordem!</div><div class="alert-sub">Nenhuma pendência crítica</div></div></div>`;
+  el.innerHTML=alerts;
 }
 
 // ===================== PROPOSTAS =====================
@@ -1633,29 +1908,150 @@ function enviarPropostaEmail(){
   window.open(`mailto:${p.email}?subject=${sub}&body=${body}`);
 }
 
+// ===================== LEADS =====================
+const LSTAT={aguardando:'Aguardando contato',primeira:'Primeira tentativa',segunda:'Segunda tentativa',terceira:'Terceira tentativa',proposta:'Proposta',sem_interesse:'Não tem interesse'};
+const LCSS={aguardando:'sb',primeira:'sa',segunda:'sa',terceira:'sa',proposta:'sg',sem_interesse:'sr'};
+const LCANAL=['PAP','Network','Captação','Indicação','Tráfego pago','Redes sociais'];
+
+// ===================== REMARKETING =====================
+function renderRemark(){
+  const leads=ld(SK.lead).filter(x=>x.status==='sem_interesse');
+  const props=ld(SK.prop).filter(x=>x.status==='lost');
+  const total=leads.length+props.length;
+  const hoje=new Date();const mesAtual=hoje.getMonth()+1,anoAtual=hoje.getFullYear();
+  mkM('m-remark',[
+    {l:'Total para reativar',v:total,s:'registros',c:'b'},
+    {l:'Leads sem interesse',v:leads.length,s:'leads',c:'r'},
+    {l:'Propostas perdidas',v:props.length,s:'propostas',c:'r'},
+    {l:'Reativados este mês',v:0,s:'(calculado manualmente)',c:'g'}
+  ]);
+  const rows=[
+    ...leads.map((x,_)=>({...x,_tipo:'Lead',_idx:ld(SK.lead).indexOf(x),_sk:SK.lead,_novoStatus:'aguardando'})),
+    ...props.map((x,_)=>({...x,_tipo:'Proposta',_idx:ld(SK.prop).indexOf(x),_sk:SK.prop,_novoStatus:'new'}))
+  ];
+  document.getElementById('tb-remark').innerHTML=rows.map((x,i)=>{
+    const motivo=x.motivo||'—';
+    const data=x.data||'—';
+    return`<tr>
+      <td title="${x.nome}">${x.nome}</td>
+      <td><span class="sp ${x._tipo==='Lead'?'sb':'sa'}">${x._tipo}</span></td>
+      <td>${motivo}</td>
+      <td>${data}</td>
+      <td><input type="date" style="font-size:11px;padding:2px 6px;border:1px solid var(--bd);border-radius:6px;background:var(--sec)" id="remark-dt-${i}"></td>
+      <td><button class="ab ab-g" onclick="reativarRemark(${x._idx},'${x._sk}','${x._novoStatus}')">Reativar</button></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhum item para reativar</td></tr>';
+}
+function reativarRemark(idx,sk,novoStatus){
+  const d=ld(sk);
+  if(!d[idx])return;
+  d[idx].status=novoStatus;
+  sv(sk,d);
+  _hookSave(sk===SK.lead?'leads':'propostas',d[idx]);
+  renderRemark();
+  updateNavCounts();
+}
+
+function renderLead(){
+  const d=ld(SK.lead);
+  const ag=d.filter(x=>x.status==='aguardando').length;
+  const cont=d.filter(x=>['primeira','segunda','terceira'].includes(x.status)).length;
+  const conv=d.filter(x=>x.status==='proposta').length;
+  const si=d.filter(x=>x.status==='sem_interesse').length;
+  mkM('m-lead',[{l:'Total',v:d.length,s:'',c:'b'},{l:'Aguardando',v:ag,s:'',c:'a'},{l:'Em contato',v:cont,s:'tentativas',c:'a'},{l:'Convertidos',v:conv,s:'virou proposta',c:'g'}]);
+  mkF('f-lead',[{k:'all',l:'Todos',c:d.length},{k:'aguardando',l:'Aguardando',c:ag},{k:'contato',l:'Em contato',c:cont},{k:'proposta',l:'Proposta',c:conv},{k:'sem_interesse',l:'Sem interesse',c:si}],filt.lead,'setFL');
+  const fl=filt.lead==='all'?d:filt.lead==='contato'?d.filter(x=>['primeira','segunda','terceira'].includes(x.status)):d.filter(x=>x.status===filt.lead);
+  document.getElementById('c-lead').textContent=fl.length+' lead'+(fl.length===1?'':'s');
+  document.getElementById('tb-lead').innerHTML=fl.map(x=>{
+    const ri=d.indexOf(x);
+    const wuNum=(x.telefone||'').replace(/\D/g,'');
+    const wu=wuNum?`https://wa.me/55${wuNum}?text=${encodeURIComponent('Olá '+x.nome+'! Vim falar sobre energia solar.')}`:'#';
+    return`<tr><td>${x.nome}</td><td>${x.telefone||'—'}</td><td><span class="sb" style="font-size:11px">${x.canal||'—'}</span></td>
+    <td><select class="sselect" onchange="chgLead(${ri},this.value)">${Object.entries(LSTAT).map(([k,v])=>`<option value="${k}" ${x.status===k?'selected':''}>${v}</option>`).join('')}</select></td>
+    <td><div class="act-row">${wuNum?`<button class="ab ab-g" onclick="ol('${wu}')">WhatsApp</button>`:''}
+    <button class="ab" onclick="editLead(${ri})">Editar</button>
+    <button class="ab ab-r" onclick="delLead(${ri})">🗑️</button></div></td></tr>`;
+  }).join('')||`<tr><td colspan="5" style="text-align:center;color:var(--mu);padding:20px">Nenhum lead</td></tr>`;
+}
+function setFL(f){filt.lead=f;renderLead()}
+function chgLead(i,v){const d=ld(SK.lead);d[i].status=v;sv(SK.lead,d);_hookSave('leads',d[i]);if(v==='proposta')_leadToProp(d[i]);renderLead();updateNavCounts();}
+function _leadToProp(x){
+  const ps=ld(SK.prop);
+  if(ps.some(p=>p.nome===x.nome))return;
+  const np={nome:x.nome,wpp:x.telefone||'',email:'',vend:x.vend||'',vendWpp:'',vendEmail:'',status:'new',aceito:false,data:new Date().toLocaleDateString('pt-BR'),kwp:0,valor:0,kwh:0,eco:0,qi:1,pi:0,mi:'',qm:0,pm:0,mm:'',qb:0,mb:'',pb:0,area:0,semsolar:0,comsolar:0,validade:'7 dias',_origem:'lead'};
+  ps.unshift(np);sv(SK.prop,ps);_hookSave('propostas',np);
+  renderProp();updateNavCounts();
+  if(confirm('Lead "'+x.nome+'" convertido em proposta! Deseja abrir a proposta agora?'))sw('propostas');
+}
+function openLeadModal(){ei.lead=null;document.getElementById('ml-nome').value='';document.getElementById('ml-tel').value='';document.getElementById('ml-canal').value='';document.getElementById('ml-status').value='aguardando';populateDataLists();document.getElementById('ml-t').textContent='Novo lead';openM('mo-lead');}
+function editLead(i){ei.lead=i;const x=ld(SK.lead)[i];document.getElementById('ml-nome').value=x.nome;document.getElementById('ml-tel').value=x.telefone||'';document.getElementById('ml-canal').value=x.canal||'';document.getElementById('ml-status').value=x.status||'aguardando';populateDataLists();document.getElementById('ml-vend').value=x.vend||'';document.getElementById('ml-t').textContent='Editar lead';openM('mo-lead');}
+function saveLead(){const nome=document.getElementById('ml-nome').value.trim();if(!nome)return alert('Informe o nome');const existing=ei.lead!==null?ld(SK.lead)[ei.lead]:{};const prevStatus=existing.status||'aguardando';const e={...existing,nome,telefone:document.getElementById('ml-tel').value.trim(),canal:document.getElementById('ml-canal').value,vend:document.getElementById('ml-vend').value,status:document.getElementById('ml-status').value,data:existing.data||new Date().toLocaleDateString('pt-BR')};const d=ld(SK.lead);if(ei.lead!==null)d[ei.lead]=e;else d.unshift(e);sv(SK.lead,d);_hookSave('leads',e);if(e.status==='proposta'&&prevStatus!=='proposta')_leadToProp(e);closeM('mo-lead');renderLead();updateNavCounts();}
+function delLead(i){const d=ld(SK.lead);const x=d[i];if(!confirm(`Excluir lead "${x.nome}"?`))return;if(x.id)_hookDel('leads',x.id);d.splice(i,1);sv(SK.lead,d);renderLead();updateNavCounts();}
+
+let _propViewKanban=false;
+function togglePropView(){
+  _propViewKanban=!_propViewKanban;
+  document.getElementById('prop-view-toggle').textContent=_propViewKanban?'☰ Lista':'⊞ Kanban';
+  renderProp();
+}
+function _renderPropKanban(d,fl){
+  const el=document.getElementById('prop-kanban-view');
+  if(!el)return;
+  const cols=[
+    {k:'new',l:'Nova Proposta'},
+    {k:'neg',l:'Em Negociação'},
+    {k:'win',l:'Fechada ✅'},
+    {k:'lost',l:'Perdida ❌'}
+  ];
+  const fmt=v=>v?'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0}):'—';
+  el.innerHTML='<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px">'+cols.map(col=>{
+    const items=d.filter(x=>x.status===col.k);
+    const cards=items.map(x=>{
+      const ri=d.indexOf(x);
+      return`<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);cursor:pointer" onclick="editProp(${ri})">
+        <div style="font-weight:600;font-size:12px">${x.nome}</div>
+        <div style="font-size:11px;color:#888;margin-top:4px">${fmt(x.valor)} | ${x.kwp||x.kwh||'—'} kWp</div>
+        <div style="font-size:10px;color:#aaa;margin-top:4px">${x.vend||'—'} · ${x.data||'—'}</div>
+      </div>`;
+    }).join('');
+    return`<div style="min-width:220px;flex:1;background:#f5f5f5;border-radius:10px;padding:10px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;color:#555">${col.l} (${items.length})</div>
+      ${cards||'<div style="font-size:11px;color:#aaa;text-align:center;padding:12px">Vazio</div>'}
+    </div>`;
+  }).join('')+'</div>';
+}
 const PSTAT={new:'Nova proposta',neg:'Em negociação',win:'Fechado',lost:'Perdido'};
 const PCSS={new:'sb',neg:'sa',win:'sg',lost:'sr'};
 function renderProp(){
   const d=ld(SK.prop);
   const win=d.filter(x=>x.status==='win').length,tot=d.length;
   const rec=d.filter(x=>x.status==='win').reduce((s,x)=>s+(+x.valor||0),0);
-  mkM('m-prop',[{l:'Total',v:tot,s:'propostas',c:'b'},{l:'Fechados',v:win,s:'contratos',c:'g'},{l:'Conversão',v:tot?Math.round(win/tot*100)+'%':'0%',s:'taxa',c:win/tot>=.3?'g':'a'},{l:'Receita fechada',v:'R$\u00a0'+(rec/1000).toFixed(0)+'k',s:'projetos',c:'g'}]);
+  mkM('m-prop',[{l:'Total',v:tot,s:'propostas',c:'b'},{l:'Fechados',v:win,s:'contratos',c:'g'},{l:'Conversão',v:tot?Math.round(win/tot*100)+'%':'0%',s:'taxa',c:win/tot>=.3?'g':'a'},{l:'Receita fechada',v:'R$ '+(rec/1000).toFixed(0)+'k',s:'projetos',c:'g'}]);
   const cnt={all:tot,new:0,neg:0,win:0,lost:0};d.forEach(x=>cnt[x.status]=(cnt[x.status]||0)+1);
   mkF('f-prop',[{k:'all',l:'Todas',c:cnt.all},{k:'new',l:'Novas',c:cnt.new||0},{k:'neg',l:'Negociação',c:cnt.neg||0},{k:'win',l:'Fechadas',c:cnt.win||0},{k:'lost',l:'Perdidas',c:cnt.lost||0}],filt.prop,'setFP');
   const fl=filt.prop==='all'?d:d.filter(x=>x.status===filt.prop);
   document.getElementById('c-prop').textContent=fl.length+' proposta'+(fl.length!==1?'s':'');
-  document.getElementById('tb-prop').innerHTML=fl.map(x=>{
-    const ri=d.indexOf(x);
-    const wppN=(x.wpp||'').replace(/\D/g,'');
-    const wu=wppN?`https://wa.me/55${wppN}?text=${encodeURIComponent(`Olá ${x.nome}! Sua proposta SER Energia: ${x.kwp||x.kwh} kWp / ${x.kwh} kWh/mês.`)}`:null;
-    const ab=x.aceito?`<span class="sp sg">✓ Aceito</span>`:`<button class="ab" onclick="trigAceite(${ri})">Aceitar</button>`;
-    return`<tr><td title="${x.nome}">${x.nome}</td><td>${x.kwh||'—'} kWh</td><td>${f(x.valor)}</td><td>${f(x.eco)}/mês</td>
-    <td><select class="sselect" onchange="chgP(${ri},this.value)">${Object.entries(PSTAT).map(([k,v])=>`<option value="${k}" ${x.status===k?'selected':''}>${v}</option>`).join('')}</select></td>
-    <td><div class="act-row">${wu?`<button class="ab ab-g" onclick="ol('${wu}')">WhatsApp</button>`:''}
-    <button class="ab ab-b" onclick="prevPropIdx(${ri})">Proposta</button>
-    <button class="ab ab-a" onclick="dlPropIdx(${ri})">⬇️</button>
-    ${ab}<button class="ab" onclick="editProp(${ri})">Editar</button><button class="ab ab-r" onclick="delProp(${ri})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></div></td></tr>`;
-  }).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhuma proposta</td></tr>`;
+  const tvEl=document.getElementById('prop-table-view');
+  const kvEl=document.getElementById('prop-kanban-view');
+  if(_propViewKanban){
+    if(tvEl)tvEl.style.display='none';
+    if(kvEl){kvEl.style.display='block';_renderPropKanban(d,fl);}
+  }else{
+    if(tvEl)tvEl.style.display='';
+    if(kvEl)kvEl.style.display='none';
+    document.getElementById('tb-prop').innerHTML=fl.map(x=>{
+      const ri=d.indexOf(x);
+      const wppN=(x.wpp||'').replace(/\D/g,'');
+      const wu=wppN?`https://wa.me/55${wppN}?text=${encodeURIComponent(`Olá ${x.nome}! Sua proposta SER Energia: ${x.kwp||x.kwh} kWp / ${x.kwh} kWh/mês.`)}`:null;
+      const ab=x.aceito?`<span class="sp sg">✓ Aceito</span>`:`<button class="ab" onclick="trigAceite(${ri})">Aceitar</button>`;
+      return`<tr><td title="${x.nome}">${x.nome}</td><td>${x.kwh||'—'} kWh</td><td>${f(x.valor)}</td><td>${f(x.eco)}/mês</td>
+      <td><select class="sselect" onchange="chgP(${ri},this.value)">${Object.entries(PSTAT).map(([k,v])=>`<option value="${k}" ${x.status===k?'selected':''}>${v}</option>`).join('')}</select></td>
+      <td><div class="act-row">${wu?`<button class="ab ab-g" onclick="ol('${wu}')">WhatsApp</button>`:''}
+      <button class="ab ab-b" onclick="prevPropIdx(${ri})">Proposta</button>
+      <button class="ab ab-a" onclick="dlPropIdx(${ri})">⬇️</button>
+      ${ab}<button class="ab" onclick="editProp(${ri})">Editar</button><button class="ab ab-r" onclick="delProp(${ri})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></div></td></tr>`;
+    }).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhuma proposta</td></tr>`;
+  }
 }
 function _loadPropIntoForm(x){
   const eco=x.eco||0,kwh=x.kwh||0;
@@ -1689,7 +2085,7 @@ function chgP(i,v){const d=ld(SK.prop);const prev=d[i].status;d[i].status=v;sv(S
 function trigAceite(i){aceiteIdx=i;const x=ld(SK.prop)[i];document.getElementById('aceite-info').innerHTML=[{l:'Cliente',v:x.nome},{l:'Consumo',v:(x.kwh||'—')+' kWh/mês'},{l:'Valor',v:f(x.valor)},{l:'Vendedor',v:x.vend||'—'}].map(o=>`<div style="background:var(--sec);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--mu)">${o.l}</div><div style="font-size:13px;font-weight:500">${o.v}</div></div>`).join('');openM('mo-aceite')}
 function confirmarAceite(){const ps=ld(SK.prop);if(aceiteIdx===null||!ps[aceiteIdx])return;ps[aceiteIdx].aceito=true;ps[aceiteIdx].status='win';sv(SK.prop,ps);sbUpsert('propostas',ps[aceiteIdx]);const cs=ld(SK.cont);const x=ps[aceiteIdx];if(!cs.some(c=>c.nome===x.nome)){const nc={nome:x.nome,kwp:x.kwp||0,valor:x.valor,pgto:'Financiamento',pgtoDesc:'',vend:x.vend||'',wpp:x.wpp||'',status:'pendente',data:new Date().toLocaleDateString('pt-BR'),fase:'Monofásico',tensao:220,cpf:'',rg:'',rgorg:'',cep:'',estado:'',rua:'',num:'',comp:'',bairro:'',cidade:''};const cs2=ld(SK.cont);cs2.unshift(nc);sv(SK.cont,cs2);_hookSave('contratos',nc);}closeM('mo-aceite');renderProp();updateNavCounts();_prefillContratoFromProp(x);}
 function openPropModal(){ei.prop=null;['mp-nome','mp-wpp','mp-email','mp-vend','mp-vend-wpp','mp-vend-email','mp-kwh','mp-qm','mp-mm','mp-pm','mp-qi','mp-mi','mp-pi','mp-qb','mp-mb','mp-pb','mp-semsolar','mp-comsolar','mp-eco','mp-valor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('mp-qi').value=1;document.getElementById('mp-qm').value=0;document.getElementById('mp-pm').value='';document.getElementById('mp-pi').value='';document.getElementById('mp-qb').value=0;document.getElementById('mp-pb').value='';document.getElementById('mp-area').value=0;const vd=new Date();vd.setDate(vd.getDate()+7);document.getElementById('mp-validade').value='7 dias (até '+vd.toLocaleDateString('pt-BR')+')';document.getElementById('mp-status').value='new';document.getElementById('mp-nota').style.display='none';document.getElementById('mp-t').textContent='Nova proposta';populateDataLists();openM('mo-prop')}
-function editProp(i){ei.prop=i;populateDataLists();const x=ld(SK.prop)[i];['nome','wpp','email','vend','vendWpp','vendEmail','validade'].forEach(k=>{const el=document.getElementById('mp-'+k.replace(/([A-Z])/g,'-$1').toLowerCase());if(el)el.value=x[k]||'';});document.getElementById('mp-kwh').value=x.kwh||0;document.getElementById('mp-qm').value=x.qm||0;document.getElementById('mp-mm').value=x.mm||'';document.getElementById('mp-pm').value=x.pm||0;document.getElementById('mp-qi').value=x.qi||1;document.getElementById('mp-mi').value=x.mi||'';document.getElementById('mp-pi').value=x.pi||0;document.getElementById('mp-qb').value=x.qb||0;document.getElementById('mp-mb').value=x.mb||'';document.getElementById('mp-pb').value=x.pb||0;document.getElementById('mp-area').value=x.area||0;document.getElementById('mp-semsolar').value=x.semsolar||0;document.getElementById('mp-comsolar').value=x.comsolar||0;document.getElementById('mp-eco').value=x.eco||0;document.getElementById('mp-valor').value=x.valor||0;document.getElementById('mp-status').value=x.status;document.getElementById('mp-t').textContent='Editar proposta';calcProposta();openM('mo-prop')}
+function editProp(i){ei.prop=i;populateDataLists();const x=ld(SK.prop)[i];['nome','wpp','email','vend','vendWpp','vendEmail','validade'].forEach(k=>{const el=document.getElementById('mp-'+k.replace(/([A-Z])/g,'-$1').toLowerCase());if(el)el.value=x[k]||'';});document.getElementById('mp-kwh').value=x.kwh||0;document.getElementById('mp-qm').value=x.qm||0;document.getElementById('mp-mm').value=x.mm||'';document.getElementById('mp-pm').value=x.pm||0;document.getElementById('mp-qi').value=x.qi||1;document.getElementById('mp-mi').value=x.mi||'';document.getElementById('mp-pi').value=x.pi?parseFloat(x.pi).toFixed(1):'';document.getElementById('mp-qb').value=x.qb||0;document.getElementById('mp-mb').value=x.mb||'';document.getElementById('mp-pb').value=x.pb||0;document.getElementById('mp-area').value=x.area||0;document.getElementById('mp-semsolar').value=x.semsolar||0;document.getElementById('mp-comsolar').value=x.comsolar||0;document.getElementById('mp-eco').value=x.eco||0;document.getElementById('mp-valor').value=x.valor||0;document.getElementById('mp-status').value=x.status;document.getElementById('mp-t').textContent='Editar proposta';calcProposta();openM('mo-prop')}
 let _pfProp=null;
 function _onPropostaFechada(prop){
   if(!prop||!prop.nome)return;
@@ -1703,7 +2099,7 @@ function _pfFillContrato(){
   const s=(id,v)=>{if(v===undefined||v===null||v==='')return;const el=document.getElementById(id);if(el)el.value=v;};
   s('mc-nome',prop.nome);s('mc-wpp',prop.wpp);s('mc-kwp',prop.kwp);
   s('mc-valor',prop.valor);s('mc-vend',prop.vend);
-  s('mc-qi',prop.qi||1);s('mc-mi',prop.mi);s('mc-pi',prop.pi);
+  s('mc-qi',prop.qi||1);s('mc-mi',prop.mi);s('mc-pi',prop.pi?parseFloat(prop.pi).toFixed(1):'');
   s('mc-qm',prop.qm||0);s('mc-mm',prop.mm);s('mc-pm',prop.pm||0);
 }
 function _pfFillVistoria(){
@@ -1873,23 +2269,66 @@ function enviarContratoEmail(){
   const body=encodeURIComponent(`Olá ${x.nome},\n\nSeu contrato está pronto! Seguem os dados:\n\nEndereço: ${x.rua}, ${x.num} — ${x.cidade}/${x.estado}\nSistema: ${x.kwp} kWp\nInversores: ${x.qtdInv}x ${x.marcaInv} ${x.potInv}kW\nMódulos: ${x.qtdMod}x ${x.marcaMod} ${x.potMod}W\nValor: R$ ${(x.valor||0).toLocaleString('pt-BR')}\nPagamento: ${x.pgto}${x.pgtoDesc?' — '+x.pgtoDesc:''}\n\nAtenciosamente,\n${x.vend||'SER Energia Renovável'}`);
   window.open(`mailto:${email}?subject=${sub}&body=${body}`);
 }
+let _contViewKanban=false;
+function toggleContView(){
+  _contViewKanban=!_contViewKanban;
+  document.getElementById('cont-view-toggle').textContent=_contViewKanban?'☰ Lista':'⊞ Kanban';
+  renderCont();
+}
+function _renderContKanban(d){
+  const el=document.getElementById('cont-kanban-view');
+  if(!el)return;
+  const cols=[
+    {k:'pendente',l:'Pendente assinatura'},
+    {k:'enviado',l:'Enviado p/ assinatura'},
+    {k:'assinado',l:'Assinado ✅'},
+    {k:'instalando',l:'Em instalação'},
+    {k:'homologando',l:'Em homologação'},
+    {k:'concluido',l:'Concluído 🏆'}
+  ];
+  const fmt=v=>v?'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0}):'—';
+  el.innerHTML='<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px">'+cols.map(col=>{
+    const items=d.filter(x=>x.status===col.k);
+    const cards=items.map(x=>{
+      const ri=d.indexOf(x);
+      return`<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);cursor:pointer" onclick="editCont(${ri})">
+        <div style="font-weight:600;font-size:12px">${x.nome}</div>
+        <div style="font-size:11px;color:#888;margin-top:4px">${fmt(x.valor)} | ${x.kwp||'—'} kWp</div>
+        <div style="font-size:10px;color:#aaa;margin-top:4px">${x.vend||'—'} · ${x.data||'—'}</div>
+      </div>`;
+    }).join('');
+    return`<div style="min-width:200px;flex:1;background:#f5f5f5;border-radius:10px;padding:10px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;color:#555">${col.l} (${items.length})</div>
+      ${cards||'<div style="font-size:11px;color:#aaa;text-align:center;padding:12px">Vazio</div>'}
+    </div>`;
+  }).join('')+'</div>';
+}
 const CSTAT={pendente:'Pendente',enviado:'Enviado p/ assinatura',assinado:'Assinado',instalando:'Em instalação',homologando:'Em homologação',concluido:'Concluído'};
 function renderCont(){
   const d=ld(SK.cont);const pend=d.filter(x=>x.status==='pendente').length,inst=d.filter(x=>['instalando','homologando'].includes(x.status)).length,conc=d.filter(x=>x.status==='concluido').length;
   const rec=d.filter(x=>x.status==='concluido').reduce((s,x)=>s+(+x.valor||0),0);
-  mkM('m-cont',[{l:'Total',v:d.length,s:'contratos',c:'b'},{l:'Pendentes',v:pend,s:'assinatura',c:'a'},{l:'Em andamento',v:inst,s:'',c:'b'},{l:'Concluídos',v:conc,s:'R$\u00a0'+(rec/1000).toFixed(0)+'k',c:'g'}]);
+  mkM('m-cont',[{l:'Total',v:d.length,s:'contratos',c:'b'},{l:'Pendentes',v:pend,s:'assinatura',c:'a'},{l:'Em andamento',v:inst,s:'',c:'b'},{l:'Concluídos',v:conc,s:'R$ '+(rec/1000).toFixed(0)+'k',c:'g'}]);
   mkF('f-cont',[{k:'all',l:'Todos',c:d.length},{k:'pendente',l:'Pendentes',c:pend},{k:'instalando',l:'Em andamento',c:inst},{k:'concluido',l:'Concluídos',c:conc}],filt.cont,'setFC');
   const fl=filt.cont==='all'?d:(filt.cont==='instalando'?d.filter(x=>['instalando','homologando'].includes(x.status)):d.filter(x=>x.status===filt.cont));
   document.getElementById('c-cont').textContent=fl.length+' contrato'+(fl.length!==1?'s':'');
-  document.getElementById('tb-cont').innerHTML=fl.map(x=>{const ri=d.indexOf(x);const wpp=(x.wpp||'').replace(/\D/g,'');const wu=wpp?`https://wa.me/55${wpp}?text=${encodeURIComponent(`Olá ${x.nome}! Contrato SER Energia pronto para assinatura.`)}`:null;
-  return`<tr><td>${x.nome}</td><td>${x.kwp||'—'} kWp</td><td>${f(x.valor)}</td><td title="${x.pgto||''}">${(x.pgto||'—').slice(0,18)}${x.pgto&&x.pgto.length>18?'...':''}</td>
-  <td><select class="sselect" onchange="chgC(${ri},this.value)">${Object.entries(CSTAT).map(([k,v])=>`<option value="${k}" ${x.status===k?'selected':''}>${v}</option>`).join('')}</select></td>
-  <td><div class="act-row">${wu?`<button class="ab ab-g" onclick="ol('${wu}')">WPP</button>`:''}
-  <button class="ab ab-a" onclick="prevContIdx(${ri})">👁️</button>
-  <button class="ab ab-b" onclick="dlContIdx(${ri})">⬇️</button>
-  <button class="ab" style="background:#EDE9FE;color:#6B46C1;border-color:#C4B5FD" onclick="enviarClickSign(${ri})">✍️</button>
-  <button class="ab" onclick="editCont(${ri})">Editar</button><button class="ab ab-r" onclick="delCont(${ri})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></div></td></tr>`;
-  }).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhum contrato</td></tr>`;
+  const tvEl=document.getElementById('cont-table-view');
+  const kvEl=document.getElementById('cont-kanban-view');
+  if(_contViewKanban){
+    if(tvEl)tvEl.style.display='none';
+    if(kvEl){kvEl.style.display='block';_renderContKanban(d);}
+  }else{
+    if(tvEl)tvEl.style.display='';
+    if(kvEl)kvEl.style.display='none';
+    document.getElementById('tb-cont').innerHTML=fl.map(x=>{const ri=d.indexOf(x);const wpp=(x.wpp||'').replace(/\D/g,'');const wu=wpp?`https://wa.me/55${wpp}?text=${encodeURIComponent(`Olá ${x.nome}! Contrato SER Energia pronto para assinatura.`)}`:null;
+    return`<tr><td>${x.nome}</td><td>${x.kwp||'—'} kWp</td><td>${f(x.valor)}</td><td title="${x.pgto||''}">${(x.pgto||'—').slice(0,18)}${x.pgto&&x.pgto.length>18?'...':''}</td>
+    <td><select class="sselect" onchange="chgC(${ri},this.value)">${Object.entries(CSTAT).map(([k,v])=>`<option value="${k}" ${x.status===k?'selected':''}>${v}</option>`).join('')}</select></td>
+    <td><div class="act-row">${wu?`<button class="ab ab-g" onclick="ol('${wu}')">WPP</button>`:''}
+    <button class="ab ab-a" onclick="prevContIdx(${ri})">👁️</button>
+    <button class="ab ab-b" onclick="dlContIdx(${ri})">⬇️</button>
+    <button class="ab" style="background:#EDE9FE;color:#6B46C1;border-color:#C4B5FD" onclick="enviarClickSign(${ri})">✍️</button>
+    <button class="ab" onclick="editCont(${ri})">Editar</button><button class="ab ab-r" onclick="delCont(${ri})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></div></td></tr>`;
+    }).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhum contrato</td></tr>`;
+  }
 }
 // Preenche campos f-* do wizard com dados do objeto contrato salvo
 function _carregarContNaWiz(x){
@@ -1963,26 +2402,28 @@ function dlContIdx(i){
   _abrirContratoCompleto(x, true);
 }
 function setFC(f){filt.cont=f;renderCont()}
-function chgC(i,v){const d=ld(SK.cont);d[i].status=v;sv(SK.cont,d);_hookSave('contratos',d[i]);renderCont()}
+function chgC(i,v){const d=ld(SK.cont);d[i].status=v;sv(SK.cont,d);_hookSave('contratos',d[i]);_autoLogHomo(d[i]);renderCont();updateNavCounts();}
+function _autoLogHomo(e){
+  if(e.status!=='assinado')return;
+  // → Logística (verifica por nome)
+  const logs=ld(SK.log);
+  if(!logs.some(l=>l.nome===e.nome)){
+    const nLog={nome:e.nome,kwp:e.kwp,wpp:e.wpp,vend:e.vend,valor:e.valor,end:((e.rua||'')+(e.num?' '+e.num:'')).trim(),statusCompra:'Aguardando compra',distribuidora:'',contratoId:e.id||'',data:e.data||new Date().toLocaleDateString('pt-BR')};
+    logs.unshift(nLog);sv(SK.log,logs);_hookSave('logistica',nLog);
+  }
+  // → Homologação (verifica por nome)
+  const homos=ld(SK.homo);
+  if(!homos.some(h=>h.nome===e.nome)){
+    const nHomo={nome:e.nome,kwp:e.kwp,wpp:e.wpp,vend:e.vend,datasign:e.data||'',qtdInv:e.qtdInv||1,marcaInv:e.marcaInv||'',qtdMod:e.qtdMod||0,marcaMod:e.marcaMod||'',trtQtd:1,artQtd:0,artVal:'',tecVal:'',pago:'',status:'aguardando',contratoId:e.id||''};
+    homos.unshift(nHomo);sv(SK.homo,homos);_hookSave('homologacoes',nHomo);
+  }
+}
 function abrirTemplateContrato(){window.open('https://docs.google.com/document/d/1JmfNk2c4GSLs5HzFyBGkVsEGh4YCauksjHmvtxnF9h8/edit','_blank')}
 function openContModal(){ei.cont=null;['mc-nome','mc-cpf','mc-rg','mc-rgorg','mc-wpp','mc-cep','mc-rua','mc-num','mc-comp','mc-bairro','mc-cidade','mc-kwp','mc-vend','mc-qi','mc-mi','mc-pi','mc-tensao','mc-qm','mc-mm','mc-pm','mc-valor','mc-pgto-desc'].forEach(id=>document.getElementById(id).value='');document.getElementById('mc-qi').value=1;document.getElementById('mc-qm').value=0;document.getElementById('mc-pm').value='';document.getElementById('mc-tensao').value='220';document.getElementById('mc-estado').value='';document.getElementById('mc-pgto').value='À Vista';document.getElementById('mc-banco').value='';document.getElementById('mc-banco-row').style.display='none';document.getElementById('mc-fase').value='Monofásico';document.getElementById('mc-status').value='pendente';document.getElementById('mc-t').textContent='Registrar contrato';populateDataLists();['mc-cpf'].forEach(id=>{const el=document.getElementById(id);if(el){el.style.borderColor='';el.title='';}}); openM('mo-cont')}
-function editCont(i){ei.cont=i;populateDataLists();const x=ld(SK.cont)[i];document.getElementById('mc-nome').value=x.nome;document.getElementById('mc-cpf').value=x.cpf||'';document.getElementById('mc-rg').value=x.rg||'';document.getElementById('mc-rgorg').value=x.rgorg||'';document.getElementById('mc-wpp').value=x.wpp||'';document.getElementById('mc-cep').value=x.cep||'';document.getElementById('mc-estado').value=x.estado||'';document.getElementById('mc-rua').value=x.rua||'';document.getElementById('mc-num').value=x.num||'';document.getElementById('mc-comp').value=x.comp||'';document.getElementById('mc-bairro').value=x.bairro||'';document.getElementById('mc-cidade').value=x.cidade||'';document.getElementById('mc-kwp').value=x.kwp;document.getElementById('mc-vend').value=x.vend||'';document.getElementById('mc-qi').value=x.qtdInv||1;document.getElementById('mc-mi').value=x.marcaInv||'';document.getElementById('mc-pi').value=x.potInv||'';document.getElementById('mc-fase').value=x.fase||'Monofásico';document.getElementById('mc-tensao').value=x.tensao||220;document.getElementById('mc-qm').value=x.qtdMod||0;document.getElementById('mc-mm').value=x.marcaMod||'';document.getElementById('mc-pm').value=x.potMod||0;document.getElementById('mc-valor').value=x.valor;const _pgtoNorm={'À vista':'À Vista','à vista':'À Vista','financiamento':'Financiamento Bancário','Financiamento':'Financiamento Bancário','parcelado interno':'Parcelamento Interno','Parcelado interno':'Parcelamento Interno','misto':'Misto (entrada + financiamento)','Misto':'Misto (entrada + financiamento)'};const _pgtoVal=x.pgto||'À Vista';document.getElementById('mc-pgto').value=_pgtoNorm[_pgtoVal]||_pgtoVal;document.getElementById('mc-pgto-desc').value=x.pgtoDesc||'';document.getElementById('mc-banco').value=x.banco||'';toggleBancoField();document.getElementById('mc-status').value=x.status;document.getElementById('mc-t').textContent='Editar contrato';openM('mo-cont')}
+function editCont(i){ei.cont=i;populateDataLists();const x=ld(SK.cont)[i];document.getElementById('mc-nome').value=x.nome;document.getElementById('mc-cpf').value=x.cpf||'';document.getElementById('mc-rg').value=x.rg||'';document.getElementById('mc-rgorg').value=x.rgorg||'';document.getElementById('mc-wpp').value=x.wpp||'';document.getElementById('mc-cep').value=x.cep||'';document.getElementById('mc-estado').value=x.estado||'';document.getElementById('mc-rua').value=x.rua||'';document.getElementById('mc-num').value=x.num||'';document.getElementById('mc-comp').value=x.comp||'';document.getElementById('mc-bairro').value=x.bairro||'';document.getElementById('mc-cidade').value=x.cidade||'';document.getElementById('mc-kwp').value=x.kwp;document.getElementById('mc-vend').value=x.vend||'';document.getElementById('mc-qi').value=x.qtdInv||1;document.getElementById('mc-mi').value=x.marcaInv||'';document.getElementById('mc-pi').value=x.potInv?parseFloat(x.potInv).toFixed(1):'';document.getElementById('mc-fase').value=x.fase||'Monofásico';document.getElementById('mc-tensao').value=x.tensao||220;document.getElementById('mc-qm').value=x.qtdMod||0;document.getElementById('mc-mm').value=x.marcaMod||'';document.getElementById('mc-pm').value=x.potMod||0;document.getElementById('mc-valor').value=x.valor;const _pgtoNorm={'À vista':'À Vista','à vista':'À Vista','financiamento':'Financiamento Bancário','Financiamento':'Financiamento Bancário','parcelado interno':'Parcelamento Interno','Parcelado interno':'Parcelamento Interno','misto':'Misto (entrada + financiamento)','Misto':'Misto (entrada + financiamento)'};const _pgtoVal=x.pgto||'À Vista';document.getElementById('mc-pgto').value=_pgtoNorm[_pgtoVal]||_pgtoVal;document.getElementById('mc-pgto-desc').value=x.pgtoDesc||'';document.getElementById('mc-banco').value=x.banco||'';toggleBancoField();document.getElementById('mc-status').value=x.status;document.getElementById('mc-t').textContent='Editar contrato';openM('mo-cont')}
 function saveCont(){const nome=document.getElementById('mc-nome').value.trim();if(!nome)return alert('Informe o nome');const existing=ei.cont!==null?ld(SK.cont)[ei.cont]:{};const e={...existing,nome,cpf:document.getElementById('mc-cpf').value.trim(),rg:document.getElementById('mc-rg').value.trim(),rgorg:document.getElementById('mc-rgorg').value.trim(),wpp:document.getElementById('mc-wpp').value.trim(),cep:document.getElementById('mc-cep').value.trim(),estado:document.getElementById('mc-estado').value,rua:document.getElementById('mc-rua').value.trim(),num:document.getElementById('mc-num').value.trim(),comp:document.getElementById('mc-comp').value.trim(),bairro:document.getElementById('mc-bairro').value.trim(),cidade:document.getElementById('mc-cidade').value.trim(),kwp:+document.getElementById('mc-kwp').value||0,vend:document.getElementById('mc-vend').value.trim(),qtdInv:+document.getElementById('mc-qi').value||1,marcaInv:document.getElementById('mc-mi').value.trim(),potInv:+document.getElementById('mc-pi').value||0,fase:document.getElementById('mc-fase').value,tensao:+document.getElementById('mc-tensao').value||220,qtdMod:+document.getElementById('mc-qm').value||0,marcaMod:document.getElementById('mc-mm').value.trim(),potMod:+document.getElementById('mc-pm').value||0,valor:+document.getElementById('mc-valor').value||0,pgto:document.getElementById('mc-pgto').value,banco:document.getElementById('mc-banco').value,pgtoDesc:document.getElementById('mc-pgto-desc').value.trim(),status:document.getElementById('mc-status').value,data:existing.data||new Date().toLocaleDateString('pt-BR')};const d=ld(SK.cont);if(ei.cont!==null)d[ei.cont]=e;else d.unshift(e);sv(SK.cont,d);_hookSave('contratos',e);
   // Automação: status assinado → Logística + Homologação
-  if(e.status==='assinado'){
-    // → Logística
-    const logs=ld(SK.log);
-    if(!logs.some(l=>l.contratoId===e.id||(l.nome===e.nome&&l.contratoId))){
-      const nLog={nome:e.nome,kwp:e.kwp,wpp:e.wpp,vend:e.vend,valor:e.valor,end:((e.rua||'')+(e.num?' '+e.num:'')).trim(),statusCompra:'Aguardando compra',distribuidora:'',contratoId:e.id||'',data:e.data||new Date().toLocaleDateString('pt-BR')};
-      logs.unshift(nLog);sv(SK.log,logs);_hookSave('logistica',nLog);
-    }
-    // → Homologação
-    const homos=ld(SK.homo);
-    if(!homos.some(h=>h.contratoId===e.id||(h.nome===e.nome&&h.contratoId))){
-      const nHomo={nome:e.nome,kwp:e.kwp,wpp:e.wpp,vend:e.vend,datasign:e.data||'',qtdInv:e.qtdInv||1,marcaInv:e.marcaInv||'',qtdMod:e.qtdMod||0,marcaMod:e.marcaMod||'',trtQtd:1,artQtd:0,artVal:'',tecVal:'',pago:'',status:'aguardando',contratoId:e.id||''};
-      homos.unshift(nHomo);sv(SK.homo,homos);_hookSave('homologacoes',nHomo);
-    }
-  }
+  _autoLogHomo(e);
   closeM('mo-cont');renderCont();updateNavCounts()}
 function delCont(i){const d=ld(SK.cont);const x=d[i];if(!confirm(`Excluir contrato de "${x.nome}"?\nEsta ação não pode ser desfeita.`))return;if(x.id)_hookDel('contratos',x.id);d.splice(i,1);sv(SK.cont,d);renderCont();renderDash();updateNavCounts();}
 
@@ -2174,15 +2615,16 @@ function saveInst(){const nome=document.getElementById('mi-nome').value.trim();i
 
 // ===================== HOMOLOGAÇÃO =====================
 const HDOCS=[{k:'procuracao',l:'Procuração assinada'},{k:'fatura_ger',l:'Fatura geradora'},{k:'fatura_ben',l:'Faturas beneficiárias'},{k:'datasheet_inv',l:'Datasheet inversor'},{k:'datasheet_mod',l:'Datasheet módulos'},{k:'arquivo_vist',l:'Arquivo da vistoria'}];
-const HSTAT={aguardando:'Aguardando',analise:'Em análise',aprovada:'Aprovada',reprovada:'Reprovada',concluida:'Concluída'};
+const HSTAT={aguardando:'Aguardando',analise:'Em análise',trt_art:'TRT/ART PG',parecer:'Parecer de acesso',vistoria_final:'Vistoria Final',aprovada:'Aprovada',reprovada:'Reprovada',concluida:'Concluída'};
 function calcHomo(){
-  const tq=+document.getElementById('mh-tq').value||0;const aq=+document.getElementById('mh-aq').value||0;const av=+document.getElementById('mh-av').value||0;
-  const tot=tq*TRT+aq*av;
+  const trt=+document.getElementById('mh-trt').value||0;
+  const prof=+document.getElementById('mh-prof').value||0;
+  const tot=trt+prof;
   let rows='';
-  if(tq)rows+=`<div class="n-row"><span>${tq}x TRT (R$\u00a0${TRT.toFixed(2)} cada)</span><span>${f(tq*TRT)}</span></div>`;
-  if(aq&&av)rows+=`<div class="n-row"><span>${aq}x ART (${f(av)} cada)</span><span>${f(aq*av)}</span></div>`;
-  if(tot>0)rows+=`<div class="n-row"><span>Total cartório estimado</span><span>${f(tot)}</span></div>`;
-  else rows=`<div style="font-size:12px;color:var(--mu)">Preencha TRTs/ARTs para estimar custo.</div>`;
+  if(trt)rows+=`<div class="n-row"><span>TRT/ART</span><span>${f(trt)}</span></div>`;
+  if(prof)rows+=`<div class="n-row"><span>Profissional</span><span>${f(prof)}</span></div>`;
+  if(tot>0)rows+=`<div class="n-row" style="font-weight:700"><span>Total</span><span>${f(tot)}</span></div>`;
+  else rows=`<div style="font-size:12px;color:var(--mu)">Preencha os valores para calcular.</div>`;
   document.getElementById('mh-nr').innerHTML=rows;return tot;
 }
 function renderHomo(){
@@ -2194,22 +2636,34 @@ function renderHomo(){
   const fl=filt.homo==='all'?d:(filt.homo==='aprovada'?d.filter(x=>['aprovada','concluida'].includes(x.status)):d.filter(x=>x.status===filt.homo));
   document.getElementById('c-homo').textContent=fl.length+' homologação'+(fl.length===1?'':'ões');
   document.getElementById('tb-homo').innerHTML=fl.map(x=>{const ri=d.indexOf(x);const wu=`https://wa.me/55${(x.wpp||'').replace(/\D/g,'')}?text=${encodeURIComponent(`Olá ${x.nome}! Atualização homologação SER Energia.`)}`;
-  return`<tr><td>${x.nome}</td><td>${x.kwp} kWp</td><td>${fD(x.datasign)}</td><td style="color:var(--g);font-weight:500">${f(x.tecVal||0)}</td><td>${f((x.trtQtd||0)*TRT)}</td><td style="color:var(--g);font-weight:500">${f(x.estimado||0)}</td>
+  return`<tr><td>${x.nome}</td><td>${x.kwp} kWp</td><td>${fD(x.datasign)}</td><td style="color:var(--g);font-weight:500">${f(x.profVal||0)}</td><td>${f(x.trtArtVal||0)}</td><td style="color:var(--g);font-weight:500">${f(x.estimado||0)}</td>
   <td><select class="sselect" onchange="chgH(${ri},this.value)">${Object.entries(HSTAT).map(([k,v])=>`<option value="${k}" ${x.status===k?'selected':''}>${v}</option>`).join('')}</select></td>
-  <td><div class="act-row"><button class="ab ab-g" onclick="ol('${wu}')">WhatsApp</button><button class="ab" onclick="editHomo(${ri})">Editar</button><button class="ab ab-r" onclick="delHomo(${ri})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></div></td></tr>`;
+  <td><div class="act-row"><button class="ab ab-g" onclick="ol('${wu}')">WhatsApp</button><button class="ab" onclick="viewHomoDocs(${ri})">📎 Docs</button><button class="ab" onclick="editHomo(${ri})">Editar</button><button class="ab ab-r" onclick="delHomo(${ri})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></div></td></tr>`;
   }).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--mu);padding:20px">Nenhuma</td></tr>`;
 }
 function setFH(f){filt.homo=f;renderHomo()}
 function chgH(i,v){const d=ld(SK.homo);d[i].status=v;sv(SK.homo,d);_hookSave('homologacoes',d[i]);renderHomo()}
 function togDoc(i,k,val){const d=ld(SK.homo);if(!d[i].docs)d[i].docs={};d[i].docs[k]=val;sv(SK.homo,d);renderHomo()}
-function openHomoModal(){ei.homo=null;['mh-nome','mh-kwp','mh-vend','mh-ds','mh-wpp','mh-mi','mh-mm','mh-av','mh-pago'].forEach(id=>document.getElementById(id).value='');document.getElementById('mh-qi').value=1;document.getElementById('mh-qm').value=0;document.getElementById('mh-tq').value=1;document.getElementById('mh-aq').value=0;document.getElementById('mh-status').value='aguardando';['homologador','contass','fatger','fatben','vist','dsinv','dsmod','sombra'].forEach(id=>{const el=document.getElementById('mh-f-'+id);if(el)el.value='';document.getElementById('mh-fn-'+id).textContent='Nenhum arquivo';});document.getElementById('mh-t').textContent='Nova homologação';calcHomo();populateDataLists();openM('mo-homo')}
-function editHomo(i){ei.homo=i;const x=ld(SK.homo)[i];document.getElementById('mh-nome').value=x.nome;document.getElementById('mh-kwp').value=x.kwp;document.getElementById('mh-vend').value=x.vend||'';document.getElementById('mh-ds').value=x.datasign||'';document.getElementById('mh-wpp').value=x.wpp||'';document.getElementById('mh-qi').value=x.qtdInv||1;document.getElementById('mh-mi').value=x.marcaInv||'';document.getElementById('mh-qm').value=x.qtdMod||0;document.getElementById('mh-mm').value=x.marcaMod||'';document.getElementById('mh-tv').value=x.tecVal||'';document.getElementById('mh-tq').value=x.trtQtd||0;document.getElementById('mh-aq').value=x.artQtd||0;document.getElementById('mh-av').value=x.artVal||'';document.getElementById('mh-pago').value=x.pago||'';document.getElementById('mh-status').value=x.status;// Mostrar nomes de arquivos já salvos
-['homologador','contass','fatger','fatben','vist','dsinv','dsmod','sombra'].forEach(id=>{const keyMap={homologador:'procuracao',contass:'contrato_assinado',fatger:'fatura_ger',fatben:'fatura_ben',vist:'arquivo_vist',dsinv:'datasheet_inv',dsmod:'datasheet_mod',sombra:'analise_sombra'};const fn=x.fileNames&&x.fileNames[keyMap[id]];document.getElementById('mh-fn-'+id).textContent=fn||'Nenhum arquivo';});document.getElementById('mh-t').textContent='Editar homologação';calcHomo();openM('mo-homo')}
-function saveHomo(){const nome=document.getElementById('mh-nome').value.trim();if(!nome)return alert('Informe o nome');const tq=+document.getElementById('mh-tq').value||0;const aq=+document.getElementById('mh-aq').value||0;const av=+document.getElementById('mh-av').value||0;const est=tq*TRT+aq*av;
-const docs={procuracao:false,contrato_assinado:false,fatura_ger:false,fatura_ben:false,datasheet_inv:false,datasheet_mod:false,arquivo_vist:false,analise_sombra:false};
-const fileMap={homologador:'procuracao',contass:'contrato_assinado',fatger:'fatura_ger',fatben:'fatura_ben',vist:'arquivo_vist',dsinv:'datasheet_inv',dsmod:'datasheet_mod',sombra:'analise_sombra'};
-const fileNames={};Object.entries(fileMap).forEach(([id,key])=>{const el=document.getElementById('mh-f-'+id);if(el&&el.files&&el.files.length>0){docs[key]=true;fileNames[key]=el.files[0].name;}});
-const e={nome,kwp:+document.getElementById('mh-kwp').value||0,vend:document.getElementById('mh-vend').value.trim(),datasign:document.getElementById('mh-ds').value,wpp:document.getElementById('mh-wpp').value.trim(),qtdInv:+document.getElementById('mh-qi').value||1,marcaInv:document.getElementById('mh-mi').value.trim(),qtdMod:+document.getElementById('mh-qm').value||0,marcaMod:document.getElementById('mh-mm').value.trim(),trtQtd:tq,artQtd:aq,artVal:av,estimado:est,pago:+document.getElementById('mh-pago').value||0,status:document.getElementById('mh-status').value,docs,fileNames};const d=ld(SK.homo);if(ei.homo!==null)d[ei.homo]=e;else d.unshift(e);sv(SK.homo,d);_hookSave('homologacoes',e);closeM('mo-homo');renderHomo()}
+function toggleHomologador(){const mesmo=document.getElementById('mh-mesmo').checked;document.getElementById('mh-homologador-manual').style.display=mesmo?'none':'block';if(!mesmo)return;['mh-h-nome','mh-h-cpf','mh-h-rg','mh-h-nasc'].forEach(id=>document.getElementById(id).value='');}
+async function uploadHomoDoc(file,nomeSlug,key){const ext=file.name.split('.').pop();const path=`${nomeSlug}/${key}_${Date.now()}.${ext}`;const{error}=await getSB().storage.from('homologacoes').upload(path,file,{upsert:true});if(error){console.error('Upload erro',key,error);alert('Erro ao enviar arquivo ('+key+'): '+error.message);return null;}const{data:{publicUrl}}=getSB().storage.from('homologacoes').getPublicUrl(path);return publicUrl;}
+function _getHomoFU(nome){try{return JSON.parse(localStorage.getItem('_homo_fu')||'{}')[nome]||{};}catch(e){return{};}}function _setHomoFU(nome,fu){try{const s=JSON.parse(localStorage.getItem('_homo_fu')||'{}');s[nome]=fu;localStorage.setItem('_homo_fu',JSON.stringify(s));}catch(e){}}
+function viewHomoDocs(i){const x=ld(SK.homo)[i];document.getElementById('mhd-nome').textContent=x.nome;const labels={procuracao:'📄 Procuração',rg_cnh:'🪪 RG ou CNH',contrato_assinado:'📝 Contrato Assinado',fatura_ger:'⚡ Fatura Geradora',fatura_ben:'⚡ Fatura Beneficiária',arquivo_vist:'🔍 Doc. da Vistoria',datasheet_inv:'📋 Datasheet do Inversor',datasheet_mod:'📋 Datasheet do Módulo',analise_sombra:'🌤️ Análise de Sombreamento'};const fu={...(x.docs?._urls||{}),...(x.fileUrls||{}),..._getHomoFU(x.nome)};document.getElementById('mhd-list').innerHTML=Object.entries(labels).map(([k,l])=>{const url=fu[k];return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--sec);border:1px solid var(--bd);border-radius:8px"><span style="font-size:13px">${l}</span>${url?`<a href="${url}" target="_blank" download style="font-size:12px;font-weight:600;color:var(--a);text-decoration:none;padding:3px 10px;border:1px solid var(--a);border-radius:5px">Ver / Baixar ↗</a>`:'<span style="font-size:11px;color:var(--mu)">Não enviado</span>'}</div>`;}).join('');openM('mo-homo-docs');}
+function openHomoModal(){ei.homo=null;['mh-nome','mh-kwp','mh-vend','mh-ds','mh-wpp','mh-gmaps','mh-mi','mh-mm','mh-trt','mh-prof'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('mh-gmaps-link').style.display='none';document.getElementById('mh-qi').value=1;document.getElementById('mh-qm').value=0;document.getElementById('mh-status').value='aguardando';['homologador','rgcnh','contass','fatger','fatben','vist','dsinv','dsmod','sombra'].forEach(id=>{const el=document.getElementById('mh-f-'+id);if(el)el.value='';const fn=document.getElementById('mh-fn-'+id);if(fn)fn.textContent='Nenhum arquivo';const fu=document.getElementById('mh-fu-'+id);if(fu){fu.href='#';fu.style.display='none';}});document.getElementById('mh-mesmo').checked=true;document.getElementById('mh-homologador-manual').style.display='none';['mh-h-nome','mh-h-cpf','mh-h-rg','mh-h-nasc'].forEach(id=>document.getElementById(id).value='');document.getElementById('mh-t').textContent='Nova homologação';calcHomo();populateDataLists();openM('mo-homo')}
+function editHomo(i){ei.homo=i;populateDataLists();const x=ld(SK.homo)[i];document.getElementById('mh-nome').value=x.nome;document.getElementById('mh-kwp').value=x.kwp;document.getElementById('mh-ds').value=x.datasign||'';document.getElementById('mh-wpp').value=x.wpp||'';document.getElementById('mh-gmaps').value=x.gmaps||'';const glink=document.getElementById('mh-gmaps-link');glink.href=x.gmaps||'#';glink.style.display=x.gmaps?'':'none';document.getElementById('mh-qi').value=x.qtdInv||1;document.getElementById('mh-qm').value=x.qtdMod||0;document.getElementById('mh-trt').value=x.trtArtVal||'';document.getElementById('mh-prof').value=x.profVal||'';document.getElementById('mh-status').value=x.status||'aguardando';document.getElementById('mh-vend').value=x.vend||'';document.getElementById('mh-mi').value=x.marcaInv||'';document.getElementById('mh-mm').value=x.marcaMod||'';const mesmo=x.mesmoCliente!==false;document.getElementById('mh-mesmo').checked=mesmo;document.getElementById('mh-homologador-manual').style.display=mesmo?'none':'block';document.getElementById('mh-h-nome').value=x.homologadorNome||'';document.getElementById('mh-h-cpf').value=x.homologadorCpf||'';document.getElementById('mh-h-rg').value=x.homologadorRg||'';document.getElementById('mh-h-nasc').value=x.homologadorNasc||'';const keyMap={homologador:'procuracao',rgcnh:'rg_cnh',contass:'contrato_assinado',fatger:'fatura_ger',fatben:'fatura_ben',vist:'arquivo_vist',dsinv:'datasheet_inv',dsmod:'datasheet_mod',sombra:'analise_sombra'};const fu={...(x.docs?._urls||{}),...(x.fileUrls||{}),..._getHomoFU(x.nome)};['homologador','rgcnh','contass','fatger','fatben','vist','dsinv','dsmod','sombra'].forEach(id=>{const k=keyMap[id];const fn=x.fileNames&&x.fileNames[k];const fnEl=document.getElementById('mh-fn-'+id);if(fnEl)fnEl.textContent=fn||'Nenhum arquivo';const link=document.getElementById('mh-fu-'+id);if(link){const url=fu[k];link.href=url||'#';link.style.display=url?'':'none';}});document.getElementById('mh-t').textContent='Editar homologação';calcHomo();openM('mo-homo')}
+async function saveHomo(){const nome=document.getElementById('mh-nome').value.trim();if(!nome)return alert('Informe o nome');const btn=document.querySelector('#mo-homo .btn-s');if(btn){btn.disabled=true;btn.textContent='Enviando...';}
+const trtArtVal=+document.getElementById('mh-trt').value||0;const profVal=+document.getElementById('mh-prof').value||0;const est=trtArtVal+profVal;
+const fileMap={homologador:'procuracao',rgcnh:'rg_cnh',contass:'contrato_assinado',fatger:'fatura_ger',fatben:'fatura_ben',vist:'arquivo_vist',dsinv:'datasheet_inv',dsmod:'datasheet_mod',sombra:'analise_sombra'};
+const docs={procuracao:false,rg_cnh:false,contrato_assinado:false,fatura_ger:false,fatura_ben:false,datasheet_inv:false,datasheet_mod:false,arquivo_vist:false,analise_sombra:false};
+const fileNames={};
+const nomeSlug=nome.replace(/[^a-z0-9]/gi,'_').toLowerCase();
+const _exRec=ei.homo!==null?ld(SK.homo)[ei.homo]:null;const fileUrls={...(_exRec?.docs?._urls||{}),  ...(_exRec?.fileUrls||{}),..._getHomoFU(_exRec?.nome||nome)};
+await Promise.all(Object.entries(fileMap).map(async([id,key])=>{const el=document.getElementById('mh-f-'+id);if(el&&el.files&&el.files.length>0){fileNames[key]=el.files[0].name;docs[key]=true;const url=await uploadHomoDoc(el.files[0],nomeSlug,key);if(url){fileUrls[key]=url;const link=document.getElementById('mh-fu-'+id);if(link){link.href=url;link.style.display='';}}}else if(fileUrls[key]){docs[key]=true;}}));
+docs._urls=fileUrls;docs._names=fileNames;
+_setHomoFU(nome,fileUrls);
+const mesmo=document.getElementById('mh-mesmo').checked;let homologadorNome='',homologadorCpf='',homologadorRg='',homologadorNasc='';if(mesmo){const cid=ei.homo!==null?(ld(SK.homo)[ei.homo]?.contratoId||''):'';const cont=cid?ld(SK.cont).find(c=>c.id===cid):null;if(cont){homologadorNome=cont.nome||'';homologadorCpf=cont.cpf||'';homologadorRg=cont.rg||'';const cad=ld(SK.cad).find(c=>c.nome===cont.nome);homologadorNasc=cad?.nascimento||null;}}else{homologadorNome=document.getElementById('mh-h-nome').value.trim();homologadorCpf=document.getElementById('mh-h-cpf').value.trim();homologadorRg=document.getElementById('mh-h-rg').value.trim();homologadorNasc=document.getElementById('mh-h-nasc').value||null;}
+const e={nome,kwp:+document.getElementById('mh-kwp').value||0,vend:document.getElementById('mh-vend').value.trim(),datasign:document.getElementById('mh-ds').value,wpp:document.getElementById('mh-wpp').value.trim(),gmaps:document.getElementById('mh-gmaps').value.trim(),qtdInv:+document.getElementById('mh-qi').value||1,marcaInv:document.getElementById('mh-mi').value.trim(),qtdMod:+document.getElementById('mh-qm').value||0,marcaMod:document.getElementById('mh-mm').value.trim(),trtArtVal,profVal,estimado:est,pago:est,status:document.getElementById('mh-status').value,docs,mesmoCliente:mesmo,homologadorNome,homologadorCpf,homologadorRg,homologadorNasc};
+if(ei.homo!==null){const ex=ld(SK.homo)[ei.homo];if(ex.id)e.id=ex.id;if(ex.contratoId)e.contratoId=ex.contratoId;}
+const d=ld(SK.homo);if(ei.homo!==null)d[ei.homo]=e;else d.unshift(e);sv(SK.homo,d);_hookSave('homologacoes',e);if(btn){btn.disabled=false;btn.textContent='Salvar';}closeM('mo-homo');renderHomo()}
 function delHomo(i){const d=ld(SK.homo);const x=d[i];if(!confirm(`Excluir homologação de "${x.nome}"?\nEsta ação não pode ser desfeita.`))return;if(x.id)_hookDel('homologacoes',x.id);d.splice(i,1);sv(SK.homo,d);renderHomo();updateNavCounts();}
 
 // ===================== COMISSÕES =====================
@@ -2655,12 +3109,14 @@ let _sb=null,_user=null,_perfil=null;
 const _cache={};
 const _TBL={};
 const _pending={};  // itens confirmados localmente mas ainda não no Supabase
+const _pendingUpdates={};  // edições locais bloqueadas silenciosamente pelo RLS
 
 function _initTBL(){
-  _TBL[SK.prop]='propostas';_TBL[SK.vist]='vistorias';_TBL[SK.cont]='contratos';
+  _TBL[SK.lead]='leads';_TBL[SK.prop]='propostas';_TBL[SK.vist]='vistorias';_TBL[SK.cont]='contratos';
   _TBL[SK.log]='logistica';_TBL[SK.inst]='instalacoes';_TBL[SK.homo]='homologacoes';_TBL[SK.com]='comissoes';
   _TBL[SK.fixo]='custos_fixos';_TBL[SK.desp]='despesas';_TBL[SK.rec]='receitas';_TBL[SK.cad]='cadastros';
   _TBL[SK.equip]='equipamentos';
+  Object.values(_TBL).forEach(tbl=>{try{const d=localStorage.getItem('_pu_'+tbl);if(d)_pendingUpdates[tbl]=JSON.parse(d);}catch(e){}});
 }
 
 function getSB(){if(!_sb)_sb=window.supabase.createClient(_SURL,_SKEY);return _sb;}
@@ -2684,29 +3140,57 @@ async function sbUpsert(tbl,item){
   if(e.criado_por===undefined&&_user)e.criado_por=_user.id;
   delete e._idx;
   const _INVALIDOS={
-    contratos:['marcaInv','potInv','qtdInv','marcaMod','potMod','qtdMod','kwh','aceito','eco','validade','data','num','_origem'],
-    propostas:['vendEmail','vendWpp','ecoAnual','aceito','kwh','eco','validade','wpp','data','_origem'],
-    homologacoes:['marcaInv','qtdInv','marcaMod','qtdMod','fileNames','data','_origem'],
-    instalacoes:['data','_origem'],vistorias:['_origem'],comissoes:['_origem'],cadastros:['_origem'],equipamentos:['_origem'],receitas:['_origem']
+    contratos:['kwh','aceito','eco','validade','data','_origem'],
+    propostas:['ecoAnual','eco5','aceito','validade','wpp','data','_origem'],
+    leads:['data','_origem'],
+    homologacoes:['data','_origem'],
+    logistica:['data','_origem'],instalacoes:['data','_origem'],vistorias:['_origem'],comissoes:['_origem'],cadastros:['_origem'],equipamentos:['_origem'],receitas:['_origem']
   };
   (_INVALIDOS[tbl]||[]).forEach(k=>delete e[k]);
+  Object.keys(e).forEach(k=>{if(e[k]==='')e[k]=null;});
   // Normaliza campos de contratos para colunas do Supabase
   if(tbl==='contratos'){
     if(e.pgtoDesc!==undefined){e.pgto_desc=e.pgtoDesc;delete e.pgtoDesc;}
-    if(e.num!==undefined) delete e.num; // coluna não existe, já removida acima
+    if(e.qtdInv!==undefined){e.qtd_inv=e.qtdInv;delete e.qtdInv;}
+    if(e.marcaInv!==undefined){e.marca_inv=e.marcaInv;delete e.marcaInv;}
+    if(e.potInv!==undefined){e.pot_inv=e.potInv;delete e.potInv;}
+    if(e.qtdMod!==undefined){e.qtd_mod=e.qtdMod;delete e.qtdMod;}
+    if(e.marcaMod!==undefined){e.marca_mod=e.marcaMod;delete e.marcaMod;}
+    if(e.potMod!==undefined){e.pot_mod=e.potMod;delete e.potMod;}
+  }
+  if(tbl==='homologacoes'){
+    if(e.fileUrls!==undefined){e.file_urls=e.fileUrls;delete e.fileUrls;}
+    if(e.fileNames!==undefined){e.file_names=e.fileNames;delete e.fileNames;}
+  }
+  if(tbl==='propostas'){
+    if(e.vendWpp!==undefined){e.vend_wpp=e.vendWpp;delete e.vendWpp;}
+    if(e.vendEmail!==undefined){e.vend_email=e.vendEmail;delete e.vendEmail;}
+  }
+  if(tbl==='logistica'){
+    if(e.statusCompra!==undefined){e.statuscompra=e.statusCompra;delete e.statusCompra;}
+    if(e.contratoId!==undefined){e.contratoid=e.contratoId;delete e.contratoId;}
   }
   if(e.id){
-    const{error}=await getSB().from(tbl).update(e).eq('id',e.id);
+    const{data:updRows,error}=await getSB().from(tbl).update(e).eq('id',e.id).select('id');
     if(error){console.error('sbUpsert update error',tbl,error);_sbErrAlert(tbl,error);}
-    else _syncLS(tbl);
+    else{
+      if(!updRows||updRows.length===0){
+        if(!_pendingUpdates[tbl])_pendingUpdates[tbl]={};
+        _pendingUpdates[tbl][e.id]=e;
+        try{localStorage.setItem('_pu_'+tbl,JSON.stringify(_pendingUpdates[tbl]));}catch(x){}
+      } else if(_pendingUpdates[tbl]&&_pendingUpdates[tbl][e.id]){
+        delete _pendingUpdates[tbl][e.id];
+        try{localStorage.setItem('_pu_'+tbl,JSON.stringify(_pendingUpdates[tbl]));}catch(x){}
+      }
+      _syncLS(tbl);
+    }
   } else {
     const {data,error}=await getSB().from(tbl).insert(e).select().single();
     if(data){
       item.id=data.id;
       if(_cache[tbl]){
-        const idx=_cache[tbl].findIndex(c=>!c.id&&c.nome===item.nome);
-        if(idx>=0)_cache[tbl][idx]=data;
-        else if(!_cache[tbl].some(c=>c.id===data.id))_cache[tbl].unshift(data);
+        _cache[tbl]=_cache[tbl].filter(c=>c.id||c.nome!==item.nome);
+        if(!_cache[tbl].some(c=>c.id===data.id))_cache[tbl].unshift(data);
       }
       if(_pending[tbl])_pending[tbl]=_pending[tbl].filter(p=>p.nome!==item.nome);
       _syncLS(tbl);
@@ -2716,6 +3200,15 @@ async function sbUpsert(tbl,item){
     }
   }
 }
+function _mergePU(tbl,data){const pu=_pendingUpdates[tbl];if(!pu||!Object.keys(pu).length)return data;return data.map(row=>pu[row.id]?{...row,...pu[row.id]}:row);}
+function _normRow(tbl,row){
+  if(tbl==='contratos')return{...row,pgtoDesc:row.pgtoDesc||row.pgto_desc||'',qtdInv:row.qtdInv||row.qtd_inv||1,marcaInv:row.marcaInv||row.marca_inv||'',potInv:row.potInv||row.pot_inv||0,qtdMod:row.qtdMod||row.qtd_mod||0,marcaMod:row.marcaMod||row.marca_mod||'',potMod:row.potMod||row.pot_mod||0};
+  if(tbl==='homologacoes')return{...row,fileUrls:row.fileUrls||row.file_urls||{},fileNames:row.fileNames||row.file_names||{}};
+  if(tbl==='propostas')return{...row,vendWpp:row.vendWpp||row.vend_wpp||'',vendEmail:row.vendEmail||row.vend_email||''};
+  if(tbl==='logistica')return{...row,statusCompra:row.statusCompra||row.statuscompra||'Aguardando compra',contratoId:row.contratoId||row.contratoid||''};
+  return row;
+}
+function _normData(tbl,data){return(['contratos','homologacoes','propostas','logistica'].includes(tbl))?data.map(r=>_normRow(tbl,r)):data;}
 function _syncLS(tbl){
   const skKey=Object.keys(_TBL).find(k=>_TBL[k]===tbl);
   if(skKey&&_cache[tbl])try{localStorage.setItem(skKey,JSON.stringify(_cache[tbl]));}catch(e){}
@@ -2738,7 +3231,7 @@ async function carregarDados(){
   const tbls=[...new Set(Object.values(_TBL))];
   await Promise.all(tbls.map(async t=>{
     const{data}=await getSB().from(t).select('*').order('criado_em',{ascending:false});
-    if(data&&data.length>0){_cache[t]=data;}
+    if(data&&data.length>0){_cache[t]=_mergePU(t,_normData(t,data));}
     else{
       const sk=skByTbl[t];
       const local=sk?(()=>{try{const d=localStorage.getItem(sk);return d?JSON.parse(d):null;}catch(e){return null;}})():null;
@@ -2761,7 +3254,7 @@ async function migrarSeVazio(){
   const skByTbl2=Object.fromEntries(Object.entries(_TBL).map(([k,t])=>[t,k]));
   await Promise.all(tbls.map(async t=>{
     const{data}=await getSB().from(t).select('*').order('criado_em',{ascending:false});
-    if(data&&data.length>0){_cache[t]=data;}
+    if(data&&data.length>0){_cache[t]=_mergePU(t,_normData(t,data));}
     else{const sk=skByTbl2[t];const local=sk?(()=>{try{const d=localStorage.getItem(sk);return d?JSON.parse(d):null;}catch(e){return null;}})():null;_cache[t]=local&&local.length>0?local:(_cache[t]||[]);}
   }));
   console.log('Migracao concluida!');
@@ -2900,9 +3393,9 @@ function mostrarMenuUsuarios() {
   const btnU = document.getElementById('ni-usuarios');
   if (btnU && p === 'admin') btnU.style.display = 'flex';
 
-  // Técnico: só vê homologacao
+  // Técnico/Engenheiro: só vê homologacao
   if (p === 'tecnico') {
-    ['propostas','vistorias','contratos','instalacao','comissoes','financeiro','cadastro','usuarios']
+    ['leads','propostas','vistorias','contratos','logistica','instalacao','comissoes','financeiro','cadastro','usuarios','dashboard']
       .forEach(id => { const n=document.getElementById('ni-'+id); if(n) n.style.display='none'; });
     sw('homologacao');
   }
@@ -4911,8 +5404,16 @@ async function _csCall(action, payload){
     },
     body: JSON.stringify({action, payload})
   });
-  if(!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  const text = await res.text();
+  let data = {};
+  try { data = JSON.parse(text); } catch(_){
+    if(!res.ok) throw new Error(`Função não encontrada ou não deployada (HTTP ${res.status}). Verifique o deploy no painel do Supabase → Edge Functions.`);
+  }
+  if(!res.ok){
+    const detalhe = data?.erro || data?.message || data?.error || text;
+    throw new Error(detalhe);
+  }
+  return data;
 }
 
 function _csToast(msg, estado){
