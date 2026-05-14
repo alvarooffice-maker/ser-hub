@@ -3681,7 +3681,7 @@ setInterval(async () => {
   const tbls=[...new Set(Object.values(_TBL))];
   await Promise.all(tbls.map(async t=>{
     const{data}=await getSB().from(t).select('*').order('criado_em',{ascending:false});
-    if(data){const p=(_cache[t]||[]).filter(r=>!r.id);_cache[t]=[...p,...data];}
+    if(data&&data.length>0){const p=(_cache[t]||[]).filter(r=>!r.id);_cache[t]=[...p,...data];_syncLS(t);}
   }));
   // Atualiza a aba atual silenciosamente
   const renders={propostas:renderProp,vistorias:renderVist,contratos:renderCont,
