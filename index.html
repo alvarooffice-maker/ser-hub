@@ -3175,6 +3175,11 @@ async function sbUpsert(tbl,item){
     const{data:updRows,error}=await getSB().from(tbl).update(e).eq('id',e.id).select('id');
     if(error){console.error('sbUpsert update error',tbl,error);_sbErrAlert(tbl,error);}
     else{
+      // Atualiza o cache com os novos valores (re-normalizado) para _syncLS não sobrescrever com dado antigo
+      if(_cache[tbl]){
+        const normalizedUpdate=_normRow(tbl,e);
+        _cache[tbl]=_cache[tbl].map(row=>row.id===e.id?{...row,...normalizedUpdate}:row);
+      }
       if(!updRows||updRows.length===0){
         if(!_pendingUpdates[tbl])_pendingUpdates[tbl]={};
         _pendingUpdates[tbl][e.id]=e;
