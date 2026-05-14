@@ -760,13 +760,13 @@ tr:hover td{background:#fafaf8}
 
 <!-- LOGÍSTICA -->
 <div class="overlay" id="mo-log"><div class="modal">
-  <h3 id="ml-t">Editar Logística</h3>
-  <div class="mr2"><div><label>Cliente</label><input type="text" id="ml-nome" readonly style="background:var(--gl);color:var(--g)"></div><div><label>kWp</label><input type="number" id="ml-kwp" readonly style="background:var(--gl);color:var(--g)"></div></div>
-  <div class="mr2"><div><label>Vendedor</label><input type="text" id="ml-vend" readonly style="background:var(--gl);color:var(--g)"></div><div><label>Valor (R$)</label><input type="number" id="ml-valor" readonly style="background:var(--gl);color:var(--g)"></div></div>
-  <label>Distribuidora</label><input type="text" id="ml-dist" list="list-distribuidoras" placeholder="Selecione ou digite o distribuidor">
-  <datalist id="list-distribuidoras"></datalist>
+  <h3 id="mlog-t">Editar Logística</h3>
+  <div class="mr2"><div><label>Cliente</label><input type="text" id="mlog-nome" readonly style="background:var(--gl);color:var(--g)"></div><div><label>kWp</label><input type="number" id="mlog-kwp" readonly style="background:var(--gl);color:var(--g)"></div></div>
+  <div class="mr2"><div><label>Vendedor</label><input type="text" id="mlog-vend" readonly style="background:var(--gl);color:var(--g)"></div><div><label>Valor (R$)</label><input type="number" id="mlog-valor" readonly style="background:var(--gl);color:var(--g)"></div></div>
+  <label>Distribuidora</label><input type="text" id="mlog-dist" list="list-distribuidoras-log" placeholder="Selecione ou digite o distribuidor">
+  <datalist id="list-distribuidoras-log"></datalist>
   <label>Status da compra</label>
-  <select id="ml-status">
+  <select id="mlog-status">
     <option value="Aguardando compra">Aguardando compra</option>
     <option value="Comprado">Comprado</option>
     <option value="Enviado">Enviado</option>
@@ -2528,17 +2528,17 @@ function renderLog(){
 function editLog(i){
   ei.log=i;
   const x=ld(SK.log)[i];
-  document.getElementById('ml-nome').value=x.nome||'';
-  document.getElementById('ml-kwp').value=x.kwp||'';
-  document.getElementById('ml-vend').value=x.vend||'';
-  document.getElementById('ml-valor').value=x.valor||'';
-  document.getElementById('ml-dist').value=x.distribuidora||'';
-  document.getElementById('ml-status').value=x.statusCompra||'Aguardando compra';
+  document.getElementById('mlog-nome').value=x.nome||'';
+  document.getElementById('mlog-kwp').value=x.kwp||'';
+  document.getElementById('mlog-vend').value=x.vend||'';
+  document.getElementById('mlog-valor').value=x.valor||'';
+  document.getElementById('mlog-dist').value=x.distribuidora||'';
+  document.getElementById('mlog-status').value=x.statusCompra||'Aguardando compra';
   // Populate distribuidoras datalist
   const dists=ld(SK.cad).filter(c=>c.tipo==='distribuidor').map(c=>c.nome);
-  const dl=document.getElementById('list-distribuidoras');
+  const dl=document.getElementById('list-distribuidoras-log');
   if(dl)dl.innerHTML=dists.map(d=>`<option value="${d}">`).join('');
-  document.getElementById('ml-t').textContent='Logística — '+x.nome;
+  document.getElementById('mlog-t').textContent='Logística — '+x.nome;
   openM('mo-log');
 }
 function saveLog(){
@@ -2546,8 +2546,8 @@ function saveLog(){
   const i=ei.log;
   if(i===null||i===undefined)return;
   const x={...d[i]};
-  x.distribuidora=document.getElementById('ml-dist').value.trim();
-  x.statusCompra=document.getElementById('ml-status').value;
+  x.distribuidora=document.getElementById('mlog-dist').value.trim();
+  x.statusCompra=document.getElementById('mlog-status').value;
   d[i]=x;
   sv(SK.log,d);
   _hookSave('logistica',x);
