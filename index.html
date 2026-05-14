@@ -2512,12 +2512,12 @@ function renderLog(){
     <td>${x.kwp||'—'}</td>
     <td>${x.vend||'—'}</td>
     <td>${x.distribuidora||'—'}</td>
-    <td><span style="background:${statusColor[x.statusCompra]||'#6b7280'}20;color:${statusColor[x.statusCompra]||'#6b7280'};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">${x.statusCompra||'—'}</span></td>
+    <td><span style="background:${statusColor[x.statusCompra||x.statuscompra||'Aguardando compra']||'#f59e0b'}20;color:${statusColor[x.statusCompra||x.statuscompra||'Aguardando compra']||'#f59e0b'};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">${x.statusCompra||x.statuscompra||'Aguardando compra'}</span></td>
     <td><button class="ab ab-e" onclick="editLog(${i})">✏️</button><button class="ab ab-r" onclick="delLog(${i})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></td>
   </tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--g);padding:24px">Nenhum contrato assinado na logística</td></tr>';
   // Metrics
   const total=d.length;
-  const ag=d.filter(x=>x.statusCompra==='Aguardando compra').length;
+  const ag=d.filter(x=>(x.statusCompra||x.statuscompra||'Aguardando compra')==='Aguardando compra').length;
   const env=d.filter(x=>x.statusCompra==='Enviado').length;
   const ent=d.filter(x=>x.statusCompra==='Entregue').length;
   const mm=document.getElementById('m-log');
