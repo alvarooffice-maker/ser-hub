@@ -479,8 +479,7 @@ tr:hover td{background:#fafaf8}
   <!-- ===== HOMOLOGAÇÃO ===== -->
   <div class="tab-panel" id="tab-homologacao">
     <div class="metrics c4" id="m-homo" style="margin-bottom:16px"></div>
-    <div class="sl">Checklist de documentos</div>
-    <div class="chk-grid" id="chk-grid"></div>
+    <div id="homo-kanban" style="margin-bottom:16px"></div>
     <div class="card">
       <div class="ch"><span class="ct" id="c-homo">Homologações</span><button class="add-btn" onclick="openHomoModal()">+ Nova</button></div>
       <table><thead><tr><th style="width:17%">Cliente</th><th style="width:9%">kWp</th><th style="width:12%">Assinatura</th><th style="width:13%">Profissional</th><th style="width:10%">TRT/ART</th><th style="width:13%">Total</th><th style="width:11%">Status</th><th style="width:15%">Ações</th></tr></thead><tbody id="tb-homo"></tbody></table>
@@ -2629,6 +2628,48 @@ function saveInst(){const nome=document.getElementById('mi-nome').value.trim();i
 // ===================== HOMOLOGAÇÃO =====================
 const HDOCS=[{k:'procuracao',l:'Procuração assinada'},{k:'fatura_ger',l:'Fatura geradora'},{k:'fatura_ben',l:'Faturas beneficiárias'},{k:'datasheet_inv',l:'Datasheet inversor'},{k:'datasheet_mod',l:'Datasheet módulos'},{k:'arquivo_vist',l:'Arquivo da vistoria'}];
 const HSTAT={aguardando:'Aguardando',analise:'Em análise',trt_art:'TRT/ART PG',parecer:'Parecer de acesso',vistoria_final:'Vistoria Final',aprovada:'Aprovada',reprovada:'Reprovada',concluida:'Concluída'};
+function _renderHomoKanban(fullD,dv){
+  const el=document.getElementById('homo-kanban');
+  if(!el)return;
+  const cors={aguardando:'#f59e0b',analise:'#3b82f6',trt_art:'#8b5cf6',parecer:'#06b6d4',vistoria_final:'#f97316',aprovada:'#22c55e',reprovada:'#ef4444',concluida:'#10b981'};
+  const cols=[
+    {k:'aguardando',l:'Aguardando Docs'},
+    {k:'analise',l:'Em An\u00e1lise'},
+    {k:'trt_art',l:'TRT/ART PG'},
+    {k:'parecer',l:'Parecer de Acesso'},
+    {k:'vistoria_final',l:'Vistoria Final'},
+    {k:'aprovada',l:'Aprovada \u2705'},
+    {k:'reprovada',l:'Reprovada \u274c'},
+    {k:'concluida',l:'Conclu\u00edda \U0001f3c6'}
+  ];
+  el.innerHTML='<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px">'+cols.map(col=>{
+    const cor=cors[col.k]||'#888';
+    const items=dv.filter(x=>x.status===col.k);
+    const cards=items.map(x=>{
+      const ri=fullD.indexOf(x);
+      const docs=x.docs||{};
+      const done=HDOCS.filter(dc=>docs[dc.k]).length;
+      const pp=Math.round(done/HDOCS.length*100);
+      const wppN=(x.wpp||'').replace(/\D/g,'');
+      const wuEnc=wppN?encodeURIComponent('Ol\u00e1 '+x.nome+'! Atualiza\u00e7\u00e3o homologa\u00e7\u00e3o SER Energia.'):'';
+      return`<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:3px solid ${cor}">
+        <div style="font-weight:600;font-size:12px;margin-bottom:4px">${x.nome}</div>
+        <div style="font-size:11px;color:#888;margin-bottom:6px">${x.kwp||'\u2014'} kWp \u00b7 ${x.vend||'\u2014'}</div>
+        <div style="background:#eee;border-radius:3px;height:4px;margin-bottom:6px"><div style="background:${cor};height:4px;border-radius:3px;width:${pp}%"></div></div>
+        <div style="font-size:10px;color:#aaa;margin-bottom:8px">${done}/${HDOCS.length} docs \u00b7 ${fD(x.datasign)||'\u2014'}</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${wppN?`<button class="ab ab-g" style="font-size:10px;padding:2px 6px" onclick="ol('https://wa.me/55${wppN}?text=${wuEnc}')">WPP</button>`:''}
+          <button class="ab" style="font-size:10px;padding:2px 6px" onclick="viewHomoDocs(${ri})">\U0001f4ce</button>
+          <button class="ab" style="font-size:10px;padding:2px 6px" onclick="editHomo(${ri})">Editar</button>
+        </div>
+      </div>`;
+    }).join('');
+    return`<div style="min-width:175px;flex:1;background:#f5f5f5;border-radius:10px;padding:10px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;color:${cor}">${col.l} <span style="color:#999;font-weight:400">(${items.length})</span></div>
+      ${cards||'<div style="font-size:11px;color:#bbb;text-align:center;padding:12px">\u2014</div>'}
+    </div>`;
+  }).join('')+'</div>';
+}
 function calcHomo(){
   const trt=+document.getElementById('mh-trt').value||0;
   const prof=+document.getElementById('mh-prof').value||0;
@@ -2645,7 +2686,7 @@ function renderHomo(){
   const ag=dv.filter(x=>x.status==='aguardando'||x.status==='analise').length,ap=dv.filter(x=>['aprovada','concluida'].includes(x.status)).length;
   const tEst=dv.reduce((s,x)=>s+(x.estimado||0),0);
   mkM('m-homo',[{l:'Total',v:dv.length,s:'',c:'b'},{l:'Aguardando/Análise',v:ag,s:'pendentes',c:'a'},{l:'Aprovadas',v:ap,s:'',c:'g'},{l:'Custo estimado',v:'R$\u00a0'+(tEst/1000).toFixed(1)+'k',s:'',c:'g'}]);
-  document.getElementById('chk-grid').innerHTML=dv.slice(0,6).map((x)=>{const i=d.indexOf(x);const docs=x.docs||{};const done=HDOCS.filter(dc=>docs[dc.k]).length;const pp=Math.round(done/HDOCS.length*100);return`<div class="chk-card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:12px;font-weight:500">${x.nome}</span><span style="font-size:11px;color:var(--mu)">${done}/${HDOCS.length}</span></div><div>${HDOCS.map(dc=>`<label class="chk-item ${docs[dc.k]?'done':''}"><input type="checkbox" ${docs[dc.k]?'checked':''} onchange="togDoc(${i},'${dc.k}',this.checked)"> ${dc.l}</label>`).join('')}</div><div class="prog-bar"><div class="prog-fill" style="width:${pp}%"></div></div></div>`;}).join('')||'<div style="color:var(--mu);font-size:13px;margin-bottom:16px">Nenhuma homologação</div>';
+  _renderHomoKanban(d,dv);
   mkF('f-homo',[{k:'all',l:'Todas',c:dv.length},{k:'aguardando',l:'Aguardando',c:dv.filter(x=>x.status==='aguardando').length},{k:'analise',l:'Em análise',c:dv.filter(x=>x.status==='analise').length},{k:'aprovada',l:'Aprovadas',c:ap}],filt.homo,'setFH');
   const fl=filt.homo==='all'?dv:(filt.homo==='aprovada'?dv.filter(x=>['aprovada','concluida'].includes(x.status)):dv.filter(x=>x.status===filt.homo));
   document.getElementById('c-homo').textContent=fl.length+' homologação'+(fl.length===1?'':'ões');
