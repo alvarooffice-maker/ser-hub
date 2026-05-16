@@ -1404,9 +1404,9 @@ function renderDash(){
   const allComs=ld(SK.com);
   const coms=filterDash(allComs,x=>({m:x.mes,y:x.ano}),x=>x.vend?.nome);
 
-  // Contratos filtrados por data+vendedor (usa x.data dd/mm/yyyy)
+  // Contratos filtrados por data de assinatura (datasign) ou data de criação
   const allConts=ld(SK.cont);
-  const contsF=filterDash(allConts,x=>_parseDMY(x.data||x.criado_em||''),x=>x.vend);
+  const contsF=filterDash(allConts,x=>_parseDMY(x.datasign||x.data||x.criado_em||''),x=>x.vend);
 
   // Propostas filtradas
   const allProps=ld(SK.prop);
@@ -1542,7 +1542,7 @@ function _renderMetas(){
   const el=document.getElementById('dash-metas');
   if(!el)return;
   const allConts=ld(SK.cont);
-  const contsF=filterDash(allConts,x=>_parseDMY(x.data||x.criado_em||''),x=>x.vend);
+  const contsF=filterDash(allConts,x=>_parseDMY(x.datasign||x.data||x.criado_em||''),x=>x.vend);
   const vendMap={};
   contsF.forEach(c=>{
     const v=(c.vend||'').trim();if(!v)return;
