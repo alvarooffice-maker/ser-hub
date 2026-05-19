@@ -3208,7 +3208,7 @@ async function sbUpsert(tbl,item){
   delete e._idx;
   const _INVALIDOS={
     contratos:['kwh','aceito','eco','validade','data','_origem'],
-    propostas:['ecoAnual','eco5','aceito','validade','wpp','data','_origem'],
+    propostas:['ecoAnual','eco5','aceito','validade','data','_origem'],
     leads:['data','_origem'],
     homologacoes:['data','_origem'],
     logistica:['data','_origem'],instalacoes:['data','_origem'],vistorias:['_origem'],comissoes:['_origem'],cadastros:['_origem'],equipamentos:['_origem'],receitas:['_origem']
@@ -3228,6 +3228,12 @@ async function sbUpsert(tbl,item){
   if(tbl==='homologacoes'){
     if(e.fileUrls!==undefined){e.file_urls=e.fileUrls;delete e.fileUrls;}
     if(e.fileNames!==undefined){e.file_names=e.fileNames;delete e.fileNames;}
+    if(e.qtdInv!==undefined){e.qtd_inv=e.qtdInv;delete e.qtdInv;}
+    if(e.marcaInv!==undefined){e.marca_inv=e.marcaInv;delete e.marcaInv;}
+    if(e.potenciaInv!==undefined){e.potencia_inv=e.potenciaInv;delete e.potenciaInv;}
+    if(e.qtdMod!==undefined){e.qtd_mod=e.qtdMod;delete e.qtdMod;}
+    if(e.marcaMod!==undefined){e.marca_mod=e.marcaMod;delete e.marcaMod;}
+    if(e.potenciaMod!==undefined){e.potencia_mod=e.potenciaMod;delete e.potenciaMod;}
   }
   if(tbl==='propostas'){
     if(e.vendWpp!==undefined){e.vend_wpp=e.vendWpp;delete e.vendWpp;}
@@ -3260,9 +3266,10 @@ async function sbUpsert(tbl,item){
     const {data,error}=await getSB().from(tbl).insert(e).select().single();
     if(data){
       item.id=data.id;
+      const normalizedInsert=_normRow(tbl,data);
       if(_cache[tbl]){
         _cache[tbl]=_cache[tbl].filter(c=>c.id||c.nome!==item.nome);
-        if(!_cache[tbl].some(c=>c.id===data.id))_cache[tbl].unshift(data);
+        if(!_cache[tbl].some(c=>c.id===data.id))_cache[tbl].unshift(normalizedInsert);
       }
       if(_pending[tbl])_pending[tbl]=_pending[tbl].filter(p=>p.nome!==item.nome);
       _syncLS(tbl);
@@ -3275,7 +3282,7 @@ async function sbUpsert(tbl,item){
 function _mergePU(tbl,data){const pu=_pendingUpdates[tbl];if(!pu||!Object.keys(pu).length)return data;return data.map(row=>pu[row.id]?{...row,...pu[row.id]}:row);}
 function _normRow(tbl,row){
   if(tbl==='contratos')return{...row,pgtoDesc:row.pgtoDesc||row.pgto_desc||'',qtdInv:row.qtdInv||row.qtd_inv||1,marcaInv:row.marcaInv||row.marca_inv||'',potInv:row.potInv||row.pot_inv||0,qtdMod:row.qtdMod||row.qtd_mod||0,marcaMod:row.marcaMod||row.marca_mod||'',potMod:row.potMod||row.pot_mod||0};
-  if(tbl==='homologacoes')return{...row,fileUrls:row.fileUrls||row.file_urls||{},fileNames:row.fileNames||row.file_names||{}};
+  if(tbl==='homologacoes')return{...row,fileUrls:row.fileUrls||row.file_urls||{},fileNames:row.fileNames||row.file_names||{},qtdInv:row.qtdInv||row.qtd_inv||1,marcaInv:row.marcaInv||row.marca_inv||'',potenciaInv:row.potenciaInv||row.potencia_inv||0,qtdMod:row.qtdMod||row.qtd_mod||0,marcaMod:row.marcaMod||row.marca_mod||'',potenciaMod:row.potenciaMod||row.potencia_mod||0};
   if(tbl==='propostas')return{...row,vendWpp:row.vendWpp||row.vend_wpp||'',vendEmail:row.vendEmail||row.vend_email||''};
   if(tbl==='logistica')return{...row,statusCompra:row.statusCompra||row.statuscompra||'Aguardando compra',contratoId:row.contratoId||row.contratoid||''};
   return row;
