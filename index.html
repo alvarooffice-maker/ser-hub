@@ -1037,7 +1037,7 @@ function sw(id, noFetch){
     const tbl=abaParaTabela[id];
     if(tbl) {
       getSB().from(tbl).select('*').order('criado_em',{ascending:false}).then(({data})=>{
-        if(data){const norm=_normData(tbl,data);const sbNames=new Set(norm.map(r=>r.nome).filter(Boolean));const p=(_cache[tbl]||[]).filter(r=>!r.id&&!sbNames.has(r.nome));const merged=_mergePU(tbl,norm);if(merged.length>0||p.length>0)_cache[tbl]=[...p,...merged];renders[id]&&renders[id]();}
+        if(data){const merged=_normData(tbl,_mergePU(tbl,data));const sbNames=new Set(merged.map(r=>r.nome).filter(Boolean));const p=(_cache[tbl]||[]).filter(r=>!r.id&&!sbNames.has(r.nome));if(merged.length>0||p.length>0)_cache[tbl]=[...p,...merged];renders[id]&&renders[id]();}
       });
       return; // render será chamado pelo then acima
     }
@@ -1081,7 +1081,7 @@ function updateNavCounts(){
 
 // Opções fixas do sistema
 const _OPTS={
-  marcaMod:['Jinko Solar','LONGi Solar','Trina Solar','JA Solar','Canadian Solar','Astronergy','DMEGC Solar','DAS Solar','ReneSola','SEG Solar','DAH Solar','Leapton Energy','Sunpro Solar','Hanersun','Era Solar','Pulling Energy','MAXEON','RENEPV'],
+  marcaMod:['Jinko Solar','LONGi Solar','Trina Solar','JA Solar','Canadian Solar','Astronergy','DMEGC Solar','DAS Solar','ReneSola','SEG Solar','DAH Solar','Leapton Energy','Sunpro Solar','Hanersun','Era Solar','Pulling Energy','MAXEON','RENEPV','RONMA'],
   marcaInv:['Sungrow','Huawei','SMA Solar','Solis','GoodWe','Growatt','Auxsol','Solplanet','Leapton','Canadian','Deye'],
   marcaBat:['GoodWe','Solplanet','Huawei','BYD','Tesla','Sungrow'],
   potMod:[535,555,585,590,610,620,630,700],
@@ -2562,6 +2562,7 @@ function saveLog(){
   x.statusCompra=document.getElementById('mlog-status').value;
   d[i]=x;
   sv(SK.log,d);
+  if(x.id){if(!_pendingUpdates['logistica'])_pendingUpdates['logistica']={};_pendingUpdates['logistica'][x.id]={statuscompra:x.statusCompra,distribuidora:x.distribuidora};try{localStorage.setItem('_pu_logistica',JSON.stringify(_pendingUpdates['logistica']));}catch(_e){}}
   _hookSave('logistica',x);
   // Automation: Entregue → pre-fill Instalação
   if(x.statusCompra==='Entregue'){
@@ -2715,7 +2716,7 @@ if(x.id){try{const{data:rows}=await getSB().from('homologacoes').select('docs,fi
 if(!Object.values(fu).some(Boolean)){const nomeSlug=x.nome.replace(/[^a-z0-9]/gi,'_').toLowerCase();try{const{data:files}=await getSB().storage.from('homologacoes').list(nomeSlug);if(files&&files.length>0){const knownKeys=Object.keys(labels);files.forEach(f=>{const k=knownKeys.find(kk=>f.name.startsWith(kk+'_'));if(k){const{data:{publicUrl}}=getSB().storage.from('homologacoes').getPublicUrl(`${nomeSlug}/${f.name}`);fu[k]=publicUrl;}});}}catch(e){}}
 renderList();}
 function openHomoModal(){ei.homo=null;['mh-nome','mh-kwp','mh-vend','mh-ds','mh-wpp','mh-gmaps','mh-mi','mh-mm','mh-trt','mh-prof'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('mh-gmaps-link').style.display='none';document.getElementById('mh-qi').value=1;document.getElementById('mh-qm').value=0;document.getElementById('mh-pi').value='';document.getElementById('mh-pm').value='';document.getElementById('mh-status').value='aguardando';['homologador','rgcnh','contass','fatger','fatben','vist','dsinv','dsmod','sombra','anexoi','formpadrao','arttrt','unifilar','memorial','inmetro','orcconex'].forEach(id=>{const el=document.getElementById('mh-f-'+id);if(el)el.value='';const fn=document.getElementById('mh-fn-'+id);if(fn)fn.textContent='Nenhum arquivo';const fu=document.getElementById('mh-fu-'+id);if(fu){fu.href='#';fu.style.display='none';}});document.getElementById('mh-mesmo').checked=true;document.getElementById('mh-homologador-manual').style.display='none';['mh-h-nome','mh-h-cpf','mh-h-rg','mh-h-nasc'].forEach(id=>document.getElementById(id).value='');document.getElementById('mh-t').textContent='Nova homologação';calcHomo();populateDataLists();openM('mo-homo')}
-function editHomo(i){ei.homo=i;populateDataLists();const x=ld(SK.homo)[i];document.getElementById('mh-nome').value=x.nome;document.getElementById('mh-kwp').value=x.kwp;document.getElementById('mh-ds').value=x.datasign||'';document.getElementById('mh-wpp').value=x.wpp||'';document.getElementById('mh-gmaps').value=x.gmaps||'';const glink=document.getElementById('mh-gmaps-link');glink.href=x.gmaps||'#';glink.style.display=x.gmaps?'':'none';document.getElementById('mh-qi').value=x.qtdInv||1;document.getElementById('mh-qm').value=x.qtdMod||0;document.getElementById('mh-pi').value=x.potenciaInv||'';document.getElementById('mh-pm').value=x.potenciaMod||'';document.getElementById('mh-trt').value=x.trtArtVal||'';document.getElementById('mh-prof').value=x.profVal||'';document.getElementById('mh-status').value=x.status||'aguardando';document.getElementById('mh-vend').value=x.vend||'';document.getElementById('mh-mi').value=x.marcaInv||'';document.getElementById('mh-mm').value=x.marcaMod||'';const mesmo=x.mesmoCliente!==false;document.getElementById('mh-mesmo').checked=mesmo;document.getElementById('mh-homologador-manual').style.display=mesmo?'none':'block';document.getElementById('mh-h-nome').value=x.homologadorNome||'';document.getElementById('mh-h-cpf').value=x.homologadorCpf||'';document.getElementById('mh-h-rg').value=x.homologadorRg||'';document.getElementById('mh-h-nasc').value=x.homologadorNasc||'';const keyMap={homologador:'procuracao',rgcnh:'rg_cnh',contass:'contrato_assinado',fatger:'fatura_ger',fatben:'fatura_ben',vist:'arquivo_vist',dsinv:'datasheet_inv',dsmod:'datasheet_mod',sombra:'analise_sombra',anexoi:'anexo_i',formpadrao:'form_troca_padrao',arttrt:'art_trt',unifilar:'projeto_unifilar',memorial:'memorial_tecnico',inmetro:'cert_inmetro',orcconex:'orcamento_conexao'};const fu={...(x.docs?._urls||{}),...(x.fileUrls||{}),..._getHomoFU(x.nome)};['homologador','rgcnh','contass','fatger','fatben','vist','dsinv','dsmod','sombra','anexoi','formpadrao','arttrt','unifilar','memorial','inmetro','orcconex'].forEach(id=>{const k=keyMap[id];const fn=x.fileNames&&x.fileNames[k];const fnEl=document.getElementById('mh-fn-'+id);if(fnEl)fnEl.textContent=fn||'Nenhum arquivo';const link=document.getElementById('mh-fu-'+id);if(link){const url=fu[k];link.href=url||'#';link.style.display=url?'':'none';}});document.getElementById('mh-t').textContent='Editar homologação';calcHomo();openM('mo-homo')}
+function editHomo(i){ei.homo=i;populateDataLists();const x=ld(SK.homo)[i];document.getElementById('mh-nome').value=x.nome;document.getElementById('mh-kwp').value=x.kwp;document.getElementById('mh-ds').value=x.datasign||'';document.getElementById('mh-wpp').value=x.wpp||'';document.getElementById('mh-gmaps').value=x.gmaps||'';const glink=document.getElementById('mh-gmaps-link');glink.href=x.gmaps||'#';glink.style.display=x.gmaps?'':'none';document.getElementById('mh-qi').value=x.qtdInv||1;document.getElementById('mh-qm').value=x.qtdMod||0;const _hxEq=(JSON.parse(localStorage.getItem('_hx')||'{}'))[x.nome]||{};document.getElementById('mh-pi').value=x.potenciaInv||_hxEq.potenciaInv||'';document.getElementById('mh-pm').value=x.potenciaMod||_hxEq.potenciaMod||'';document.getElementById('mh-trt').value=x.trtArtVal||'';document.getElementById('mh-prof').value=x.profVal||'';document.getElementById('mh-status').value=x.status||'aguardando';document.getElementById('mh-vend').value=x.vend||'';document.getElementById('mh-mi').value=x.marcaInv||_hxEq.marcaInv||'';document.getElementById('mh-mm').value=x.marcaMod||_hxEq.marcaMod||'';const mesmo=x.mesmoCliente!==false;document.getElementById('mh-mesmo').checked=mesmo;document.getElementById('mh-homologador-manual').style.display=mesmo?'none':'block';document.getElementById('mh-h-nome').value=x.homologadorNome||'';document.getElementById('mh-h-cpf').value=x.homologadorCpf||'';document.getElementById('mh-h-rg').value=x.homologadorRg||'';document.getElementById('mh-h-nasc').value=x.homologadorNasc||'';const keyMap={homologador:'procuracao',rgcnh:'rg_cnh',contass:'contrato_assinado',fatger:'fatura_ger',fatben:'fatura_ben',vist:'arquivo_vist',dsinv:'datasheet_inv',dsmod:'datasheet_mod',sombra:'analise_sombra',anexoi:'anexo_i',formpadrao:'form_troca_padrao',arttrt:'art_trt',unifilar:'projeto_unifilar',memorial:'memorial_tecnico',inmetro:'cert_inmetro',orcconex:'orcamento_conexao'};const fu={...(x.docs?._urls||{}),...(x.fileUrls||{}),..._getHomoFU(x.nome)};['homologador','rgcnh','contass','fatger','fatben','vist','dsinv','dsmod','sombra','anexoi','formpadrao','arttrt','unifilar','memorial','inmetro','orcconex'].forEach(id=>{const k=keyMap[id];const fn=x.fileNames&&x.fileNames[k];const fnEl=document.getElementById('mh-fn-'+id);if(fnEl)fnEl.textContent=fn||'Nenhum arquivo';const link=document.getElementById('mh-fu-'+id);if(link){const url=fu[k];link.href=url||'#';link.style.display=url?'':'none';}});document.getElementById('mh-t').textContent='Editar homologação';calcHomo();openM('mo-homo')}
 async function saveHomo(){const nome=document.getElementById('mh-nome').value.trim();if(!nome)return alert('Informe o nome');const btn=document.querySelector('#mo-homo .btn-s');if(btn){btn.disabled=true;btn.textContent='Enviando...';}
 const trtArtVal=+document.getElementById('mh-trt').value||0;const profVal=+document.getElementById('mh-prof').value||0;const est=trtArtVal+profVal;
 const fileMap={homologador:'procuracao',rgcnh:'rg_cnh',contass:'contrato_assinado',fatger:'fatura_ger',fatben:'fatura_ben',vist:'arquivo_vist',dsinv:'datasheet_inv',dsmod:'datasheet_mod',sombra:'analise_sombra',anexoi:'anexo_i',formpadrao:'form_troca_padrao',arttrt:'art_trt',unifilar:'projeto_unifilar',memorial:'memorial_tecnico',inmetro:'cert_inmetro',orcconex:'orcamento_conexao'};
@@ -2730,7 +2731,7 @@ const mesmo=document.getElementById('mh-mesmo').checked;let homologadorNome='',h
 const e={nome,kwp:+document.getElementById('mh-kwp').value||0,vend:document.getElementById('mh-vend').value.trim(),datasign:document.getElementById('mh-ds').value,wpp:document.getElementById('mh-wpp').value.trim(),gmaps:document.getElementById('mh-gmaps').value.trim(),qtdInv:+document.getElementById('mh-qi').value||1,marcaInv:document.getElementById('mh-mi').value.trim(),potenciaInv:+document.getElementById('mh-pi').value||0,qtdMod:+document.getElementById('mh-qm').value||0,marcaMod:document.getElementById('mh-mm').value.trim(),potenciaMod:+document.getElementById('mh-pm').value||0,trtArtVal,profVal,estimado:est,pago:est,status:document.getElementById('mh-status').value,docs,mesmoCliente:mesmo,homologadorNome,homologadorCpf,homologadorRg,homologadorNasc};
 if(ei.homo!==null){const ex=ld(SK.homo)[ei.homo];if(ex.id)e.id=ex.id;if(ex.contratoId)e.contratoId=ex.contratoId;}
 e.fileUrls=fileUrls;e.fileNames={...(_exRec?.fileNames||{}),  ...(_exRec?.docs?._names||{}),...fileNames};
-const d=ld(SK.homo);if(ei.homo!==null)d[ei.homo]=e;else d.unshift(e);sv(SK.homo,d);_hookSave('homologacoes',e);if(btn){btn.disabled=false;btn.textContent='Salvar';}closeM('mo-homo');renderHomo()}
+const d=ld(SK.homo);if(ei.homo!==null)d[ei.homo]=e;else d.unshift(e);sv(SK.homo,d);try{const _hk=e.nome;const _he=JSON.parse(localStorage.getItem('_hx')||'{}');_he[_hk]={marcaInv:e.marcaInv,marcaMod:e.marcaMod,potenciaInv:e.potenciaInv,potenciaMod:e.potenciaMod};localStorage.setItem('_hx',JSON.stringify(_he));}catch(_){}  _hookSave('homologacoes',e);if(btn){btn.disabled=false;btn.textContent='Salvar';}closeM('mo-homo');renderHomo()}
 function delHomo(i){const d=ld(SK.homo);const x=d[i];if(!confirm(`Excluir homologação de "${x.nome}"?\nEsta ação não pode ser desfeita.`))return;if(x.id)_hookDel('homologacoes',x.id);d.splice(i,1);sv(SK.homo,d);renderHomo();updateNavCounts();}
 
 // ===================== COMISSÕES =====================
@@ -3229,11 +3230,11 @@ async function sbUpsert(tbl,item){
     if(e.fileUrls!==undefined){e.file_urls=e.fileUrls;delete e.fileUrls;}
     if(e.fileNames!==undefined){e.file_names=e.fileNames;delete e.fileNames;}
     if(e.qtdInv!==undefined){e.qtd_inv=e.qtdInv;delete e.qtdInv;}
-    if(e.marcaInv!==undefined){e.marca_inv=e.marcaInv;delete e.marcaInv;}
-    if(e.potenciaInv!==undefined){e.potencia_inv=e.potenciaInv;delete e.potenciaInv;}
+    delete e.marcaInv;
+    delete e.potenciaInv;
     if(e.qtdMod!==undefined){e.qtd_mod=e.qtdMod;delete e.qtdMod;}
-    if(e.marcaMod!==undefined){e.marca_mod=e.marcaMod;delete e.marcaMod;}
-    if(e.potenciaMod!==undefined){e.potencia_mod=e.potenciaMod;delete e.potenciaMod;}
+    delete e.marcaMod;
+    delete e.potenciaMod;
   }
   if(tbl==='propostas'){
     if(e.vendWpp!==undefined){e.vend_wpp=e.vendWpp;delete e.vendWpp;}
@@ -3313,7 +3314,7 @@ async function carregarDados(){
   await Promise.all(tbls.map(async t=>{
     const{data}=await getSB().from(t).select('*').order('criado_em',{ascending:false});
     if(data&&data.length>0){
-      const merged=_mergePU(t,_normData(t,data));
+      const merged=_normData(t,_mergePU(t,data));
       const sk=skByTbl[t];
       const local=sk?(()=>{try{const d=localStorage.getItem(sk);return d?JSON.parse(d):null;}catch(e){return null;}})():null;
       const pending=(local||[]).filter(r=>!r.id);
@@ -3342,7 +3343,7 @@ async function migrarSeVazio(){
   const skByTbl2=Object.fromEntries(Object.entries(_TBL).map(([k,t])=>[t,k]));
   await Promise.all(tbls.map(async t=>{
     const{data}=await getSB().from(t).select('*').order('criado_em',{ascending:false});
-    if(data&&data.length>0){_cache[t]=_mergePU(t,_normData(t,data));}
+    if(data&&data.length>0){_cache[t]=_normData(t,_mergePU(t,data));}
     else{const sk=skByTbl2[t];const local=sk?(()=>{try{const d=localStorage.getItem(sk);return d?JSON.parse(d):null;}catch(e){return null;}})():null;_cache[t]=local&&local.length>0?local:(_cache[t]||[]);}
   }));
   console.log('Migracao concluida!');
