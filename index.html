@@ -3260,6 +3260,7 @@ async function sbUpsert(tbl,item){
         if(!_pendingUpdates[tbl])_pendingUpdates[tbl]={};
         _pendingUpdates[tbl][e.id]=e;
         try{localStorage.setItem('_pu_'+tbl,JSON.stringify(_pendingUpdates[tbl]));}catch(x){}
+        console.warn('[SER] sbUpsert: UPDATE em "'+tbl+'" retornou 0 linhas — provável bloqueio RLS. Dado salvo apenas localmente.');
       } else if(_pendingUpdates[tbl]&&_pendingUpdates[tbl][e.id]){
         delete _pendingUpdates[tbl][e.id];
         try{localStorage.setItem('_pu_'+tbl,JSON.stringify(_pendingUpdates[tbl]));}catch(x){}
