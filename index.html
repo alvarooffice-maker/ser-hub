@@ -1037,7 +1037,19 @@ function sw(id, noFetch){
     const tbl=abaParaTabela[id];
     if(tbl) {
       getSB().from(tbl).select('*').order('criado_em',{ascending:false}).then(({data})=>{
-        if(data){const merged=_normData(tbl,_mergePU(tbl,data));const sbNames=new Set(merged.map(r=>r.nome).filter(Boolean));const p=(_cache[tbl]||[]).filter(r=>!r.id&&!sbNames.has(r.nome));if(merged.length>0||p.length>0)_cache[tbl]=[...p,...merged];renders[id]&&renders[id]();}
+        if(data){
+          // Dados do Supabase são autoritativos: descarta pendingUpdates antigos para essas linhas
+          // (evita que dados locais bloqueados por RLS antes do fix sobrescrevam o Supabase)
+          if(_pendingUpdates[tbl]){
+            data.forEach(r=>{if(r.id)delete _pendingUpdates[tbl][r.id];});
+            try{localStorage.setItem('_pu_'+tbl,JSON.stringify(_pendingUpdates[tbl]));}catch(_e){}
+          }
+          const merged=_normData(tbl,_mergePU(tbl,data));
+          const sbNames=new Set(merged.map(r=>r.nome).filter(Boolean));
+          const p=(_cache[tbl]||[]).filter(r=>!r.id&&!sbNames.has(r.nome));
+          if(merged.length>0||p.length>0)_cache[tbl]=[...p,...merged];
+          renders[id]&&renders[id]();
+        }
       });
       return; // render será chamado pelo then acima
     }
