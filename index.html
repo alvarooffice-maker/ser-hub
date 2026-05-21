@@ -2564,7 +2564,7 @@ function saveLog(){
   x.statusCompra=document.getElementById('mlog-status').value;
   d[i]=x;
   sv(SK.log,d);
-  try{const _lso=JSON.parse(localStorage.getItem('_lso')||'{}');_lso[x.nome]={statusCompra:x.statusCompra,distribuidora:x.distribuidora};localStorage.setItem('_lso',JSON.stringify(_lso));}catch(_e){}
+  try{const _lso=JSON.parse(localStorage.getItem('_lso')||'{}');_lso[x.nome]={statusCompra:x.statusCompra,distribuidora:x.distribuidora,vend:x.vend||''};localStorage.setItem('_lso',JSON.stringify(_lso));}catch(_e){}
   if(x.id){if(!_pendingUpdates['logistica'])_pendingUpdates['logistica']={};_pendingUpdates['logistica'][x.id]={statuscompra:x.statusCompra,distribuidora:x.distribuidora};try{localStorage.setItem('_pu_logistica',JSON.stringify(_pendingUpdates['logistica']));}catch(_e){}}
   _hookSave('logistica',x);
   // Automation: Entregue → pre-fill Instalação
@@ -3303,7 +3303,12 @@ function _normRow(tbl,row){
   if(tbl==='contratos')return{...row,pgtoDesc:row.pgtoDesc||row.pgto_desc||'',qtdInv:row.qtdInv||row.qtd_inv||1,marcaInv:row.marcaInv||row.marca_inv||'',potInv:row.potInv||row.pot_inv||0,qtdMod:row.qtdMod||row.qtd_mod||0,marcaMod:row.marcaMod||row.marca_mod||'',potMod:row.potMod||row.pot_mod||0};
   if(tbl==='homologacoes'){const _hxE=(JSON.parse(localStorage.getItem('_hx')||'{}'))[row.nome]||{};return{...row,fileUrls:row.fileUrls||row.file_urls||{},fileNames:row.fileNames||row.file_names||{},qtdInv:row.qtdInv||row.qtd_inv||1,marcaInv:row.marcaInv||row.marca_inv||_hxE.marcaInv||'',potenciaInv:row.potenciaInv||row.potencia_inv||_hxE.potenciaInv||0,qtdMod:row.qtdMod||row.qtd_mod||0,marcaMod:row.marcaMod||row.marca_mod||_hxE.marcaMod||'',potenciaMod:row.potenciaMod||row.potencia_mod||_hxE.potenciaMod||0};}
   if(tbl==='propostas')return{...row,vendWpp:row.vendWpp||row.vend_wpp||'',vendEmail:row.vendEmail||row.vend_email||''};
-  if(tbl==='logistica'){const _lsoE=(JSON.parse(localStorage.getItem('_lso')||'{}'))[row.nome]||{};return{...row,statusCompra:_lsoE.statusCompra||row.statusCompra||row.statuscompra||'Aguardando compra',contratoId:row.contratoId||row.contratoid||'',distribuidora:_lsoE.distribuidora!==undefined?_lsoE.distribuidora:(row.distribuidora||'')};}
+  if(tbl==='logistica'){
+    const _lsoE=(JSON.parse(localStorage.getItem('_lso')||'{}'))[row.nome]||{};
+    // Se vend nao veio do Supabase, busca no cache de contratos como fallback
+    const _vend=row.vend||((_cache['contratos']||[]).find(c=>c.nome===row.nome)||{}).vend||_lsoE.vend||'';
+    return{...row,vend:_vend,statusCompra:_lsoE.statusCompra||row.statusCompra||row.statuscompra||'Aguardando compra',contratoId:row.contratoId||row.contratoid||'',distribuidora:_lsoE.distribuidora!==undefined?_lsoE.distribuidora:(row.distribuidora||'')};
+  }
   return row;
 }
 function _normData(tbl,data){return(['contratos','homologacoes','propostas','logistica'].includes(tbl))?data.map(r=>_normRow(tbl,r)):data;}
