@@ -3261,9 +3261,17 @@ async function sbUpsert(tbl,item){
         if(!_pendingUpdates[tbl])_pendingUpdates[tbl]={};
         _pendingUpdates[tbl][e.id]=e;
         try{localStorage.setItem('_pu_'+tbl,JSON.stringify(_pendingUpdates[tbl]));}catch(x){}
-        const _sess=getSB().auth.getSession?'(checando sessao...)':'';
-        console.warn('[SER] UPDATE bloqueado em "'+tbl+'". Payload:',JSON.stringify(e),_sess);
-        getSB().auth.getSession().then(({data:sd})=>{console.warn('[SER] Session no momento do bloqueio:',sd&&sd.session?'AUTENTICADO uid='+sd.session.user.id:'NAO AUTENTICADO (anon)');});
+        // Verifica se a linha existe no banco e qual a sessao atual
+        getSB().auth.getSession().then(({data:sd})=>{
+          const uid=sd&&sd.session?sd.session.user.id:'nao_autenticado';
+          console.warn('[SER] UPDATE 0 linhas em "'+tbl+'" id='+e.id+' uid='+uid);
+          // Tenta buscar a linha no banco para confirmar existencia
+          getSB().from(tbl).select('id').eq('id',e.id).then(({data:rows,error:er})=>{
+            if(er)console.warn('[SER] SELECT diagnostico erro:',er.message);
+            else if(!rows||rows.length===0)console.warn('[SER] LINHA NAO EXISTE no Supabase! id='+e.id+' — nunca foi salva no banco.');
+            else console.warn('[SER] Linha EXISTS mas UPDATE bloqueado — verificar RLS para uid='+uid);
+          });
+        });
       } else {
         console.log('[SER] sbUpsert UPDATE OK',tbl,'linhas afetadas='+updRows.length);
         if(_pendingUpdates[tbl]&&_pendingUpdates[tbl][e.id]){
@@ -3506,6 +3514,13 @@ function mostrarMenuUsuarios() {
     sw('instalacao');
   }
 
+  // Vistoriador: só vê vistorias
+  if (p === 'vistoriador') {
+    ['leads','propostas','contratos','logistica','instalacao','homologacao','comissoes','financeiro','cadastro','usuarios','dashboard']
+      .forEach(id => { const n=document.getElementById('ni-'+id); if(n) n.style.display='none'; });
+    sw('vistorias');
+  }
+
   // Financeiro: só vê financeiro e comissoes
   if (p === 'financeiro') {
     ['propostas','vistorias','contratos','instalacao','homologacao','cadastro','usuarios']
@@ -3532,8 +3547,8 @@ async function renderUsuarios() {
   const { data, error } = await getSB().from('perfis').select('*').order('nome');
   if (error || !data) { list.innerHTML = '<div style="padding:20px;color:var(--r)">Erro ao carregar usuários.</div>'; return; }
 
-  const CORES = { admin:'#4B1D8E', supervisor:'#1a5c20', financeiro:'#854F0B', vendedor:'#1a3d6e', tecnico:'#185FA5', instalador:'#3B6D11' };
-  const ICONS = { admin:'👑', supervisor:'🎯', financeiro:'💰', vendedor:'🤝', tecnico:'⚙️', instalador:'🔧' };
+  const CORES = { admin:'#4B1D8E', supervisor:'#1a5c20', gerente:'#2d6a4f', diretor:'#7b2d8b', financeiro:'#854F0B', vendedor:'#1a3d6e', tecnico:'#185FA5', instalador:'#3B6D11', vistoriador:'#6b4c11' };
+  const ICONS = { admin:'👑', supervisor:'🎯', gerente:'📊', diretor:'🏆', financeiro:'💰', vendedor:'🤝', tecnico:'⚙️', instalador:'🔧', vistoriador:'🔍' };
 
   list.innerHTML = data.length ? data.map(u => {
     const ativo = u.ativo !== false;
