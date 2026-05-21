@@ -11,6 +11,12 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Só cacheia requisições GET — PATCH/POST/PUT/DELETE do Supabase não devem ser cacheados
+  const method = e.request.method;
+  if (method !== 'GET') {
+    e.respondWith(fetch(e.request));
+    return;
+  }
   e.respondWith(
     fetch(e.request)
       .then(res => {
