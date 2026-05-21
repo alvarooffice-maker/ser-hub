@@ -3248,10 +3248,11 @@ async function sbUpsert(tbl,item){
     if(e.contratoId!==undefined){e.contratoid=e.contratoId;delete e.contratoId;}
   }
   if(e.id){
+    console.log('[SER] sbUpsert UPDATE',tbl,'id='+e.id,'payload=',JSON.stringify(e));
     const{data:updRows,error}=await getSB().from(tbl).update(e).eq('id',e.id).select('id');
-    if(error){console.error('sbUpsert update error',tbl,error);_sbErrAlert(tbl,error);}
+    if(error){console.error('[SER] sbUpsert UPDATE error',tbl,error.message,error.details);_sbErrAlert(tbl,error);}
     else{
-      // Atualiza o cache: mescla e sobre a row existente antes de normalizar,
+      // Atualiza o cache: mescla a row existente antes de normalizar,
       // para preservar campos que foram deletados do payload (ex: potenciaMod)
       if(_cache[tbl]){
         _cache[tbl]=_cache[tbl].map(row=>row.id===e.id?_normRow(tbl,{...row,...e}):row);
@@ -3260,10 +3261,15 @@ async function sbUpsert(tbl,item){
         if(!_pendingUpdates[tbl])_pendingUpdates[tbl]={};
         _pendingUpdates[tbl][e.id]=e;
         try{localStorage.setItem('_pu_'+tbl,JSON.stringify(_pendingUpdates[tbl]));}catch(x){}
-        console.warn('[SER] sbUpsert: UPDATE em "'+tbl+'" retornou 0 linhas — provável bloqueio RLS. Dado salvo apenas localmente.');
-      } else if(_pendingUpdates[tbl]&&_pendingUpdates[tbl][e.id]){
-        delete _pendingUpdates[tbl][e.id];
-        try{localStorage.setItem('_pu_'+tbl,JSON.stringify(_pendingUpdates[tbl]));}catch(x){}
+        const _sess=getSB().auth.getSession?'(checando sessao...)':'';
+        console.warn('[SER] UPDATE bloqueado em "'+tbl+'". Payload:',JSON.stringify(e),_sess);
+        getSB().auth.getSession().then(({data:sd})=>{console.warn('[SER] Session no momento do bloqueio:',sd&&sd.session?'AUTENTICADO uid='+sd.session.user.id:'NAO AUTENTICADO (anon)');});
+      } else {
+        console.log('[SER] sbUpsert UPDATE OK',tbl,'linhas afetadas='+updRows.length);
+        if(_pendingUpdates[tbl]&&_pendingUpdates[tbl][e.id]){
+          delete _pendingUpdates[tbl][e.id];
+          try{localStorage.setItem('_pu_'+tbl,JSON.stringify(_pendingUpdates[tbl]));}catch(x){}
+        }
       }
       _syncLS(tbl);
     }
