@@ -2529,7 +2529,9 @@ function renderLog(){
   const rawAll=ld(SK.log);
   const rawFilt=_vf(rawAll,'vend');
   const _lsoMap=JSON.parse(localStorage.getItem('_lso')||'{}');
-  const d=rawFilt.map((x,_i)=>{const _ov=_lsoMap[x.nome]||{};return{...x,statusCompra:_ov.statusCompra||x.statusCompra||x.statuscompra||'Aguardando compra',distribuidora:_ov.distribuidora!==undefined?_ov.distribuidora:(x.distribuidora||''),_rawIdx:rawAll.indexOf(x)};});
+  // Supabase é autoritativo: x.statusCompra já vem normalizado por _normRow (Supabase first)
+  // _lso só entra se não houver dado do Supabase (linha local ainda não salva)
+  const d=rawFilt.map((x,_i)=>{const _ov=_lsoMap[x.nome]||{};return{...x,statusCompra:x.statusCompra||x.statuscompra||_ov.statusCompra||'Aguardando compra',distribuidora:x.distribuidora!=null?x.distribuidora:(_ov.distribuidora||''),_rawIdx:rawAll.indexOf(x)};});
   const statusColor={'Aguardando compra':'#f59e0b','Comprado':'#3b82f6','Enviado':'#8b5cf6','Entregue':'#22c55e'};
   const tb=document.getElementById('tb-log');
   if(!tb)return;
@@ -2558,8 +2560,9 @@ function editLog(i){
   document.getElementById('mlog-kwp').value=x.kwp||'';
   document.getElementById('mlog-vend').value=x.vend||'';
   document.getElementById('mlog-valor').value=x.valor||'';
-  document.getElementById('mlog-dist').value=_lsoX.distribuidora!==undefined?_lsoX.distribuidora:(x.distribuidora||'');
-  document.getElementById('mlog-status').value=_lsoX.statusCompra||x.statusCompra||'Aguardando compra';
+  // Supabase primeiro (x já normalizado), _lso só como fallback
+  document.getElementById('mlog-dist').value=x.distribuidora!=null?x.distribuidora:(_lsoX.distribuidora||'');
+  document.getElementById('mlog-status').value=x.statusCompra||_lsoX.statusCompra||'Aguardando compra';
   // Populate distribuidoras datalist
   const dists=ld(SK.cad).filter(c=>c.tipo==='distribuidor').map(c=>c.nome);
   const dl=document.getElementById('list-distribuidoras-log');
@@ -3319,7 +3322,14 @@ function _normRow(tbl,row){
     const _lsoE=(JSON.parse(localStorage.getItem('_lso')||'{}'))[row.nome]||{};
     // Se vend nao veio do Supabase, busca no cache de contratos como fallback
     const _vend=row.vend||((_cache['contratos']||[]).find(c=>c.nome===row.nome)||{}).vend||_lsoE.vend||'';
-    return{...row,vend:_vend,statusCompra:_lsoE.statusCompra||row.statusCompra||row.statuscompra||'Aguardando compra',contratoId:row.contratoId||row.contratoid||'',distribuidora:_lsoE.distribuidora!==undefined?_lsoE.distribuidora:(row.distribuidora||'')};
+    // Supabase é autoritativo: statuscompra e distribuidora do banco têm prioridade
+    // _lso é fallback apenas para linhas locais que ainda não foram salvas no Supabase
+    const _sbStatus=row.statuscompra||row.statusCompra;
+    const _sbDist=row.distribuidora!=null?row.distribuidora:undefined;
+    return{...row,vend:_vend,
+      statusCompra:_sbStatus||_lsoE.statusCompra||'Aguardando compra',
+      contratoId:row.contratoId||row.contratoid||'',
+      distribuidora:_sbDist!==undefined?_sbDist:(_lsoE.distribuidora||'')};
   }
   return row;
 }
