@@ -688,15 +688,26 @@ tr:hover td{background:#fafaf8}
 </div></div>
 
 <!-- VISTORIA -->
-<div class="overlay" id="mo-vist"><div class="modal">
+<div class="overlay" id="mo-vist"><div class="modal" style="width:580px">
   <h3 id="mv-t">Agendar vistoria</h3>
-  <label>Cliente</label><input type="text" id="mv-nome" list="list-clientes">
+  <div class="msec">Dados do cliente</div>
+  <div class="mr2"><div><label>Cliente</label><input type="text" id="mv-nome" list="list-clientes"></div><div><label>WhatsApp</label><input type="text" id="mv-wpp"></div></div>
+  <label>E-mail</label><input type="email" id="mv-email">
+  <div class="msec">Agendamento</div>
   <div class="mr2"><div><label>Data</label><input type="date" id="mv-data"></div><div><label>Horário</label><input type="time" id="mv-hora"></div></div>
-  <label>Endereço</label><input type="text" id="mv-end">
-  <div class="mr2"><div><label>Técnico/Vistoriador</label><input type="text" id="mv-tec" list="list-vistoriadores"></div><div><label>WhatsApp</label><input type="text" id="mv-wpp"></div></div>
+  <div class="mr2"><div><label>Técnico/Vistoriador</label><input type="text" id="mv-tec" list="list-vistoriadores"></div><div></div></div>
   <datalist id="list-vistoriadores"></datalist>
+  <div class="msec">Localização</div>
+  <label>Endereço</label><input type="text" id="mv-end">
+  <label>Localizador Google Maps</label><input type="url" id="mv-gmap" placeholder="https://maps.google.com/...">
+  <div class="msec">Equipamentos</div>
+  <div class="mr2"><div><label>Qtd. Módulos</label><input type="number" id="mv-qm" min="0" value="0"></div><div><label>Marca dos Módulos</label><input type="text" id="mv-mm"></div></div>
+  <label>Potência dos Módulos (W)</label><input type="text" id="mv-pm">
+  <div class="mr2"><div><label>Qtd. Inversores</label><input type="number" id="mv-qi" min="1" value="1"></div><div><label>Marca do Inversor</label><input type="text" id="mv-mi"></div></div>
+  <label>Potência do Inversor (kW)</label><input type="text" id="mv-pi">
+  <div class="msec">Resultado</div>
   <label>Observações</label><input type="text" id="mv-obs">
-  <label>Status</label><select id="mv-status"><option value="agendada">Agendada</option><option value="realizada">Realizada</option><option value="cancelada">Cancelada</option></select>
+  <label>Status</label><select id="mv-status"><option value="agendada">Agendada</option><option value="realizada">Realizada</option><option value="aprovada">Aprovada</option><option value="aprovada_obra">Aprovada com Obra</option><option value="aprovada_obra_sombra">Aprovada com Obra e Sombreamento</option><option value="aprovada_sombra">Aprovada com Sombreamento</option><option value="reprovada">Reprovada</option><option value="cancelada">Cancelada</option></select>
   <div class="mfooter"><button class="btn-c" onclick="closeM('mo-vist')">Cancelar</button><button class="btn-s" onclick="saveVist()">Salvar</button></div>
 </div></div>
 
@@ -2102,9 +2113,9 @@ function prevPropIdx(i){
 }
 function dlPropIdx(i){prevPropIdx(i);setTimeout(()=>window.print(),800);}
 function setFP(f){filt.prop=f;renderProp()}
-function chgP(i,v){const d=ld(SK.prop);const prev=d[i].status;d[i].status=v;sv(SK.prop,d);_hookSave('propostas',d[i]);renderProp();if(v==='win'&&prev!=='win')_prefillContratoFromProp(d[i]);}
+function chgP(i,v){const d=ld(SK.prop);const prev=d[i].status;d[i].status=v;sv(SK.prop,d);_hookSave('propostas',d[i]);renderProp();if(v==='win'&&prev!=='win'){_pfProp=d[i];_pfFillVistoria();}}
 function trigAceite(i){aceiteIdx=i;const x=ld(SK.prop)[i];document.getElementById('aceite-info').innerHTML=[{l:'Cliente',v:x.nome},{l:'Consumo',v:(x.kwh||'—')+' kWh/mês'},{l:'Valor',v:f(x.valor)},{l:'Vendedor',v:x.vend||'—'}].map(o=>`<div style="background:var(--sec);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--mu)">${o.l}</div><div style="font-size:13px;font-weight:500">${o.v}</div></div>`).join('');openM('mo-aceite')}
-function confirmarAceite(){const ps=ld(SK.prop);if(aceiteIdx===null||!ps[aceiteIdx])return;ps[aceiteIdx].aceito=true;ps[aceiteIdx].status='win';sv(SK.prop,ps);sbUpsert('propostas',ps[aceiteIdx]);const cs=ld(SK.cont);const x=ps[aceiteIdx];if(!cs.some(c=>c.nome===x.nome)){const nc={nome:x.nome,kwp:x.kwp||0,valor:x.valor,pgto:'Financiamento',pgtoDesc:'',vend:x.vend||'',wpp:x.wpp||'',status:'pendente',data:new Date().toLocaleDateString('pt-BR'),fase:'Monofásico',tensao:220,cpf:'',rg:'',rgorg:'',cep:'',estado:'',rua:'',num:'',comp:'',bairro:'',cidade:''};const cs2=ld(SK.cont);cs2.unshift(nc);sv(SK.cont,cs2);_hookSave('contratos',nc);}closeM('mo-aceite');renderProp();updateNavCounts();_prefillContratoFromProp(x);}
+function confirmarAceite(){const ps=ld(SK.prop);if(aceiteIdx===null||!ps[aceiteIdx])return;ps[aceiteIdx].aceito=true;ps[aceiteIdx].status='win';sv(SK.prop,ps);sbUpsert('propostas',ps[aceiteIdx]);const cs=ld(SK.cont);const x=ps[aceiteIdx];if(!cs.some(c=>c.nome===x.nome)){const nc={nome:x.nome,kwp:x.kwp||0,valor:x.valor,pgto:'Financiamento',pgtoDesc:'',vend:x.vend||'',wpp:x.wpp||'',status:'pendente',data:new Date().toLocaleDateString('pt-BR'),fase:'Monofásico',tensao:220,cpf:'',rg:'',rgorg:'',cep:'',estado:'',rua:'',num:'',comp:'',bairro:'',cidade:''};const cs2=ld(SK.cont);cs2.unshift(nc);sv(SK.cont,cs2);_hookSave('contratos',nc);}closeM('mo-aceite');renderProp();updateNavCounts();_pfProp=x;_pfFillVistoria();}
 function openPropModal(){ei.prop=null;['mp-nome','mp-wpp','mp-email','mp-vend','mp-vend-wpp','mp-vend-email','mp-kwh','mp-qm','mp-mm','mp-pm','mp-qi','mp-mi','mp-pi','mp-qb','mp-mb','mp-pb','mp-semsolar','mp-comsolar','mp-eco','mp-valor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('mp-qi').value=1;document.getElementById('mp-qm').value=0;document.getElementById('mp-pm').value='';document.getElementById('mp-pi').value='';document.getElementById('mp-qb').value=0;document.getElementById('mp-pb').value='';document.getElementById('mp-area').value=0;const vd=new Date();vd.setDate(vd.getDate()+7);document.getElementById('mp-validade').value='7 dias (até '+vd.toLocaleDateString('pt-BR')+')';document.getElementById('mp-status').value='new';document.getElementById('mp-nota').style.display='none';document.getElementById('mp-t').textContent='Nova proposta';populateDataLists();openM('mo-prop')}
 function editProp(i){ei.prop=i;populateDataLists();const x=ld(SK.prop)[i];['nome','wpp','email','vend','vendWpp','vendEmail','validade'].forEach(k=>{const el=document.getElementById('mp-'+k.replace(/([A-Z])/g,'-$1').toLowerCase());if(el)el.value=x[k]||'';});document.getElementById('mp-kwh').value=x.kwh||0;document.getElementById('mp-qm').value=x.qm||0;document.getElementById('mp-mm').value=x.mm||'';document.getElementById('mp-pm').value=x.pm||0;document.getElementById('mp-qi').value=x.qi||1;document.getElementById('mp-mi').value=x.mi||'';document.getElementById('mp-pi').value=x.pi?parseFloat(x.pi).toFixed(1):'';document.getElementById('mp-qb').value=x.qb||0;document.getElementById('mp-mb').value=x.mb||'';document.getElementById('mp-pb').value=x.pb||0;document.getElementById('mp-area').value=x.area||0;document.getElementById('mp-semsolar').value=x.semsolar||0;document.getElementById('mp-comsolar').value=x.comsolar||0;document.getElementById('mp-eco').value=x.eco||0;document.getElementById('mp-valor').value=x.valor||0;document.getElementById('mp-status').value=x.status;document.getElementById('mp-t').textContent='Editar proposta';calcProposta();openM('mo-prop')}
 let _pfProp=null;
@@ -2127,7 +2138,9 @@ function _pfFillVistoria(){
   const prop=_pfProp;if(!prop)return;
   openVistModal();
   const s=(id,v)=>{if(v===undefined||v===null||v==='')return;const el=document.getElementById(id);if(el)el.value=v;};
-  s('mv-nome',prop.nome);s('mv-wpp',prop.wpp);
+  s('mv-nome',prop.nome);s('mv-wpp',prop.wpp);s('mv-email',prop.email);
+  s('mv-qm',prop.qm);s('mv-mm',prop.mm);s('mv-pm',prop.pm);
+  s('mv-qi',prop.qi);s('mv-mi',prop.mi);s('mv-pi',prop.pi);
 }
 function _pfAbrirContrato(){closeM('mo-propfechada');_pfFillContrato();}
 function _pfAbrirVistoria(){closeM('mo-propfechada');_pfFillVistoria();}
@@ -2143,30 +2156,32 @@ function _pfAbrirAmbos(){
   _pfFillContrato();
 }
 function _prefillContratoFromProp(prop){_onPropostaFechada(prop);}
-function saveProp(){const nome=document.getElementById('mp-nome').value.trim();if(!nome)return alert('Informe o nome');const existing=ei.prop!==null?ld(SK.prop)[ei.prop]:{};const p=getPropData();const e={...existing,...p,status:document.getElementById('mp-status').value,aceito:existing.aceito||false,data:existing.data||new Date().toLocaleDateString('pt-BR')};const d=ld(SK.prop);if(ei.prop!==null)d[ei.prop]=e;else d.unshift(e);sv(SK.prop,d);_hookSave('propostas',e);const _prevStatus=existing.status||'';closeM('mo-prop');renderProp();updateNavCounts();if(e.status==='win'&&_prevStatus!=='win')_prefillContratoFromProp(e);}
+function saveProp(){const nome=document.getElementById('mp-nome').value.trim();if(!nome)return alert('Informe o nome');const existing=ei.prop!==null?ld(SK.prop)[ei.prop]:{};const p=getPropData();const e={...existing,...p,status:document.getElementById('mp-status').value,aceito:existing.aceito||false,data:existing.data||new Date().toLocaleDateString('pt-BR')};const d=ld(SK.prop);if(ei.prop!==null)d[ei.prop]=e;else d.unshift(e);sv(SK.prop,d);_hookSave('propostas',e);const _prevStatus=existing.status||'';closeM('mo-prop');renderProp();updateNavCounts();if(e.status==='win'&&_prevStatus!=='win'){_pfProp=e;_pfFillVistoria();}}
 function delProp(i){const d=ld(SK.prop);const x=d[i];if(!confirm(`Excluir proposta de "${x.nome}"?\nEsta ação não pode ser desfeita.`))return;if(x.id)_hookDel('propostas',x.id);d.splice(i,1);sv(SK.prop,d);renderProp();renderDash();updateNavCounts();}
 
 // ===================== VISTORIAS =====================
-const VSTAT={agendada:'Agendada',realizada:'Realizada',cancelada:'Cancelada'};
+const VSTAT={agendada:'Agendada',realizada:'Realizada',aprovada:'Aprovada',aprovada_obra:'Aprovada c/ Obra',aprovada_obra_sombra:'Aprovada c/ Obra e Sombreamento',aprovada_sombra:'Aprovada c/ Sombreamento',reprovada:'Reprovada',cancelada:'Cancelada'};
 function renderVist(){
   const d=ld(SK.vist);const dv=_vf(d,'tec');
   const ag=dv.filter(x=>x.status==='agendada').length,re=dv.filter(x=>x.status==='realizada').length,ca=dv.filter(x=>x.status==='cancelada').length;
-  mkM('m-vist',[{l:'Total',v:dv.length,s:'',c:'b'},{l:'Agendadas',v:ag,s:'pendentes',c:'a'},{l:'Realizadas',v:re,s:'concluídas',c:'g'},{l:'Canceladas',v:ca,s:'',c:'r'}]);
-  mkF('f-vist',[{k:'all',l:'Todas',c:dv.length},{k:'agendada',l:'Agendadas',c:ag},{k:'realizada',l:'Realizadas',c:re},{k:'cancelada',l:'Canceladas',c:ca}],filt.vist,'setFV');
-  const fl=filt.vist==='all'?dv:dv.filter(x=>x.status===filt.vist);
+  const aprov=dv.filter(x=>['aprovada','aprovada_obra','aprovada_obra_sombra','aprovada_sombra'].includes(x.status)).length,repr=dv.filter(x=>x.status==='reprovada').length;
+  mkM('m-vist',[{l:'Total',v:dv.length,s:'',c:'b'},{l:'Agendadas',v:ag,s:'pendentes',c:'a'},{l:'Aprovadas',v:aprov,s:'',c:'g'},{l:'Reprovadas',v:repr,s:'',c:'r'}]);
+  mkF('f-vist',[{k:'all',l:'Todas',c:dv.length},{k:'agendada',l:'Agendadas',c:ag},{k:'realizada',l:'Realizadas',c:re},{k:'aprovada',l:'Aprovadas',c:aprov},{k:'reprovada',l:'Reprovadas',c:repr},{k:'cancelada',l:'Canceladas',c:ca}],filt.vist,'setFV');
+  const fl=filt.vist==='all'?dv:(filt.vist==='aprovada'?dv.filter(x=>['aprovada','aprovada_obra','aprovada_obra_sombra','aprovada_sombra'].includes(x.status)):dv.filter(x=>x.status===filt.vist));
   document.getElementById('c-vist').textContent=fl.length+' vistoria'+(fl.length!==1?'s':'');
   document.getElementById('tb-vist').innerHTML=fl.map(x=>{const ri=d.indexOf(x);const wu=`https://wa.me/55${(x.wpp||'').replace(/\D/g,'')}?text=${encodeURIComponent(`Olá ${x.nome}! Confirmando vistoria SER Energia em ${fD(x.data)} às ${x.hora||''}. Endereço: ${x.end||''}`)}`;
-  return`<tr><td>${x.nome}</td><td>${fD(x.data)} ${x.hora||''}</td><td title="${x.end||''}">${x.end||'—'}</td><td>${x.tec||'—'}</td>
+  return`<tr><td>${x.nome}</td><td>${fD(x.data)} ${x.hora||''}</td><td title="${x.end||''}">${x.end||'—'}${x.gmap?' <a href="'+x.gmap+'" target="_blank" style="font-size:10px;color:var(--a)">📍</a>':''}</td><td>${x.tec||'—'}</td>
   <td><select class="sselect" onchange="chgV(${ri},this.value)">${Object.entries(VSTAT).map(([k,v])=>`<option value="${k}" ${x.status===k?'selected':''}>${v}</option>`).join('')}</select></td>
   <td><div class="act-row"><button class="ab ab-g" onclick="ol('${wu}')">WhatsApp</button><button class="ab ab-b" onclick="ol('https://docs.google.com/document/d/1RhS7WAB_J6rQAmw6Hi7B4wHQot_Y-yf4r1FvZSwsu7I/edit')">Doc</button><button class="ab" onclick="editVist(${ri})">Editar</button><button class="ab ab-r" onclick="delVist(${ri})" style="${_perfil?.perfil==='admin'?'':'display:none'}">🗑️</button></div></td></tr>`;
   }).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px">Nenhuma vistoria</td></tr>`;
 }
 function setFV(f){filt.vist=f;renderVist()}
 function chgV(i,v){const d=ld(SK.vist);d[i].status=v;sv(SK.vist,d);_hookSave('vistorias',d[i]);renderVist()}
-function openVistModal(){ei.vist=null;['mv-nome','mv-data','mv-hora','mv-end','mv-tec','mv-wpp','mv-obs'].forEach(id=>document.getElementById(id).value='');document.getElementById('mv-status').value='agendada';document.getElementById('mv-t').textContent='Agendar vistoria';populateDataLists();openM('mo-vist')}
-function editVist(i){ei.vist=i;const x=ld(SK.vist)[i];document.getElementById('mv-nome').value=x.nome;document.getElementById('mv-data').value=x.data;document.getElementById('mv-hora').value=x.hora;document.getElementById('mv-end').value=x.end;document.getElementById('mv-tec').value=x.tec||'';document.getElementById('mv-wpp').value=x.wpp||'';document.getElementById('mv-obs').value=x.obs||'';document.getElementById('mv-status').value=x.status;document.getElementById('mv-t').textContent='Editar vistoria';openM('mo-vist')}
-function saveVist(){const nome=document.getElementById('mv-nome').value.trim();if(!nome)return alert('Informe o nome');const e={nome,data:document.getElementById('mv-data').value,hora:document.getElementById('mv-hora').value,end:document.getElementById('mv-end').value.trim(),tec:document.getElementById('mv-tec').value.trim(),wpp:document.getElementById('mv-wpp').value.trim(),obs:document.getElementById('mv-obs').value.trim(),status:document.getElementById('mv-status').value};const d=ld(SK.vist);if(ei.vist!==null)d[ei.vist]=e;else d.unshift(e);sv(SK.vist,d);_hookSave('vistorias',e);closeM('mo-vist');renderVist();updateNavCounts()}
+function openVistModal(){ei.vist=null;['mv-nome','mv-data','mv-hora','mv-end','mv-gmap','mv-tec','mv-wpp','mv-email','mv-mm','mv-mi','mv-pm','mv-pi','mv-obs'].forEach(id=>document.getElementById(id).value='');document.getElementById('mv-qm').value='0';document.getElementById('mv-qi').value='1';document.getElementById('mv-status').value='agendada';document.getElementById('mv-t').textContent='Agendar vistoria';populateDataLists();openM('mo-vist')}
+function editVist(i){ei.vist=i;const x=ld(SK.vist)[i];document.getElementById('mv-nome').value=x.nome;document.getElementById('mv-data').value=x.data;document.getElementById('mv-hora').value=x.hora;document.getElementById('mv-end').value=x.end||'';document.getElementById('mv-gmap').value=x.gmap||'';document.getElementById('mv-tec').value=x.tec||'';document.getElementById('mv-wpp').value=x.wpp||'';document.getElementById('mv-email').value=x.email||'';document.getElementById('mv-qm').value=x.qm||0;document.getElementById('mv-mm').value=x.mm||'';document.getElementById('mv-pm').value=x.pm||'';document.getElementById('mv-qi').value=x.qi||1;document.getElementById('mv-mi').value=x.mi||'';document.getElementById('mv-pi').value=x.pi||'';document.getElementById('mv-obs').value=x.obs||'';document.getElementById('mv-status').value=x.status;document.getElementById('mv-t').textContent='Editar vistoria';openM('mo-vist')}
+function saveVist(){const nome=document.getElementById('mv-nome').value.trim();if(!nome)return alert('Informe o nome');const e={nome,data:document.getElementById('mv-data').value,hora:document.getElementById('mv-hora').value,end:document.getElementById('mv-end').value.trim(),gmap:document.getElementById('mv-gmap').value.trim(),tec:document.getElementById('mv-tec').value.trim(),wpp:document.getElementById('mv-wpp').value.trim(),email:document.getElementById('mv-email').value.trim(),qm:+document.getElementById('mv-qm').value||0,mm:document.getElementById('mv-mm').value.trim(),pm:document.getElementById('mv-pm').value.trim(),qi:+document.getElementById('mv-qi').value||1,mi:document.getElementById('mv-mi').value.trim(),pi:document.getElementById('mv-pi').value.trim(),obs:document.getElementById('mv-obs').value.trim(),status:document.getElementById('mv-status').value};const d=ld(SK.vist);if(ei.vist!==null)d[ei.vist]=e;else d.unshift(e);sv(SK.vist,d);_hookSave('vistorias',e);if(e.status==='agendada')_syncVistoriaToContrato(e);closeM('mo-vist');renderVist();updateNavCounts()}
 function delVist(i){const d=ld(SK.vist);const x=d[i];if(!confirm(`Excluir vistoria de "${x.nome}"?\nEsta ação não pode ser desfeita.`))return;if(x.id)_hookDel('vistorias',x.id);d.splice(i,1);sv(SK.vist,d);renderVist();updateNavCounts();}
+function _syncVistoriaToContrato(vist){const conts=ld(SK.cont);const idx=conts.findIndex(c=>c.nome.trim().toLowerCase()===vist.nome.trim().toLowerCase());if(idx===-1)return;const c=conts[idx];if(vist.wpp)c.wpp=vist.wpp;if(vist.end)c.rua=vist.end;if(vist.gmap)c.gmap=vist.gmap;if(vist.qi)c.qtdInv=+vist.qi;if(vist.mi)c.marcaInv=vist.mi;if(vist.pi)c.potInv=vist.pi;if(vist.qm)c.qtdMod=+vist.qm;if(vist.mm)c.marcaMod=vist.mm;if(vist.pm)c.potMod=vist.pm;sv(SK.cont,conts);_hookSave('contratos',c);renderCont();}
 
 // ===================== CONTRATOS =====================
 function getContData(){
@@ -2425,7 +2440,7 @@ function dlContIdx(i){
   _abrirContratoCompleto(x, true);
 }
 function setFC(f){filt.cont=f;renderCont()}
-function chgC(i,v){const d=ld(SK.cont);d[i].status=v;sv(SK.cont,d);_hookSave('contratos',d[i]);_autoLogHomo(d[i]);renderCont();updateNavCounts();}
+function chgC(i,v){const d=ld(SK.cont);const ord=['pendente','enviado','assinado','instalando','homologando','concluido'];if(ord.indexOf(v)>ord.indexOf(d[i].status)){const nm=d[i].nome;const ok=ld(SK.vist).some(vt=>vt.nome.trim().toLowerCase()===nm.trim().toLowerCase()&&vt.data);if(!ok){alert('⚠️ Agende a vistoria antes de avançar este contrato na esteira.');renderCont();return;}}d[i].status=v;sv(SK.cont,d);_hookSave('contratos',d[i]);_autoLogHomo(d[i]);renderCont();updateNavCounts();}
 function _autoLogHomo(e){
   if(e.status!=='assinado')return;
   // → Logística (verifica por nome)
