@@ -2597,17 +2597,47 @@ function saveLog(){
   try{const _lso=JSON.parse(localStorage.getItem('_lso')||'{}');_lso[x.nome]={statusCompra:x.statusCompra,distribuidora:x.distribuidora,vend:x.vend||''};localStorage.setItem('_lso',JSON.stringify(_lso));}catch(_e){}
   if(x.id){if(!_pendingUpdates['logistica'])_pendingUpdates['logistica']={};_pendingUpdates['logistica'][x.id]={statuscompra:x.statusCompra,distribuidora:x.distribuidora};try{localStorage.setItem('_pu_logistica',JSON.stringify(_pendingUpdates['logistica']));}catch(_e){}}
   _hookSave('logistica',x);
-  // Automation: Entregue → pre-fill Instalação
-  if(x.statusCompra==='Entregue'){
+  // Automation: Comprado → pre-fill Instalação com dados de todas as etapas anteriores
+  if(x.statusCompra==='Comprado'){
     const insts=ld(SK.inst);
     const jaExiste=insts.some(inst=>inst.contratoId===x.contratoId||inst.nome===x.nome);
     if(!jaExiste){
-      const novaInst={nome:x.nome,kwp:x.kwp,wpp:x.wpp,end:x.end||'',tec:'',data:'',poste:{ativo:false,val:0},padrao:{ativo:false,val:0},estimado:0,pago:0,status:'agendada',contratoId:x.contratoId};
+      const prop=ld(SK.prop).find(p=>p.nome===x.nome)||{};
+      const vist=ld(SK.vist).find(v=>v.nome.trim().toLowerCase()===x.nome.trim().toLowerCase()&&v.data)||{};
+      const cont=ld(SK.cont).find(c=>c.nome.trim().toLowerCase()===x.nome.trim().toLowerCase())||{};
+      const endFinal=vist.end||x.end||cont.rua||'';
+      const novaInst={
+        nome:x.nome,
+        kwp:x.kwp||prop.kwp||cont.kwp||0,
+        wpp:x.wpp||prop.wpp||'',
+        email:prop.email||'',
+        vend:x.vend||prop.vend||cont.vend||'',
+        valor:x.valor||cont.valor||0,
+        distribuidora:x.distribuidora||'',
+        end:endFinal,
+        gmap:vist.gmap||'',
+        tec:vist.tec||'',
+        qi:vist.qi||prop.qi||cont.qtdInv||1,
+        mi:vist.mi||prop.mi||cont.marcaInv||'',
+        pi:vist.pi||prop.pi||cont.potInv||'',
+        qm:vist.qm||prop.qm||cont.qtdMod||0,
+        mm:vist.mm||prop.mm||cont.marcaMod||'',
+        pm:vist.pm||prop.pm||cont.potMod||'',
+        fase:cont.fase||'Monofásico',
+        tensao:cont.tensao||220,
+        data:'',
+        poste:{ativo:false,val:0},
+        padrao:{ativo:false,val:0},
+        estimado:0,
+        pago:0,
+        status:'agendada',
+        contratoId:x.contratoId||''
+      };
       insts.unshift(novaInst);
       sv(SK.inst,insts);
       _hookSave('instalacoes',novaInst);
       renderInst();
-      alert('✅ Cliente "'+x.nome+'" adicionado automaticamente em Instalação!');
+      alert('✅ "'+x.nome+'" enviado para Instalação com dados completos de todas as etapas!');
     }
   }
   closeM('mo-log');
