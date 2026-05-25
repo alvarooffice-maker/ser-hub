@@ -1599,6 +1599,21 @@ function openContratoModal(item=null){
     } else {
       const { error } = await supa.from('contratos').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
+      // Auto-avançar para Logística quando assinado
+      if(data.status === 'assinado'){
+        const jaExiste = (State.logistica||[]).some(l=>l.contrato_id===item.id);
+        if(!jaExiste){
+          const contAtual = { ...item, ...data };
+          const payload = buildTransitionPayload(contAtual,'contrato','logistica');
+          payload.criado_por = State.user?.id;
+          const { error: eLog } = await supa.from('logistica').insert(payload);
+          if(eLog) toast('Avançou para Logística: '+eLog.message,'error');
+          else toast('Contrato assinado → movido para Logística ✓','success');
+          await loadData(); closeModal();
+          if(State.route==='pipeline') renderPipeline();
+          return;
+        }
+      }
     }
     toast('Contrato salvo','success'); closeModal();
     if(State.route==='pipeline') renderPipeline();
