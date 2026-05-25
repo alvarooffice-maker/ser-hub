@@ -952,19 +952,41 @@ function openLeadModal(item=null){
       data.criado_por = State.user?.id;
       const { error } = await supa.from('leads').insert(data);
       if(error) return toast(error.message,'error');
-      toast('Lead criado!','success');
+      // Lead criado já como "proposta" → cria proposta automaticamente
+      if(data.status === 'proposta'){
+        const { data: leadCriado } = await supa.from('leads').select('id').eq('nome',data.nome).order('criado_em',{ascending:false}).limit(1).maybeSingle();
+        if(leadCriado){
+          const pPayload = buildTransitionPayload({...data, id:leadCriado.id}, 'lead', 'proposta');
+          pPayload.criado_por = State.user?.id;
+          await supa.from('propostas').insert(pPayload);
+          toast('Lead criado → Proposta criada automaticamente! ✓','success');
+        } else { toast('Lead criado!','success'); }
+      } else { toast('Lead criado!','success'); }
     } else {
+      const prevStatus = item.status;
       data.atualizado_em = new Date().toISOString();
       const { error } = await supa.from('leads').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
-      if(data.status==='perdido' && item.status!=='perdido'){
+      if(data.status==='perdido' && prevStatus!=='perdido'){
         await supa.from('remarketing').insert({
           lead_id:item.id, nome:data.nome, telefone:data.telefone,
           motivo_perda:data.motivo_perda, data_reativacao:data.data_reativacao,
           status:'pendente', vendedor:data.vendedor, criado_por:State.user?.id
         });
+        toast('Lead perdido → Remarketing criado! ✓','success');
+      } else if(data.status==='proposta' && prevStatus!=='proposta'){
+        // Lead atualizado para "proposta" → cria proposta automaticamente
+        const jaExiste = (State.propostas||[]).find(p => p.lead_id === item.id);
+        if(!jaExiste){
+          const pPayload = buildTransitionPayload({...item,...data}, 'lead', 'proposta');
+          pPayload.criado_por = State.user?.id;
+          const { error: pe } = await supa.from('propostas').insert(pPayload);
+          if(pe) toast('Lead atualizado, mas erro ao criar proposta: '+pe.message,'error');
+          else toast('Lead → Proposta criada automaticamente! ✓','success');
+        } else { toast('Lead atualizado!','success'); }
+      } else {
+        toast('Lead atualizado!','success');
       }
-      toast('Lead atualizado!','success');
     }
     closeModal();
     if(State.route==='pipeline') renderPipeline();
@@ -1151,9 +1173,27 @@ function openPropostaModal(item=null){
       if(error) return toast(error.message,'error');
       toast('Proposta criada','success');
     } else {
+      const prevStatus = item.status;
       const { error } = await supa.from('propostas').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
-      toast('Proposta atualizada','success');
+
+      // Proposta aceita → cria Vistoria automaticamente (se ainda não existir)
+      if(data.status === 'aceita' && prevStatus !== 'aceita'){
+        const jaExiste = (State.vistorias||[]).find(v => v.proposta_id === item.id);
+        if(!jaExiste){
+          await loadAll(); // garante dados frescos
+          const propostaAtual = (State.propostas||[]).find(p=>p.id===item.id) || {...item,...data};
+          const vPayload = buildTransitionPayload(propostaAtual, 'proposta', 'vistoria');
+          vPayload.criado_por = State.user?.id;
+          const { error: ve } = await supa.from('vistorias').insert(vPayload);
+          if(ve) toast('Proposta aceita, mas erro ao criar vistoria: '+ve.message,'error');
+          else toast('Proposta aceita → Vistoria criada automaticamente! ✓','success');
+        } else {
+          toast('Proposta atualizada','success');
+        }
+      } else {
+        toast('Proposta atualizada','success');
+      }
     }
     closeModal();
     if(State.route==='pipeline') renderPipeline();
