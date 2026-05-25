@@ -1570,7 +1570,9 @@ function openContratoModal(item=null){
         ${!isNew && item.clicksign_url ? `<div class="card" style="background:#e6f7ed">📝 ClickSign: <a href="${esc(item.clicksign_url)}" target="_blank">${esc(item.clicksign_url)}</a></div>` : ''}
       </div>
       <div class="modal-footer">
-        ${!isNew?`<button type="button" class="btn btn-secondary" id="clickSignBtn">📝 Enviar ClickSign</button>`:''}
+        ${!isNew?`<button type="button" class="btn btn-secondary" id="clickSignBtn">📝 ClickSign</button>`:''}
+        ${!isNew?`<button type="button" class="btn btn-secondary" id="vizContBtn">👁️ Visualizar</button>`:''}
+        ${!isNew?`<button type="button" class="btn btn-secondary" id="dlContBtn">⬇️ Download PDF</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-danger" id="delContBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
@@ -1611,11 +1613,112 @@ function openContratoModal(item=null){
     }catch(e){ toast('ClickSign: '+e.message,'error'); }
   });
 
+  $('#vizContBtn')?.addEventListener('click', ()=> abrirContratoJanela(item, false));
+  $('#dlContBtn')?.addEventListener('click',  ()=> abrirContratoJanela(item, true));
+
   $('#delContBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir contrato?')) return;
     await supa.from('contratos').delete().eq('id',item.id);
     toast('Excluído','success'); closeModal(); renderPipeline();
   });
+}
+
+/* ============================================================
+   GERADOR DE CONTRATO HTML/PDF
+   ============================================================ */
+function abrirContratoJanela(c, imprimir=false){
+  const dt = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '___/___/______';
+  const num = (v,dec=2) => v ? Number(v).toFixed(dec).replace('.',',') : '—';
+  const txt = v => v || '—';
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<title>Contrato – ${txt(c.nome)}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:40px}
+  .logo-wrap{text-align:center;margin-bottom:8px}
+  .logo-wrap img{height:90px}
+  h1{text-align:center;font-size:18px;text-transform:uppercase;letter-spacing:2px;color:#4B0082;margin-bottom:4px}
+  .sub{text-align:center;font-size:11px;color:#666;margin-bottom:24px}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#4B0082;border-bottom:2px solid #4B0082;padding-bottom:4px;margin:20px 0 10px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-bottom:8px}
+  .grid.full{grid-template-columns:1fr}
+  .field label{font-size:10px;text-transform:uppercase;color:#888;display:block}
+  .field span{font-size:13px;font-weight:500;border-bottom:1px dotted #ccc;display:block;min-height:20px;padding-bottom:2px}
+  .valor-box{border:2px solid #4B0082;border-radius:8px;padding:14px 20px;margin:12px 0;text-align:center}
+  .valor-box .v{font-size:26px;font-weight:700;color:#4B0082}
+  .valor-box .pgto{font-size:12px;color:#555;margin-top:4px}
+  .assinaturas{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px}
+  .ass-linha{border-top:1px solid #333;padding-top:6px;font-size:11px;text-align:center;margin-top:40px}
+  .rodape{margin-top:32px;text-align:center;font-size:10px;color:#aaa}
+  @media print{body{padding:20px}.no-print{display:none}}
+</style></head><body>
+<div class="logo-wrap"><img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/></div>
+<h1>Contrato de Fornecimento e Instalação</h1>
+<div class="sub">Sistema Fotovoltaico de Energia Solar · SER Energia Renovável</div>
+
+<h2>1. Dados do Cliente</h2>
+<div class="grid">
+  <div class="field"><label>Nome Completo</label><span>${txt(c.nome)}</span></div>
+  <div class="field"><label>CPF</label><span>${txt(c.cpf)}</span></div>
+  <div class="field"><label>RG / Órgão Emissor</label><span>${txt(c.rg)}${c.rg_orgao?' / '+c.rg_orgao:''}</span></div>
+  <div class="field"><label>Data de Nascimento</label><span>${dt(c.nascimento)}</span></div>
+  <div class="field"><label>Estado Civil</label><span>${txt(c.estado_civil)}</span></div>
+  <div class="field"><label>Profissão</label><span>${txt(c.profissao)}</span></div>
+  <div class="field"><label>WhatsApp / Telefone</label><span>${txt(c.telefone)}</span></div>
+  <div class="field"><label>E-mail</label><span>${txt(c.email)}</span></div>
+</div>
+
+<h2>2. Local de Instalação</h2>
+<div class="grid">
+  <div class="field"><label>CEP</label><span>${txt(c.cep)}</span></div>
+  <div class="field"><label>Concessionária</label><span>${txt(c.concessionaria)}</span></div>
+  <div class="field full"><label>Endereço</label><span>${[c.rua, c.numero, c.complemento].filter(Boolean).join(', ') || '—'}</span></div>
+  <div class="field"><label>Bairro</label><span>${txt(c.bairro)}</span></div>
+  <div class="field"><label>Cidade / Estado</label><span>${[c.cidade, c.estado].filter(Boolean).join(' – ') || '—'}</span></div>
+</div>
+
+<h2>3. Sistema Solar Fotovoltaico</h2>
+<div class="grid">
+  <div class="field"><label>Potência Total</label><span>${num(c.kwp,2)} kWp</span></div>
+  <div class="field"><label>Fase / Tensão</label><span>${txt(c.fase)} · ${c.tensao||'—'} V</span></div>
+  <div class="field"><label>Módulos (Qtd × Marca × Pot.)</label><span>${txt(c.qtd_modulos)} × ${txt(c.marca_modulo)} · ${num(c.pot_modulo,0)} W</span></div>
+  <div class="field"><label>Inversores (Qtd × Marca × Pot.)</label><span>${txt(c.qtd_inversores)} × ${txt(c.marca_inversor)} · ${num(c.pot_inversor,2)} kW</span></div>
+  ${c.qtd_baterias?`<div class="field"><label>Baterias (Qtd × Marca × Pot.)</label><span>${txt(c.qtd_baterias)} × ${txt(c.marca_bateria)} · ${num(c.pot_bateria,2)} kWh</span></div>`:''}
+</div>
+
+<h2>4. Condições Comerciais</h2>
+<div class="valor-box">
+  <div class="v">R$ ${num(c.valor,2)}</div>
+  <div class="pgto">${txt(c.forma_pgto)}${c.banco?' · '+c.banco:''}</div>
+  ${c.pgto_desc?`<div class="pgto" style="margin-top:4px">${esc(c.pgto_desc)}</div>`:''}
+</div>
+<div class="grid">
+  <div class="field"><label>Vendedor Responsável</label><span>${txt(c.vendedor)}</span></div>
+  <div class="field"><label>Data de Assinatura</label><span>${dt(c.data_assinatura)}</span></div>
+</div>
+
+<h2>5. Declaração e Assinaturas</h2>
+<p style="font-size:12px;line-height:1.7;margin-bottom:16px">
+  As partes acima identificadas celebram o presente Contrato de Fornecimento e Instalação de Sistema
+  Fotovoltaico, comprometendo-se a cumprir todas as obrigações aqui descritas, conforme proposta
+  comercial previamente aprovada e demais termos acordados entre as partes.
+</p>
+<div class="assinaturas">
+  <div>
+    <div class="ass-linha">${txt(c.nome)}<br>Cliente / Contratante</div>
+  </div>
+  <div>
+    <div class="ass-linha">SER Energia Renovável<br>Contratada</div>
+  </div>
+</div>
+<div class="rodape" style="margin-top:24px">
+  Belém – PA &nbsp;·&nbsp; Data: ${dt(c.data_assinatura) !== '___/___/______' ? dt(c.data_assinatura) : new Date().toLocaleDateString('pt-BR')}
+</div>
+</body></html>`);
+  win.document.close();
+  if(imprimir) setTimeout(()=>{ win.focus(); win.print(); }, 600);
 }
 
 /* ============================================================
