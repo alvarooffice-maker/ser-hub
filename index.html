@@ -1778,84 +1778,230 @@ ${(p.conta_sem_solar||p.conta_com_solar||p.economia_mensal)?`
    GERADOR DE CONTRATO HTML/PDF
    ============================================================ */
 function abrirContratoJanela(c, imprimir=false){
-  const fR = v => 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  const fR = v => 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const txt = v => v||'_______________';
   const dt  = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
-  const end = [c.rua, c.numero?'nº '+c.numero:'', c.complemento, c.bairro, c.cidade, c.estado?'— '+c.estado:'', c.cep?'CEP '+c.cep:''].filter(Boolean).join(', ');
+  const end = [c.rua, c.numero?'nº '+c.numero:'', c.complemento, c.bairro, c.cidade, c.estado||'', c.cep?'CEP '+c.cep:''].filter(Boolean).join(', ');
+  function extenso(n){
+    n=Math.round(Number(n||0));
+    if(!n) return 'zero reais';
+    const un=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+    const dz=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+    const ct=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+    function g(x){if(!x)return'';if(x===100)return'cem';let r='';if(x>=100){r+=ct[Math.floor(x/100)];x%=100;if(x)r+=' e ';}if(x>=20){r+=dz[Math.floor(x/10)];x%=10;if(x)r+=' e '+un[x];}else if(x)r+=un[x];return r;}
+    let r='',mi=Math.floor(n/1000000),mil=Math.floor((n%1000000)/1000),hum=n%1000;
+    if(mi){r+=g(mi)+(mi===1?' milhão':' milhões');}
+    if(mil){if(r)r+=' e ';r+=mil===1?'mil':g(mil)+' mil';}
+    if(hum){if(r)r+=' e ';r+=g(hum);}
+    return r+(n===1?' real':' reais');
+  }
   const win = window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>Contrato SER Energia — ${c.nome||''}</title>
+  win.document.write(`<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<title>Contrato — ${c.nome||'SER Energia'}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Times New Roman',Times,serif;font-size:12pt;line-height:1.6;color:#111;background:#f0eaf8;padding:30px}
+body{font-family:'Times New Roman',Times,serif;font-size:12pt;line-height:1.7;color:#111;background:#f0eaf8;padding:24px}
 .print-bar{position:sticky;top:0;z-index:100;background:#fff;padding:10px 24px;border-bottom:2px solid #4B0082;display:flex;justify-content:space-between;align-items:center}
 .print-bar span{font-size:13px;color:#4B0082;font-weight:700}
 .print-bar button{background:#4B0082;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
-.wrap{max-width:800px;margin:0 auto;background:#fff;padding:50px 56px;box-shadow:0 2px 20px rgba(0,0,0,.08)}
-.header{text-align:center;border-bottom:2px solid #4B0082;padding-bottom:18px;margin-bottom:28px}
-.header img{height:70px;margin-bottom:10px}
-.header h1{font-size:13pt;letter-spacing:.05em;color:#1a0a2e;margin-bottom:4px}
-.header p{font-size:10pt;color:#555}
-h2{font-size:11pt;text-transform:uppercase;letter-spacing:.06em;color:#4B0082;margin:24px 0 8px;border-bottom:1px solid #ddd6fe;padding-bottom:4px}
-p{margin-bottom:10px;text-align:justify}
-.highlight{background:#f3e8ff;border:1px solid #a855f7;border-radius:4px;padding:10px 14px;margin:16px 0;font-weight:700;text-align:center;font-size:11pt}
-.sign-area{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px}
-.sign-line{border-top:1px solid #333;padding-top:8px;font-size:10pt;color:#555;text-align:center}
-.footer-doc{text-align:center;margin-top:30px;font-size:9pt;color:#888;border-top:1px solid #ddd;padding-top:12px}
-@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;padding:30px}.print-bar{display:none!important}}
+.wrap{max-width:820px;margin:0 auto;background:#fff;padding:52px 58px;box-shadow:0 2px 20px rgba(0,0,0,.1)}
+.doc-header{text-align:center;margin-bottom:24px}
+.doc-header img{height:72px;margin-bottom:12px;display:block;margin-left:auto;margin-right:auto}
+.doc-header h1{font-size:14pt;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#1a0a2e;margin-bottom:6px}
+.doc-header .sub{font-size:9.5pt;color:#555;letter-spacing:.08em;text-transform:uppercase}
+hr.title-rule{border:none;border-top:2px solid #6B21A8;margin:16px 0 24px}
+.id-box{background:#f5f0fc;border-left:4px solid #6B21A8;border-radius:6px;padding:16px 20px;margin-bottom:24px;font-size:11pt;line-height:1.9}
+.id-box p{margin:0 0 10px}
+.id-box p:last-child{margin:0}
+h2{font-size:10.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#4B0082;margin:28px 0 8px;padding-bottom:4px;border-bottom:1px solid #c4b5fd}
+p{margin-bottom:8px;text-align:justify;font-size:11.5pt}
+.pi{margin-left:24px;margin-bottom:6px;text-align:justify;font-size:11.5pt}
+table.kit{width:100%;border-collapse:collapse;margin:14px 0 18px;font-size:11pt}
+table.kit th{background:#4B0082;color:#fff;font-weight:700;padding:8px 10px;text-align:left;font-size:10pt;letter-spacing:.04em}
+table.kit td{padding:7px 10px;border-bottom:1px solid #e9e2f5}
+table.kit tr:nth-child(even) td{background:#faf7ff}
+table.kit .hl{color:#4B0082;font-weight:700}
+.cdc-box{background:#fffbeb;border:1px solid #f59e0b;border-radius:6px;padding:14px 18px;margin:18px 0;font-size:10.5pt;font-weight:700;line-height:1.6}
+.sign-section{margin-top:52px}
+.sign-date{text-align:center;font-style:italic;margin-bottom:36px;font-size:11pt}
+.sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px 48px}
+.sign-cell{text-align:center;padding-top:56px;position:relative}
+.sign-cell::before{content:'';position:absolute;top:0;left:8%;right:8%;border-top:1px solid #333}
+.sign-name{font-weight:700;font-size:10.5pt;color:#1a0a2e}
+.sign-detail{font-size:9.5pt;color:#555;margin-top:2px}
+.sign-label{font-size:8.5pt;letter-spacing:.07em;text-transform:uppercase;color:#4B0082;margin-top:5px;font-weight:700}
+.resumo{margin-top:52px;border:1px solid #ddd6fe;border-radius:8px;padding:24px 28px;background:#faf7ff}
+.resumo h3{font-size:12pt;color:#4B0082;margin-bottom:14px}
+.resumo h4{font-size:10.5pt;font-weight:700;color:#1a0a2e;margin:14px 0 4px}
+.resumo p{font-size:10.5pt;margin-bottom:6px;text-align:left}
+.mat-box{margin-top:20px;border:1px solid #ddd;border-radius:6px;padding:16px 20px;background:#fff;font-size:11pt}
+.mat-title{font-weight:700;color:#4B0082;margin-bottom:10px}
+@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;padding:30px 40px}.print-bar{display:none!important}h2{page-break-after:avoid}}
 </style></head><body>
 <div class="print-bar"><span>SER Energia Renovável</span><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>
 <div class="wrap">
-<div class="header">
+
+<div class="doc-header">
   <img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/>
-  <h1>INSTRUMENTO PARTICULAR DE CONTRATO DE PROJETO E INSTALAÇÃO FOTOVOLTAICO</h1>
-  <p>SER Energia Renovável · CNPJ: 58.656.750/0001-04 · Belém/PA</p>
+  <h1>Instrumento Particular de Contrato de<br>Projeto e Instalação Fotovoltaico</h1>
+  <div class="sub">SOLUÇÕES EM ENERGIA RENOVÁVEL MATRIZ LTDA — CNPJ 58.656.750/0001-04</div>
+</div>
+<hr class="title-rule"/>
+
+<div class="id-box">
+  <p><strong>CONTRATANTE:</strong> <strong>${txt(c.nome)}</strong>, ${c.estado_civil||'brasileiro(a)'}, portador(a) do CPF sob o n. <strong>${txt(c.cpf)}</strong> e da Carteira de Identidade nº <strong>${txt(c.rg)}${c.rg_orgao?' / '+c.rg_orgao:''}</strong>, residente e domiciliado(a) na <strong>${end||'_______________'}</strong>, neste ato denominado(a) <strong>CONTRATANTE</strong>; e do outro lado,</p>
+  <p><strong>CONTRATADA:</strong> SOLUÇÕES EM ENERGIA RENOVÁVEL MATRIZ LTDA, denominada <strong>SER ENERGIA RENOVÁVEL</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o n. 58.656.750/0001-04, com endereço profissional em Travessa Antônio Baena, n 300, Bairro Marco, CEP 66.093-635, Belém/PA, neste ato representada por seu administrador legal Wellem Monteiro Macedo, brasileira, portadora do CPF/MF sob nº 008.253.962-63 e RG nº 6300850, residente e domiciliado à cidade de Belém/PA.</p>
 </div>
 
-<h2>Partes contratantes</h2>
-<p><strong>CONTRATANTE:</strong> ${txt(c.nome)}, ${c.estado_civil||'brasileiro(a)'}, ${c.profissao?'profissão '+c.profissao+', ':''} portador(a) do CPF sob o n. ${txt(c.cpf)} e da Carteira de Identidade nº ${txt(c.rg)}${c.rg_orgao?' / '+c.rg_orgao:''}, residente e domiciliado(a) na ${end||'_______________'}.</p>
-<p><strong>CONTRATADA:</strong> SOLUÇÕES EM ENERGIA RENOVÁVEL MATRIZ LTDA, denominada <strong>SER ENERGIA RENOVÁVEL</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o n. 58.656.750/0001-04, com endereço profissional em Travessa Antônio Baena, n 300, Bairro Marco, CEP 66.093-635, Belém/PA, representada por seu administrador legal <strong>Wellem Monteiro Macedo</strong>, CPF/MF sob nº 008.253.962-63.</p>
+<h2>Do Objeto do Contrato</h2>
+<p><strong>1. O(A) CONTRATANTE confia à CONTRATADA e aceita, a execução de todas as atividades necessárias para a realização, teste e conexão do projeto fotovoltaico que compreende:</strong></p>
+<p class="pi">a. Fornecimento e instalação de materiais elétricos estritamente necessários à execução do serviço e instalação do projeto (quadro de string DC, quadro de paralelo AC);</p>
+<p class="pi">b. Fornecimento e instalação de estrutura metálica para suporte de módulos fotovoltaicos;</p>
+<p class="pi">c. Conexão elétrica entre módulos, quadros DC, inversor e quadro baixa tensão;</p>
+<p class="pi">d. Teste de funcionalidade e entrega de conformidade da usina;</p>
+<p class="pi">f. Avaliação do projeto de ajuste, caso seja necessário;</p>
+<p class="pi">g. Tratamento do processo de HOMOLOGAÇÃO do sistema junto a Concessionária de Energia Elétrica${c.concessionaria?' ('+c.concessionaria+')':''} e solicitação de aumento de carga (monofásico para bifásico).</p>
+<p><strong>1.1. Os componentes a serem fornecidos estritamente adequados ao projeto contratado, objeto deste contrato, são:</strong></p>
+<p class="pi">g) <strong>${txt(c.qtd_modulos)}</strong> Módulos Solares <strong>${txt(c.marca_modulo)} ${c.pot_modulo||'___'} W</strong>;</p>
+<p class="pi">h) <strong>${c.qtd_inversores||'1'}</strong> INVERSOR <strong>${txt(c.marca_inversor)} ${c.pot_inversor||'___'} KW ${c.fase?c.fase.toUpperCase():''} ${c.tensao?c.tensao+' V':''}</strong>.</p>
+${c.qtd_baterias?'<p class="pi">i) <strong>'+c.qtd_baterias+'</strong> Bateria(s) <strong>'+txt(c.marca_bateria)+' '+(c.pot_bateria||'___')+' kWh</strong>.</p>':''}
 
-<h2>1. Do objeto do contrato</h2>
-<p>1. O(A) CONTRATANTE confia à CONTRATADA e aceita, a execução de todas as atividades necessárias para a realização, teste e conexão do projeto fotovoltaico, compreendendo fornecimento e instalação de estrutura metálica, conexão elétrica, teste de funcionalidade e processo de HOMOLOGAÇÃO junto à Concessionária de Energia Elétrica${c.concessionaria?' ('+c.concessionaria+')':''}.</p>
-<p>1.1. Componentes fornecidos:</p>
-<p>&nbsp;&nbsp;&nbsp;• <strong>${txt(c.qtd_modulos)}</strong> Módulos Solares <strong>${txt(c.marca_modulo)}</strong> <strong>${c.pot_modulo||'___'}</strong> W</p>
-<p>&nbsp;&nbsp;&nbsp;• <strong>${txt(c.qtd_inversores)}</strong> Inversor(es) <strong>${txt(c.marca_inversor)}</strong> <strong>${c.pot_inversor||'___'}</strong> kW · Fase: <strong>${c.fase||'___'}</strong> · Tensão: <strong>${c.tensao||'___'}</strong> V</p>
-${c.qtd_baterias?`<p>&nbsp;&nbsp;&nbsp;• <strong>${c.qtd_baterias}</strong> Bateria(s) <strong>${txt(c.marca_bateria)}</strong> <strong>${c.pot_bateria||'___'}</strong> kWh</p>`:''}
-<p>1.2. Capacidade de potência: <strong>${c.kwp||'___'} kWp</strong>, no endereço de instalação definido neste contrato.</p>
+<table class="kit">
+  <thead><tr><th>ITEM</th><th>QTD.</th><th>FABRICANTE</th><th>POTÊNCIA</th><th>CONFIGURAÇÃO</th></tr></thead>
+  <tbody>
+    <tr><td>Módulos Solares</td><td class="hl">${c.qtd_modulos||'—'} un.</td><td class="hl">${c.marca_modulo||'—'}</td><td>${c.pot_modulo||'—'} W</td><td>—</td></tr>
+    <tr><td>Inversor</td><td class="hl">${c.qtd_inversores||'1'} un.</td><td class="hl">${c.marca_inversor||'—'}</td><td>${c.pot_inversor||'—'} kW</td><td class="hl">${c.fase?c.fase.toUpperCase():''} ${c.tensao?c.tensao+' V':''}</td></tr>
+    ${c.qtd_baterias?'<tr><td>Baterias</td><td class="hl">'+c.qtd_baterias+' un.</td><td class="hl">'+(c.marca_bateria||'—')+'</td><td>'+(c.pot_bateria||'—')+' kWh</td><td>—</td></tr>':''}
+  </tbody>
+</table>
 
-<h2>2. Dos valores e forma de pagamento</h2>
-<p>2.1. O valor total corresponde a <strong>${fR(c.valor)}</strong>.</p>
-<p>2.2. Forma de pagamento: <strong>${txt(c.forma_pgto)}</strong>${c.banco?' — Banco: '+c.banco:''}${c.pgto_desc?' — '+c.pgto_desc:''}.</p>
+<h2>Das Exclusões do Contrato</h2>
+<p><strong>2. São exclusos do presente contrato os seguintes:</strong></p>
+<p class="pi">a. Obras civis: estrutura de edifícios, fundações, terraplenagem, armação, drenagem, ampliação, inovação ou restauração no imóvel;</p>
+<p class="pi">b. Fornecimento de telha, exceto quando no momento da instalação alguma telha for danificada;</p>
+<p class="pi">c. Obras de transmissão de energia em linha aérea: cabeamento que liga a residência até a rede da concessionária;</p>
+<p class="pi">d. Estrutura mecânica de reforço do telhado (onde previsto no laudo de vistoria);</p>
+<p class="pi">e. Implantação e custeio de poste auxiliar, quando necessário e indicado na vistoria;</p>
+<p class="pi">f. Cálculo estrutural do telhado (quando não previsto no item 2.1).</p>
+<p><strong>2.3. O presente contrato visa a prestação de serviços especializados para instalação de sistemas de geração de energia fotovoltaica com uma capacidade de potência de <span style="color:#4B0082">${c.kwp||'___'} kWp</span>, em endereço definido no contrato.</strong></p>
+<p><strong>2.4. A capacidade de energia estabelecida no item 2.3 será alcançada apenas em condições ideais, podendo sofrer alterações por fatores naturais ou não naturais, tais como, chuva, neblina, sombreamento e sujeira nos painéis solares.</strong></p>
 
-<div class="highlight">⚠️ DESTAQUE LEGAL (ART. 54, §4º, CDC): A rescisão do contrato após a assinatura do financiamento implicará em multa de 55% sobre o valor total financiado, a qual será repassada à instituição financeira.</div>
+<h2>Dos Valores e Forma de Pagamento</h2>
+<p><strong>3. O valor que deverá ser pago pelo(a) CONTRATANTE à CONTRATADA SER ENERGIA RENOVÁVEL para a realização do serviço de todas as obrigações descritas neste contrato corresponde ao total de <span style="color:#4B0082">${fR(c.valor)}</span> (${extenso(c.valor)}).</strong></p>
+<p><strong>Forma de pagamento: <span style="color:#4B0082">${txt(c.forma_pgto)}</span></strong></p>
+${(c.pgto_desc||c.banco)?'<p><strong>3.1. O Pagamento ocorrerá: <span style="color:#4B0082">'+(c.banco?c.banco+' — ':'')+txt(c.pgto_desc)+'</span>.</strong></p>':''}
+<p><strong>3.2. Verificado o descumprimento da obrigação prevista no item 3 e 3.1, estará a CONTRATADA autorizada a proceder com os métodos de cobrança extrajudiciais e judiciais, tais como negativação do CPF do devedor nos órgãos de crédito, envio da dívida para protesto em cartórios, além do ajuizamento das medidas judiciais cabíveis e interrupção imediata da prestação do serviço até a regularização.</strong></p>
+<p><strong>3.3. Havendo mais de um contratante, estes possuem responsabilidade solidária em todas as obrigações do presente contrato.</strong></p>
 
-<h2>3. Dos prazos</h2>
-<p>3.1. O prazo máximo para conclusão é de <strong>90 (noventa) dias</strong>, contados a partir do cumprimento cumulativo de: (i) realização do pagamento e (ii) entrega dos documentos solicitados. Para inversores ≥ 30 kW, o prazo passa a ser de 180 dias.</p>
+<h2>Reajuste e Revisão de Valores</h2>
+<p>4. O valor que será pago pelo CONTRATANTE abarca os serviços e equipamentos necessários para finalizar o projeto contratado. Caso o CONTRATANTE faça solicitação de alteração do projeto, ou ocorra desequilíbrio contratual em função de fatos supervenientes ao início da execução do serviço, as condições contratuais poderão ser reanalisadas.</p>
+<p>4.1. Os valores estabelecidos neste contrato poderão ser revisados em caso de variações significativas nos custos de materiais, desde que comprovados documentalmente.</p>
+<p>4.2. Alterações no escopo do projeto, solicitadas pelo(a) CONTRATANTE, que impactem os custos previamente acordados, deverão ser formalizadas por meio de aditivo contratual.</p>
 
-<h2>4. Da rescisão</h2>
-<p>4.1. Em caso de inadimplemento, a parte infratora pagará multa equivalente a <strong>20%</strong> do valor total. Se a instalação já foi iniciada, a multa sobe para <strong>35%</strong>. Em caso de financiamento assinado, a multa é de <strong>55%</strong> do valor financiado.</p>
+<h2>Das Obrigações da Contratada</h2>
+<p>5. A CONTRATADA se compromete a fornecer os equipamentos e executar a instalação dos itens contidos na Cláusula 1 deste contrato, observando as normas técnicas aplicáveis e garantindo a segurança de todos os envolvidos.</p>
+<p>5.1. A CONTRATADA se compromete a utilizar equipamentos adequados e pessoal qualificado, assumindo plena e exclusiva responsabilidade por sua contratação, eximindo o(a) CONTRATANTE de qualquer responsabilidade.</p>
+<p>5.2. A CONTRATADA declara e garante dispor de toda experiência e competências técnicas necessárias, executando as obras dentro das normas NR-10 (Segurança em Instalações e Serviços em Eletricidade) e NR-35 (Trabalho em Altura).</p>
+<p>5.5. A CONTRATADA realizará uma vistoria técnica no local de instalação antes da execução dos serviços. Em caso de aprovação com ressalvas ou reprovação, o CONTRATANTE deverá corrigir as pendências identificadas.</p>
 
-<h2>5. Das garantias</h2>
-<p>5.1. Garantia de mão de obra: <strong>12 meses</strong> para o inversor. Garantia dos fabricantes: <strong>25 anos</strong> de performance e <strong>10 anos</strong> contra defeitos para módulos; <strong>10 anos</strong> para inversores.</p>
+<h2>Das Obrigações da Contratante</h2>
+<p>6. Deverá a CONTRATANTE cumprir com os pagamentos à CONTRATADA, na forma descrita no item 3.</p>
+<p>6.1. Compromete-se a CONTRATANTE a liberar a entrada dos profissionais para a execução dos serviços de instalação nas dependências do imóvel.</p>
+<p>6.4. As obras deverão ser realizadas no prazo máximo de 90 (noventa) dias, período em que os prazos do item 7 estarão suspensos.</p>
+<p>6.6. Deverá o CONTRATANTE receber e armazenar os equipamentos entregues pela FABRICANTE de forma segura durante a etapa de instalação, respondendo por eventuais perdas e danos.</p>
+<p>6.7. O(A) CONTRATANTE declara e garante haver a plena disponibilidade jurídica do local e se dispõe a manter pela inteira duração do presente contrato a disponibilidade do local.</p>
 
-<h2>6. Foro</h2>
-<p>6.1. Fica eleito o foro da cidade de <strong>Belém/PA</strong> para dirimir quaisquer dúvidas oriundas do presente instrumento.</p>
-<p>Belém/PA, ${dt(c.data_assinatura)}.</p>
+<h2>Dos Prazos</h2>
+<p>7. O cumprimento deste contrato iniciará quando verificado o pagamento do valor descrito no item 3, na forma pactuada, além da entrega de toda a documentação pela CONTRATANTE. As várias fases relativas à realização das obras deverão ser completadas no prazo máximo de <strong>90 (noventa) dias</strong>.</p>
+<p>7.1. O prazo passará a contar a partir do cumprimento de duas condições, cumulativas: realização do pagamento e entrega dos documentos solicitados para homologação e desenvolvimento do projeto.</p>
+<p>7.2. Caso o inversor adquirido seja de potência 30kW ou superior, automaticamente o prazo de entrega da obra passará a ser de <strong>180 (cento e oitenta) dias</strong>.</p>
+<p>7.3. Caso a CONTRATADA não cumpra com o prazo previsto no item 7, compromete-se a arcar com o pagamento das parcelas do financiamento bancário contratado pela CONTRATANTE, ou, não sendo o caso, a realizar o reembolso referente ao valor pago das faturas de energia de forma proporcional aos dias que excederem o estabelecido.</p>
 
-<div class="sign-area">
-  <div><div class="sign-line">${txt(c.nome)}<br>CPF: ${txt(c.cpf)}<br><em>CONTRATANTE</em></div></div>
-  <div><div class="sign-line">SER ENERGIA RENOVÁVEL<br>CNPJ: 58.656.750/0001-04<br><em>CONTRATADA</em></div></div>
+<h2>Das Variações de Projeto</h2>
+<p>8.1. As Partes contratantes concordam que as variações relativas à majorações de obras ordenadas pelo(a) CONTRATANTE, serão realizadas, após averiguação de possibilidade de realização da parte CONTRATADA, no tempo que ela determinar.</p>
+<p>8.2. A CONTRATADA terá direito à compensação, relativa à variação prevista no item 8.1, que será correspondida ao final da realização dela, após apresentação da Nota Fiscal.</p>
+
+<h2>Da Rescisão do Contrato</h2>
+<p>9. O presente contrato poderá ser rescindido no caso de inadimplemento de quaisquer obrigações ora estabelecidas pelas partes contratadas, desde que a parte inadimplente não sane a pendência em 30 (trinta) dias, contados do recebimento da notificação por escrito da outra parte. A parte infratora ficará obrigada a pagar a multa equivalente a <strong>20% (vinte por cento)</strong> do valor total do contrato à outra parte.</p>
+<p>9.2. Eventual rescisão unilateral pelo(a) CONTRATANTE deverá ser feita mediante aviso prévio de no mínimo 15 (quinze) dias, arcando com o pagamento de multa de <strong>20%</strong> do valor do contrato.</p>
+<p>9.3. Caso a instalação já tenha sido iniciada ou concluída, a multa mencionada anteriormente será majorada para <strong>35%</strong> do valor total do projeto.</p>
+<p>9.7/9.8. Nos casos em que a execução dos serviços for viabilizada por meio de financiamento, uma vez que o contrato de financiamento seja formalizado e assinado, a solicitação de rescisão sujeitará o CONTRATANTE ao pagamento de multa de <strong>55%</strong> sobre o valor total do serviço financiado.</p>
+<div class="cdc-box">⚠️ DESTAQUE LEGAL (ART. 54, § 4º, CDC): O CONTRATANTE DECLARA TER TOTAL E INEQUÍVOCA CIÊNCIA DE QUE A RESCISÃO DO CONTRATO APÓS A ASSINATURA DO FINANCIAMENTO IMPLICARÁ EM MULTA DE 55% SOBRE O VALOR TOTAL FINANCIADO, A QUAL SERÁ REPASSADA À INSTITUIÇÃO FINANCEIRA.</div>
+
+<h2>Das Garantias</h2>
+<p>10. A CONTRATADA garante ao(à) CONTRATANTE que os equipamentos a serem fornecidos atendem ao descrito nas especificações técnicas quando operados dentro dos limites técnicos para os quais foram projetados.</p>
+<p><strong>10.1. Prazos de garantia contados a partir do término da instalação:</strong></p>
+<p class="pi">a. Prazo de garantia para problemas com o inversor: <strong>12 meses</strong>.</p>
+<p class="pi">b. Prazo de garantia para limpeza dos painéis, reaperto das conexões e verificação de condições de telhado: <strong>03 meses</strong>.</p>
+<p>10.2. Passado o prazo referido na cláusula 10.1, fica estabelecido como garantia os prazos oferecidos pelas FABRICANTES: <strong>25 (vinte e cinco) anos</strong> de garantia de performance e <strong>10 (dez) anos</strong> contra defeitos de fabricação para os módulos e <strong>10 (dez) anos</strong> para os inversores e estrutura.</p>
+<p>10.5. A presente garantia não cobre defeitos ou falhas decorrentes do desgaste natural dos materiais, erros operacionais, manuseio inadequado, ou danos causados por erosão, corrosão, intempéries, fatores climáticos etc.</p>
+
+<h2>Disposições Finais</h2>
+<p>11.1. A CONTRATADA executará seus projetos de acordo com padrões e normas técnicas aplicáveis.</p>
+<p>11.3. (X) Autorizo o uso de minha imagem constante na filmagem da entrega do projeto solar Sucesso do Cliente, sem qualquer ônus para a empresa e em caráter definitivo.</p>
+<p>11.4. Este documento poderá ser assinado eletronicamente mediante utilização de processo de certificação disponibilizado pela Infraestrutura de Chaves Pública Brasileira — ICP-Brasil, ou de qualquer outro meio de comprovação da autoria e integridade de documentos em forma eletrônica (Docusign, Adobesign etc.).</p>
+<p>11.5. Fica estabelecido o foro da cidade de <strong>Belém/PA</strong>, para dirimir quaisquer dúvidas oriundas do presente instrumento.</p>
+
+<div class="sign-section">
+  <div class="sign-date">Belém/PA, ${dt(c.data_assinatura)}.</div>
+  <div class="sign-grid">
+    <div class="sign-cell">
+      <div class="sign-name">${txt(c.nome)}</div>
+      <div class="sign-detail">CPF: ${txt(c.cpf)}</div>
+      <div class="sign-detail">RG: ${txt(c.rg)}${c.rg_orgao?' / '+c.rg_orgao:''}</div>
+      <div class="sign-label">CONTRATANTE</div>
+    </div>
+    <div class="sign-cell">
+      <div class="sign-name">CONTRATADA</div>
+      <div class="sign-detail">SER ENERGIA RENOVÁVEL</div>
+      <div class="sign-detail">CNPJ 58.656.750/0001-04</div>
+      <div class="sign-label">CONTRATADA</div>
+    </div>
+    <div class="sign-cell">
+      <div class="sign-name">TESTEMUNHA 1</div>
+      <div class="sign-detail">Nome: ${c.vendedor||'_______________'}</div>
+      <div class="sign-detail">CPF: ___________</div>
+      <div class="sign-label">TESTEMUNHA 1</div>
+    </div>
+    <div class="sign-cell">
+      <div class="sign-name">TESTEMUNHA 2</div>
+      <div class="sign-detail">Nome: ÁLVARO FERNANDO DO NASCIMENTO SILVA</div>
+      <div class="sign-detail">CPF: 860.231.792-15</div>
+      <div class="sign-label">TESTEMUNHA 2</div>
+    </div>
+  </div>
 </div>
-<div class="sign-area" style="margin-top:30px">
-  <div><div class="sign-line">TESTEMUNHA 1<br>${c.vendedor||'_______________'}<br><em>Vendedor responsável</em></div></div>
-  <div><div class="sign-line">TESTEMUNHA 2<br>ÁLVARO FERNANDO DO NASCIMENTO SILVA<br>CPF: 860.231.792-15</div></div>
+
+<div class="resumo">
+  <h3>📋 Resumo do Contrato</h3>
+  <p>Aqui na SER ENERGIA RENOVÁVEL, trabalhamos com boa-fé e transparência. Este tópico explica os principais pontos do contrato de maneira clara e acessível.</p>
+  <h4>1. DO OBJETO</h4>
+  <p>No objeto do contrato estão contidos os serviços que você está contratando. Fique atento ao item 2 do contrato, que lista os serviços que não entram na responsabilidade da empresa.</p>
+  <h4>2. DAS OBRIGAÇÕES DA CONTRATADA</h4>
+  <p>A empresa se compromete a realizar um serviço de qualidade, inspecionando o local previamente, assumindo os custos de quaisquer danos causados no imóvel e prestando todas as informações necessárias.</p>
+  <h4>3. DAS OBRIGAÇÕES DO CONTRATANTE</h4>
+  <p>Em caso de necessidade de ajustes no imóvel, o cliente deverá contratar profissional competente. O prazo de 90 dias fica suspenso durante as obras de adequação.</p>
+  <h4>4. DOS PRAZOS</h4>
+  <p>O prazo é de 90 (noventa) dias e conta a partir do pagamento e entrega dos documentos. Pode ser estendido durante obras e nas hipóteses descritas no contrato.</p>
+  <h4>5. DA RESCISÃO</h4>
+  <p>Multa de 20% do valor do contrato em caso de inadimplência. Havendo instalação realizada: 35%. Com contrato de financiamento assinado: 55%.</p>
+  <h4>6. DA GARANTIA</h4>
+  <p>03 meses para serviços de manutenção pela SER. As fabricantes oferecem 25 anos de garantia de performance e 10 anos contra defeitos de fabricação para os módulos.</p>
+  <div class="mat-box">
+    <div class="mat-title">📦 Lista de Materiais do Projeto</div>
+    <p>Sistema <strong>${c.kwp||'—'} kWp</strong> · <strong>${c.qtd_modulos||'—'} módulo(s) ${c.marca_modulo||''} ${c.pot_modulo?c.pot_modulo+'W':''}</strong> · <strong>${c.qtd_inversores||'1'} inversor(es) ${c.marca_inversor||''} ${c.pot_inversor?c.pot_inversor+'kW':''}</strong>${c.fase?' — '+c.fase.toUpperCase():''}${c.tensao?' '+c.tensao+'V':''}</p>
+    <p style="margin-top:8px"><strong style="color:#4B0082">💰 Valor total: ${fR(c.valor)} (${extenso(c.valor)})</strong></p>
+    <p style="margin-top:4px"><strong>💳 Forma de pagamento: ${txt(c.forma_pgto)}</strong></p>
+  </div>
 </div>
-<div class="footer-doc">SER Energia Renovável · Travessa Antônio Baena, 300 · Marco · Belém/PA · CNPJ: 58.656.750/0001-04</div>
+
 </div></body></html>`);
   win.document.close();
   if(imprimir) setTimeout(()=>{ win.focus(); win.print(); }, 600);
 }
+
 
 /* ============================================================
    LOGISTICA MODAL
