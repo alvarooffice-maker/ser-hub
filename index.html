@@ -807,6 +807,63 @@ function openModal(html, size=''){
 function closeModal(){ $('#modalRoot').classList.remove('active'); $('#modalRoot').innerHTML=''; }
 $('#modalRoot').addEventListener('click', e=>{ if(e.target.id==='modalRoot') closeModal(); });
 
+/* ============================================================
+   CPF / CNPJ / CEP UTILITIES
+   ============================================================ */
+function validarCPF(v){
+  const c=v.replace(/\D/g,'');
+  if(c.length!==11||/^(\d)\1{10}$/.test(c))return false;
+  let s=0; for(let i=0;i<9;i++) s+=+c[i]*(10-i);
+  let r=s%11; const d1=r<2?0:11-r;
+  if(+c[9]!==d1) return false;
+  s=0; for(let i=0;i<10;i++) s+=+c[i]*(11-i);
+  r=s%11; const d2=r<2?0:11-r;
+  return +c[10]===d2;
+}
+function validarCNPJ(v){
+  const c=v.replace(/\D/g,'');
+  if(c.length!==14||/^(\d)\1{13}$/.test(c))return false;
+  const calc=(c,n)=>{let s=0,p=n-7;for(let i=0;i<n;i++){s+=+c[i]*p--;if(p<2)p=9;}const r=s%11;return r<2?0:11-r;};
+  return +c[12]===calc(c,12)&&+c[13]===calc(c,13);
+}
+function attachCPF(formEl){
+  const el = formEl?.elements?.cpf || formEl?.querySelector?.('[name="cpf"]');
+  if(!el) return;
+  el.placeholder='000.000.000-00';
+  el.addEventListener('input', ()=>{
+    const v=el.value.replace(/\D/g,'');
+    if(!v){el.style.borderColor='';el.title='';return;}
+    if(v.length<11){el.style.borderColor='';return;}
+    const ok=validarCPF(v);
+    el.style.borderColor=ok?'#22c55e':'#ef4444';
+    el.title=ok?'CPF válido ✓':'CPF inválido ✗';
+  });
+}
+async function lookupCEP(cep, formEl){
+  const digits=cep.replace(/\D/g,'');
+  if(digits.length!==8) return;
+  try{
+    const r=await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+    const d=await r.json();
+    if(d.erro) return;
+    const set=(name,val)=>{
+      const el=formEl?.elements?.[name]||formEl?.querySelector?.(`[name="${name}"]`);
+      if(el && !el.value && val) el.value=val;
+    };
+    set('rua', d.logradouro);
+    set('bairro', d.bairro);
+    set('cidade', d.localidade);
+    const estado=formEl?.elements?.estado||formEl?.querySelector?.('[name="estado"]');
+    if(estado && d.uf) estado.value=d.uf;
+  }catch(e){}
+}
+function attachCEP(formEl){
+  const el=formEl?.elements?.cep||formEl?.querySelector?.('[name="cep"]');
+  if(!el) return;
+  el.placeholder='00000-000';
+  el.addEventListener('blur', ()=> lookupCEP(el.value, formEl));
+}
+
 function formField({label,name,type='text',value='',options=null,required=false,readonly=false,rows=null,full=false,placeholder=''}){
   const v = value==null?'':value;
   let inp;
@@ -1063,6 +1120,7 @@ function openPropostaModal(item=null){
   `,'lg');
 
   const form = $('#propForm');
+  attachCEP(form);
   function recalc(){
     const qm = Number(form.qtd_modulos.value)||0;
     const pm = Number(form.pot_modulo.value)||0;
@@ -1318,6 +1376,7 @@ function openVistoriaModal(item=null){
   `,'lg');
 
   const form = $('#vistForm');
+  attachCEP(form);
   const allFiles = {};
   [...fotoKeys, ...docKeys].forEach(k=>{
     allFiles[k] = (fotos[k] || docs[k] || []).slice();
@@ -1458,6 +1517,8 @@ function openContratoModal(item=null){
   `,'lg');
 
   const form = $('#contForm');
+  attachCEP(form);
+  attachCPF(form);
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
@@ -2180,6 +2241,7 @@ function openCadastroModal(item=null){
     </div></form>
   `);
   const form = $('#cadForm');
+  attachCEP(form);
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
