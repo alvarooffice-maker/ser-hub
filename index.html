@@ -676,7 +676,7 @@ async function transitionCard(id, fromStage, toStage){
   if(existing){ toast('Já existe registro nesta etapa para este item.','info'); return; }
 
   const payload = buildTransitionPayload(item, fromStage, toStage);
-  payload.criado_por = State.profile?.email;
+  payload.criado_por = State.user?.id;
 
   const { error } = await supa.from(toCfg.table).insert(payload);
   if(error){ toast('Erro: '+error.message,'error'); return; }
@@ -861,7 +861,7 @@ function openLeadModal(item=null){
     const data = readForm(form);
     data.kwh = data.kwh?Number(data.kwh):null;
     if(isNew){
-      data.criado_por = State.profile?.email;
+      data.criado_por = State.user?.id;
       const { error } = await supa.from('leads').insert(data);
       if(error) return toast(error.message,'error');
       toast('Lead criado!','success');
@@ -873,7 +873,7 @@ function openLeadModal(item=null){
         await supa.from('remarketing').insert({
           lead_id:item.id, nome:data.nome, telefone:data.telefone,
           motivo_perda:data.motivo_perda, data_reativacao:data.data_reativacao,
-          status:'pendente', vendedor:data.vendedor, criado_por:State.profile?.email
+          status:'pendente', vendedor:data.vendedor, criado_por:State.user?.id
         });
       }
       toast('Lead atualizado!','success');
@@ -947,7 +947,7 @@ async function attachContactLog(parentId, kind){
         [fk]: parentId, tipo,
         resultado: $(`#logRes_${parentId}`).value,
         obs: $(`#logObs_${parentId}`).value || null,
-        criado_por: State.profile?.email
+        criado_por: State.user?.id
       };
       const { error } = await supa.from(table).insert(payload);
       if(error) return toast(error.message,'error');
@@ -1057,7 +1057,7 @@ function openPropostaModal(item=null){
     ['qtd_modulos','pot_modulo','qtd_inversores','pot_inversor','qtd_baterias','pot_bateria','kwp','kwh','valor',
      'conta_sem_solar','conta_com_solar','economia_mensal','economia_5anos','area_minima'].forEach(k=>{ data[k] = data[k]?Number(data[k]):null; });
     if(isNew){
-      data.criado_por = State.profile?.email;
+      data.criado_por = State.user?.id;
       const { error } = await supa.from('propostas').insert(data);
       if(error) return toast(error.message,'error');
       toast('Proposta criada','success');
@@ -1315,7 +1315,7 @@ function openVistoriaModal(item=null){
       docs: pickFiles(allFiles, docKeys)
     };
     if(isNew){
-      data.criado_por = State.profile?.email;
+      data.criado_por = State.user?.id;
       const { error } = await supa.from('vistorias').insert(data);
       if(error) return toast(error.message,'error');
     } else {
@@ -1432,7 +1432,7 @@ function openContratoModal(item=null){
     const data = readForm(form);
     ['kwp','qtd_modulos','pot_modulo','qtd_inversores','pot_inversor','qtd_baterias','pot_bateria','valor'].forEach(k=>{ data[k] = data[k]?Number(data[k]):null; });
     if(isNew){
-      data.criado_por = State.profile?.email;
+      data.criado_por = State.user?.id;
       const { error } = await supa.from('contratos').insert(data);
       if(error) return toast(error.message,'error');
     } else {
@@ -1891,7 +1891,7 @@ function openComissaoModal(item=null){
     Object.assign(data, calc);
     ['valor_contrato','valor_vendido','vend_pct','vend_major_pct','sup_pct','sdr_pct','cap_pct','ind_pct','obra_val','pres_val'].forEach(k=>{ data[k] = data[k]?Number(data[k]):null; });
     if(isNew){
-      data.criado_por = State.profile?.email;
+      data.criado_por = State.user?.id;
       const { error } = await supa.from('comissoes').insert(data);
       if(error) return toast(error.message,'error');
     } else {
@@ -2048,7 +2048,7 @@ function openReceitaModal(item=null){
     e.preventDefault();
     const data = readForm(form);
     data.valor = Number(data.valor)||0;
-    if(isNew){ data.criado_por = State.profile?.email; await supa.from('financeiro_receitas').insert(data); }
+    if(isNew){ data.criado_por = State.user?.id; await supa.from('financeiro_receitas').insert(data); }
     else await supa.from('financeiro_receitas').update(data).eq('id',item.id);
     toast('Salvo','success'); closeModal(); renderFinanceiro();
   });
@@ -2080,7 +2080,7 @@ function openDespesaModal(item=null){
     e.preventDefault();
     const data = readForm(form);
     data.valor = Number(data.valor)||0;
-    if(isNew){ data.criado_por = State.profile?.email; await supa.from('financeiro_despesas').insert(data); }
+    if(isNew){ data.criado_por = State.user?.id; await supa.from('financeiro_despesas').insert(data); }
     else await supa.from('financeiro_despesas').update(data).eq('id',item.id);
     toast('Salvo','success'); closeModal(); renderFinanceiro();
   });
@@ -2152,7 +2152,7 @@ function openCadastroModal(item=null){
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
-    if(isNew){ data.criado_por = State.profile?.email; await supa.from('cadastros').insert(data); }
+    if(isNew){ data.criado_por = State.user?.id; await supa.from('cadastros').insert(data); }
     else await supa.from('cadastros').update(data).eq('id',item.id);
     toast('Salvo','success'); closeModal(); renderCadastros();
   });
