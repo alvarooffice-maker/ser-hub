@@ -2597,8 +2597,8 @@ function saveLog(){
   try{const _lso=JSON.parse(localStorage.getItem('_lso')||'{}');_lso[x.nome]={statusCompra:x.statusCompra,distribuidora:x.distribuidora,vend:x.vend||''};localStorage.setItem('_lso',JSON.stringify(_lso));}catch(_e){}
   if(x.id){if(!_pendingUpdates['logistica'])_pendingUpdates['logistica']={};_pendingUpdates['logistica'][x.id]={statuscompra:x.statusCompra,distribuidora:x.distribuidora};try{localStorage.setItem('_pu_logistica',JSON.stringify(_pendingUpdates['logistica']));}catch(_e){}}
   _hookSave('logistica',x);
-  // Automation: Entregue → pre-fill Instalação com dados de todas as etapas anteriores
-  if(x.statusCompra==='Entregue'){
+  // Automation: Comprado → pre-fill Instalação com dados de todas as etapas anteriores
+  if(x.statusCompra==='Comprado'){
     const insts=ld(SK.inst);
     const jaExiste=insts.some(inst=>inst.contratoId===x.contratoId||inst.nome===x.nome);
     if(!jaExiste){
