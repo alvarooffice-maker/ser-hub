@@ -27,7 +27,7 @@ input,select,textarea{font:inherit;color:inherit}
 .auth-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a0a2e,#6B21A8);z-index:9999}
 .auth-box{background:#fff;padding:40px;border-radius:16px;box-shadow:var(--shadow-lg);width:100%;max-width:380px}
 .auth-logo{text-align:center;margin-bottom:24px}
-.auth-logo img{width:180px;height:auto;margin-bottom:8px}
+.auth-logo img{width:160px;height:160px;object-fit:cover;border-radius:16px;margin-bottom:8px;box-shadow:0 4px 20px rgba(107,33,168,.3)}
 .auth-logo p{color:var(--text-light);font-size:13px;margin-top:4px}
 .auth-box input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;outline:none;transition:border .2s}
 .auth-box input:focus{border-color:var(--primary)}
@@ -42,12 +42,12 @@ input,select,textarea{font:inherit;color:inherit}
 .app.active{display:flex}
 .sidebar{width:240px;background:var(--sidebar);color:#cfd4c5;display:flex;flex-direction:column;transition:width .2s;flex-shrink:0}
 .sidebar.collapsed{width:64px}
-.sidebar-header{padding:16px 12px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between}
-.sidebar-header .logo{flex:1;display:flex;align-items:center;justify-content:flex-start}
-.sidebar-header .logo img{width:120px;height:auto;object-fit:contain;transition:width .2s}
-.sidebar.collapsed .sidebar-header .logo img{width:36px}
+.sidebar-header{padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sidebar-header .logo{flex:1;display:flex;align-items:center;justify-content:flex-start;overflow:hidden}
+.sidebar-header .logo img{width:100px;height:100px;object-fit:cover;border-radius:12px;flex-shrink:0;transition:all .2s;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+.sidebar.collapsed .sidebar-header .logo img{width:38px;height:38px;border-radius:8px}
 .sidebar-header h2{display:none}
-.sidebar-toggle{margin-left:auto;color:#cfd4c5;font-size:18px;padding:4px}
+.sidebar-toggle{flex-shrink:0;color:#cfd4c5;font-size:18px;padding:4px}
 .sidebar.collapsed .sidebar-toggle{margin:0 auto}
 .nav{flex:1;overflow-y:auto;padding:12px 8px}
 .nav-section{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6b7261;padding:14px 12px 6px}
@@ -1003,6 +1003,15 @@ function openPropostaModal(item=null){
             ${formField({label:'kWh consumo',name:'kwh',type:'number',value:item.kwh})}
           </div></div>
         </div>
+        <div class="section"><div class="section-header"><h4>Simulação Financeira</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body"><div class="form-grid">
+            ${formField({label:'Conta sem solar (R$)',name:'conta_sem_solar',type:'number',value:item.conta_sem_solar})}
+            ${formField({label:'Conta com solar (R$)',name:'conta_com_solar',type:'number',value:item.conta_com_solar})}
+            ${formField({label:'Economia mensal (R$)',name:'economia_mensal',type:'number',value:item.economia_mensal,readonly:true})}
+            ${formField({label:'Economia em 5 anos (R$)',name:'economia_5anos',type:'number',value:item.economia_5anos,readonly:true})}
+            ${formField({label:'Área mínima (m²)',name:'area_minima',type:'number',value:item.area_minima,readonly:true})}
+          </div></div>
+        </div>
         <div class="section"><div class="section-header"><h4>Comercial</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
             ${formField({label:'Valor',name:'valor',type:'number',value:item.valor,required:true})}
@@ -1026,14 +1035,27 @@ function openPropostaModal(item=null){
   function recalc(){
     const qm = Number(form.qtd_modulos.value)||0;
     const pm = Number(form.pot_modulo.value)||0;
-    form.kwp.value = (qm*pm/1000).toFixed(2);
+    const kwp = qm*pm/1000;
+    form.kwp.value = kwp.toFixed(2);
+    // Área mínima: ~8 m² por kWp (inclinação padrão 15°, orientação norte)
+    form.area_minima.value = kwp ? (kwp * 8).toFixed(1) : '';
+    recalcEco();
+  }
+  function recalcEco(){
+    const semSolar = Number(form.conta_sem_solar.value)||0;
+    const comSolar = Number(form.conta_com_solar.value)||0;
+    const eco = Math.max(0, semSolar - comSolar);
+    form.economia_mensal.value = eco ? eco.toFixed(2) : '';
+    form.economia_5anos.value  = eco ? (eco * 60).toFixed(2) : '';
   }
   ['qtd_modulos','pot_modulo'].forEach(n=> form[n].addEventListener('input',recalc));
+  ['conta_sem_solar','conta_com_solar'].forEach(n=> form[n].addEventListener('input',recalcEco));
 
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
-    ['qtd_modulos','pot_modulo','qtd_inversores','pot_inversor','qtd_baterias','pot_bateria','kwp','kwh','valor'].forEach(k=>{ data[k] = data[k]?Number(data[k]):null; });
+    ['qtd_modulos','pot_modulo','qtd_inversores','pot_inversor','qtd_baterias','pot_bateria','kwp','kwh','valor',
+     'conta_sem_solar','conta_com_solar','economia_mensal','economia_5anos','area_minima'].forEach(k=>{ data[k] = data[k]?Number(data[k]):null; });
     if(isNew){
       data.criado_por = State.profile?.email;
       const { error } = await supa.from('propostas').insert(data);
