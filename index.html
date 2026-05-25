@@ -1134,6 +1134,8 @@ function openPropostaModal(item=null){
         </div>
       </div>
       <div class="modal-footer">
+        ${!isNew?`<button type="button" class="btn btn-secondary" id="vizPropBtn">👁️ Visualizar</button>`:''}
+        ${!isNew?`<button type="button" class="btn btn-secondary" id="dlPropBtn">⬇️ Download PDF</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-danger" id="delPropBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
@@ -1198,6 +1200,9 @@ function openPropostaModal(item=null){
     closeModal();
     if(State.route==='pipeline') renderPipeline();
   });
+  $('#vizPropBtn')?.addEventListener('click', ()=> abrirPropostaJanela(item, false));
+  $('#dlPropBtn')?.addEventListener('click',  ()=> abrirPropostaJanela(item, true));
+
   $('#delPropBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir proposta?')) return;
     await supa.from('propostas').delete().eq('id',item.id);
@@ -1624,99 +1629,230 @@ function openContratoModal(item=null){
 }
 
 /* ============================================================
+   GERADOR DE PROPOSTA HTML/PDF
+   ============================================================ */
+function abrirPropostaJanela(p, imprimir=false){
+  const fR = v => 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  const txt = v => v||'—';
+  const win = window.open('','_blank');
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const validade = p.validade ? new Date(p.validade+'T12:00:00').toLocaleDateString('pt-BR') : '7 dias';
+  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Proposta SER Energia — ${txt(p.nome)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0eaf8;color:#1a1a1a}
+.wrap{max-width:700px;margin:0 auto;padding:0}
+.print-bar{position:sticky;top:0;z-index:100;background:#fff;padding:10px 24px;border-bottom:2px solid #4B0082;display:flex;justify-content:space-between;align-items:center}
+.print-bar span{font-size:13px;color:#4B0082;font-weight:700}
+.print-bar button{background:#4B0082;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+.hero{background:linear-gradient(135deg,#1a0a2e 0%,#4B0082 60%,#6B21A8 100%);color:#fff;padding:40px 36px 32px;position:relative;overflow:hidden}
+.hero::before{content:'⚡';font-size:120px;position:absolute;right:-10px;top:-10px;opacity:.15}
+.hero-badge{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;background:rgba(255,255,255,.2);display:inline-block;padding:4px 12px;border-radius:99px;margin-bottom:12px}
+.hero-kwp{font-size:48px;font-weight:800;line-height:1}
+.hero-sub{font-size:16px;opacity:.85;margin-top:6px}
+.hero-client{margin-top:20px;font-size:13px;opacity:.7}
+.hero-client strong{font-size:18px;opacity:1;display:block;color:#fff}
+.hero-meta{display:flex;gap:20px;margin-top:16px;font-size:12px;opacity:.75}
+.section{background:#fff;margin:0;padding:28px 36px;border-bottom:1px solid #e8e2f0}
+.section:last-child{border-bottom:none}
+.sec-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#4B0082;margin-bottom:16px}
+.economia-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:0}
+.eco-card{border-radius:10px;padding:16px;text-align:center}
+.eco-card.red{background:#fcebeb;border:1px solid #e8a0a0}
+.eco-card.green{background:#ede9fb;border:1px solid #c4b5fd}
+.eco-card.gold{background:#f3e8ff;border:1px solid #a855f7}
+.eco-label{font-size:11px;color:#6b6960;margin-bottom:4px}
+.eco-val{font-size:22px;font-weight:800}
+.eco-val.red{color:#A32D2D}.eco-val.green{color:#4B0082}.eco-val.gold{color:#6B21A8}
+.eco-sub{font-size:11px;color:#6b6960;margin-top:2px}
+.kit-table{width:100%;border-collapse:collapse}
+.kit-table td{padding:8px 12px;border-bottom:1px solid #e8e2f0;font-size:13px}
+.kit-table td:first-child{color:#6b6960;width:40%}
+.kit-table td:last-child{font-weight:600}
+.kit-table tr:last-child td{border-bottom:none}
+.spec-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.spec-item{background:#f5f0fa;border-radius:8px;padding:12px}
+.spec-label{font-size:11px;color:#6b6960;margin-bottom:4px}
+.spec-val{font-size:16px;font-weight:700;color:#1a1a1a}
+.valores-box{background:linear-gradient(135deg,#1a0a2e,#6B21A8);border-radius:12px;padding:24px;color:#fff;text-align:center;margin-bottom:16px}
+.valores-price{font-size:40px;font-weight:800}
+.valores-sub{font-size:13px;opacity:.8;margin-top:4px}
+.disclaimer{font-size:11px;color:#6b6960;font-style:italic;line-height:1.5;background:#f5f0fa;border-radius:8px;padding:12px}
+.missao{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.missao-card{text-align:center;padding:16px;background:#f5f0fa;border-radius:10px}
+.missao-ic{font-size:24px;margin-bottom:8px}
+.missao-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#4B0082;margin-bottom:4px}
+.missao-text{font-size:11px;color:#6b6960;line-height:1.4}
+.footer{background:#1a0a2e;color:#a89fc0;padding:24px 36px;font-size:12px}
+.footer strong{color:#fff;display:block;font-size:14px;margin-bottom:4px}
+@media print{body{background:#fff}.wrap{max-width:100%}.print-bar{display:none!important}}
+</style></head><body>
+<div class="print-bar"><span>SER Energia Renovável</span><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>
+<div class="wrap">
+<div class="hero">
+  <div class="hero-badge">Proposta Comercial · SER Energia Renovável</div>
+  <div class="hero-kwp">${p.kwp||'—'} kWp</div>
+  <div class="hero-sub">Sistema Fotovoltaico · ${p.kwh||'—'} kWh/mês gerados</div>
+  <div class="hero-client"><span>Proposta para:</span><strong>${txt(p.nome)}</strong></div>
+  <div class="hero-meta">
+    <span>📅 Data: ${hoje}</span>
+    <span>⏳ Validade: ${validade}</span>
+    ${p.area_minima?`<span>📐 Área: ${p.area_minima} m²</span>`:''}
+  </div>
+</div>
+
+${(p.conta_sem_solar||p.conta_com_solar||p.economia_mensal)?`
+<div class="section">
+  <div class="sec-title">💰 Sua economia com energia solar</div>
+  <div class="economia-grid">
+    <div class="eco-card red"><div class="eco-label">Sem Energia Solar</div><div class="eco-val red">${fR(p.conta_sem_solar)}</div><div class="eco-sub">por mês</div></div>
+    <div class="eco-card green"><div class="eco-label">Com Energia Solar</div><div class="eco-val green">${fR(p.conta_com_solar)}</div><div class="eco-sub">por mês</div></div>
+    <div class="eco-card gold"><div class="eco-label">Sua Economia</div><div class="eco-val gold">${fR(p.economia_mensal)}</div><div class="eco-sub">por mês</div></div>
+  </div>
+  ${p.economia_5anos?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+    <div style="background:#ede9fb;border:1px solid #c4b5fd;border-radius:10px;padding:16px;text-align:center">
+      <div style="font-size:11px;color:#6b6960;margin-bottom:4px">📅 Economia em 1 ano</div>
+      <div style="font-size:24px;font-weight:800;color:#4B0082">${fR((p.economia_mensal||0)*12)}</div>
+    </div>
+    <div style="background:#ede9fb;border:1px solid #c4b5fd;border-radius:10px;padding:16px;text-align:center">
+      <div style="font-size:11px;color:#6b6960;margin-bottom:4px">🗓️ Economia em 5 anos</div>
+      <div style="font-size:24px;font-weight:800;color:#4B0082">${fR(p.economia_5anos)}</div>
+    </div>
+  </div>`:''}
+</div>`:''}
+
+<div class="section">
+  <div class="sec-title">🔧 Descrição detalhada do kit</div>
+  <div style="font-size:13px;font-weight:600;margin-bottom:12px">01 Kit Fotovoltaico de potência ${p.kwp||'—'} kWp</div>
+  <table class="kit-table">
+    ${p.qtd_modulos||p.marca_modulo?`<tr><td>Módulos Solares</td><td>${p.qtd_modulos?p.qtd_modulos+'x ':''} ${p.marca_modulo||'—'} ${p.pot_modulo?p.pot_modulo+'W':''}</td></tr>`:''}
+    ${p.qtd_inversores||p.marca_inversor?`<tr><td>Inversor(es)</td><td>${p.qtd_inversores?p.qtd_inversores+'x ':''} ${p.marca_inversor||'—'} ${p.pot_inversor?p.pot_inversor+'kW':''}</td></tr>`:''}
+    ${p.qtd_baterias?`<tr><td>Baterias</td><td>${p.qtd_baterias}x ${p.marca_bateria||'—'} ${p.pot_bateria?p.pot_bateria+'kWh':''}</td></tr>`:''}
+    ${p.area_minima?`<tr><td>Área mínima necessária</td><td>${p.area_minima} m²</td></tr>`:''}
+  </table>
+</div>
+
+<div class="section">
+  <div class="sec-title">⚡ Especificações do sistema</div>
+  <div class="spec-grid">
+    <div class="spec-item"><div class="spec-label">Potência do sistema</div><div class="spec-val">${p.kwp||'—'} kWp</div></div>
+    <div class="spec-item"><div class="spec-label">Consumo atual</div><div class="spec-val">${p.kwh||'—'} kWh/mês</div></div>
+    ${p.economia_mensal?`<div class="spec-item"><div class="spec-label">Economia mensal estimada</div><div class="spec-val">${fR(p.economia_mensal)}</div></div>`:''}
+    ${p.area_minima?`<div class="spec-item"><div class="spec-label">Área mínima</div><div class="spec-val">${p.area_minima} m²</div></div>`:''}
+  </div>
+</div>
+
+<div class="section">
+  <div class="sec-title">💵 Investimento</div>
+  <div class="valores-box">
+    <div class="valores-sub">Valor total do projeto</div>
+    <div class="valores-price">${fR(p.valor)}</div>
+    <div class="valores-sub" style="margin-top:8px">Simulação sujeita a análise de crédito conforme a instituição financeira escolhida</div>
+  </div>
+  <div class="disclaimer">"Para o correto dimensionamento e precificação do seu projeto é fundamental a nossa visita técnica. Uma vez que a face e a inclinação do telhado podem alterar a geração de energia do sistema fotovoltaico. Na visita avaliaremos também as condições da estrutura física e elétrica. É possível que sejam necessárias adequações para a sua segurança e acarrete homologação do sistema junto à concessionária de Energia."</div>
+</div>
+
+<div class="section">
+  <div class="sec-title">🌿 Quem somos</div>
+  <div class="missao">
+    <div class="missao-card"><div class="missao-ic">🛡️</div><div class="missao-title">S · Segurança</div><div class="missao-text">Responsabilidade, excelência técnica e total transparência em cada etapa.</div></div>
+    <div class="missao-card"><div class="missao-ic">💰</div><div class="missao-title">E · Economia</div><div class="missao-text">Soluções acessíveis, eficientes e duradouras com ganhos contínuos.</div></div>
+    <div class="missao-card"><div class="missao-ic">⚡</div><div class="missao-title">R · Rapidez</div><div class="missao-text">Ágeis e comprometidos. Entregamos, homologamos e resolvemos.</div></div>
+  </div>
+</div>
+
+<div class="footer">
+  <strong>${txt(p.vendedor)}</strong>
+  ${p.vend_telefone?`📱 ${p.vend_telefone}`:''}${p.vend_email?' · 📧 '+p.vend_email:''}
+  <div style="margin-top:10px;font-size:11px;color:#8878a8">SER Energia Renovável · Travessa Antônio Baena, 300 · Marco · Belém/PA</div>
+  <div style="margin-top:4px;font-size:10px;color:#6B21A8">CNPJ: 58.656.750/0001-04 · Proposta válida até ${validade}</div>
+</div>
+</div></body></html>`);
+  win.document.close();
+  if(imprimir) setTimeout(()=>{ win.focus(); win.print(); }, 600);
+}
+
+/* ============================================================
    GERADOR DE CONTRATO HTML/PDF
    ============================================================ */
 function abrirContratoJanela(c, imprimir=false){
-  const dt = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '___/___/______';
-  const num = (v,dec=2) => v ? Number(v).toFixed(dec).replace('.',',') : '—';
-  const txt = v => v || '—';
+  const fR = v => 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  const txt = v => v||'_______________';
+  const dt  = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+  const end = [c.rua, c.numero?'nº '+c.numero:'', c.complemento, c.bairro, c.cidade, c.estado?'— '+c.estado:'', c.cep?'CEP '+c.cep:''].filter(Boolean).join(', ');
   const win = window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
-<meta charset="UTF-8">
-<title>Contrato – ${txt(c.nome)}</title>
+  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Contrato SER Energia — ${c.nome||''}</title>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:40px}
-  .logo-wrap{text-align:center;margin-bottom:8px}
-  .logo-wrap img{height:90px}
-  h1{text-align:center;font-size:18px;text-transform:uppercase;letter-spacing:2px;color:#4B0082;margin-bottom:4px}
-  .sub{text-align:center;font-size:11px;color:#666;margin-bottom:24px}
-  h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#4B0082;border-bottom:2px solid #4B0082;padding-bottom:4px;margin:20px 0 10px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-bottom:8px}
-  .grid.full{grid-template-columns:1fr}
-  .field label{font-size:10px;text-transform:uppercase;color:#888;display:block}
-  .field span{font-size:13px;font-weight:500;border-bottom:1px dotted #ccc;display:block;min-height:20px;padding-bottom:2px}
-  .valor-box{border:2px solid #4B0082;border-radius:8px;padding:14px 20px;margin:12px 0;text-align:center}
-  .valor-box .v{font-size:26px;font-weight:700;color:#4B0082}
-  .valor-box .pgto{font-size:12px;color:#555;margin-top:4px}
-  .assinaturas{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px}
-  .ass-linha{border-top:1px solid #333;padding-top:6px;font-size:11px;text-align:center;margin-top:40px}
-  .rodape{margin-top:32px;text-align:center;font-size:10px;color:#aaa}
-  @media print{body{padding:20px}.no-print{display:none}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Times New Roman',Times,serif;font-size:12pt;line-height:1.6;color:#111;background:#f0eaf8;padding:30px}
+.print-bar{position:sticky;top:0;z-index:100;background:#fff;padding:10px 24px;border-bottom:2px solid #4B0082;display:flex;justify-content:space-between;align-items:center}
+.print-bar span{font-size:13px;color:#4B0082;font-weight:700}
+.print-bar button{background:#4B0082;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+.wrap{max-width:800px;margin:0 auto;background:#fff;padding:50px 56px;box-shadow:0 2px 20px rgba(0,0,0,.08)}
+.header{text-align:center;border-bottom:2px solid #4B0082;padding-bottom:18px;margin-bottom:28px}
+.header img{height:70px;margin-bottom:10px}
+.header h1{font-size:13pt;letter-spacing:.05em;color:#1a0a2e;margin-bottom:4px}
+.header p{font-size:10pt;color:#555}
+h2{font-size:11pt;text-transform:uppercase;letter-spacing:.06em;color:#4B0082;margin:24px 0 8px;border-bottom:1px solid #ddd6fe;padding-bottom:4px}
+p{margin-bottom:10px;text-align:justify}
+.highlight{background:#f3e8ff;border:1px solid #a855f7;border-radius:4px;padding:10px 14px;margin:16px 0;font-weight:700;text-align:center;font-size:11pt}
+.sign-area{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px}
+.sign-line{border-top:1px solid #333;padding-top:8px;font-size:10pt;color:#555;text-align:center}
+.footer-doc{text-align:center;margin-top:30px;font-size:9pt;color:#888;border-top:1px solid #ddd;padding-top:12px}
+@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;padding:30px}.print-bar{display:none!important}}
 </style></head><body>
-<div class="logo-wrap"><img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/></div>
-<h1>Contrato de Fornecimento e Instalação</h1>
-<div class="sub">Sistema Fotovoltaico de Energia Solar · SER Energia Renovável</div>
-
-<h2>1. Dados do Cliente</h2>
-<div class="grid">
-  <div class="field"><label>Nome Completo</label><span>${txt(c.nome)}</span></div>
-  <div class="field"><label>CPF</label><span>${txt(c.cpf)}</span></div>
-  <div class="field"><label>RG / Órgão Emissor</label><span>${txt(c.rg)}${c.rg_orgao?' / '+c.rg_orgao:''}</span></div>
-  <div class="field"><label>Data de Nascimento</label><span>${dt(c.nascimento)}</span></div>
-  <div class="field"><label>Estado Civil</label><span>${txt(c.estado_civil)}</span></div>
-  <div class="field"><label>Profissão</label><span>${txt(c.profissao)}</span></div>
-  <div class="field"><label>WhatsApp / Telefone</label><span>${txt(c.telefone)}</span></div>
-  <div class="field"><label>E-mail</label><span>${txt(c.email)}</span></div>
+<div class="print-bar"><span>SER Energia Renovável</span><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>
+<div class="wrap">
+<div class="header">
+  <img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/>
+  <h1>INSTRUMENTO PARTICULAR DE CONTRATO DE PROJETO E INSTALAÇÃO FOTOVOLTAICO</h1>
+  <p>SER Energia Renovável · CNPJ: 58.656.750/0001-04 · Belém/PA</p>
 </div>
 
-<h2>2. Local de Instalação</h2>
-<div class="grid">
-  <div class="field"><label>CEP</label><span>${txt(c.cep)}</span></div>
-  <div class="field"><label>Concessionária</label><span>${txt(c.concessionaria)}</span></div>
-  <div class="field full"><label>Endereço</label><span>${[c.rua, c.numero, c.complemento].filter(Boolean).join(', ') || '—'}</span></div>
-  <div class="field"><label>Bairro</label><span>${txt(c.bairro)}</span></div>
-  <div class="field"><label>Cidade / Estado</label><span>${[c.cidade, c.estado].filter(Boolean).join(' – ') || '—'}</span></div>
-</div>
+<h2>Partes contratantes</h2>
+<p><strong>CONTRATANTE:</strong> ${txt(c.nome)}, ${c.estado_civil||'brasileiro(a)'}, ${c.profissao?'profissão '+c.profissao+', ':''} portador(a) do CPF sob o n. ${txt(c.cpf)} e da Carteira de Identidade nº ${txt(c.rg)}${c.rg_orgao?' / '+c.rg_orgao:''}, residente e domiciliado(a) na ${end||'_______________'}.</p>
+<p><strong>CONTRATADA:</strong> SOLUÇÕES EM ENERGIA RENOVÁVEL MATRIZ LTDA, denominada <strong>SER ENERGIA RENOVÁVEL</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o n. 58.656.750/0001-04, com endereço profissional em Travessa Antônio Baena, n 300, Bairro Marco, CEP 66.093-635, Belém/PA, representada por seu administrador legal <strong>Wellem Monteiro Macedo</strong>, CPF/MF sob nº 008.253.962-63.</p>
 
-<h2>3. Sistema Solar Fotovoltaico</h2>
-<div class="grid">
-  <div class="field"><label>Potência Total</label><span>${num(c.kwp,2)} kWp</span></div>
-  <div class="field"><label>Fase / Tensão</label><span>${txt(c.fase)} · ${c.tensao||'—'} V</span></div>
-  <div class="field"><label>Módulos (Qtd × Marca × Pot.)</label><span>${txt(c.qtd_modulos)} × ${txt(c.marca_modulo)} · ${num(c.pot_modulo,0)} W</span></div>
-  <div class="field"><label>Inversores (Qtd × Marca × Pot.)</label><span>${txt(c.qtd_inversores)} × ${txt(c.marca_inversor)} · ${num(c.pot_inversor,2)} kW</span></div>
-  ${c.qtd_baterias?`<div class="field"><label>Baterias (Qtd × Marca × Pot.)</label><span>${txt(c.qtd_baterias)} × ${txt(c.marca_bateria)} · ${num(c.pot_bateria,2)} kWh</span></div>`:''}
-</div>
+<h2>1. Do objeto do contrato</h2>
+<p>1. O(A) CONTRATANTE confia à CONTRATADA e aceita, a execução de todas as atividades necessárias para a realização, teste e conexão do projeto fotovoltaico, compreendendo fornecimento e instalação de estrutura metálica, conexão elétrica, teste de funcionalidade e processo de HOMOLOGAÇÃO junto à Concessionária de Energia Elétrica${c.concessionaria?' ('+c.concessionaria+')':''}.</p>
+<p>1.1. Componentes fornecidos:</p>
+<p>&nbsp;&nbsp;&nbsp;• <strong>${txt(c.qtd_modulos)}</strong> Módulos Solares <strong>${txt(c.marca_modulo)}</strong> <strong>${c.pot_modulo||'___'}</strong> W</p>
+<p>&nbsp;&nbsp;&nbsp;• <strong>${txt(c.qtd_inversores)}</strong> Inversor(es) <strong>${txt(c.marca_inversor)}</strong> <strong>${c.pot_inversor||'___'}</strong> kW · Fase: <strong>${c.fase||'___'}</strong> · Tensão: <strong>${c.tensao||'___'}</strong> V</p>
+${c.qtd_baterias?`<p>&nbsp;&nbsp;&nbsp;• <strong>${c.qtd_baterias}</strong> Bateria(s) <strong>${txt(c.marca_bateria)}</strong> <strong>${c.pot_bateria||'___'}</strong> kWh</p>`:''}
+<p>1.2. Capacidade de potência: <strong>${c.kwp||'___'} kWp</strong>, no endereço de instalação definido neste contrato.</p>
 
-<h2>4. Condições Comerciais</h2>
-<div class="valor-box">
-  <div class="v">R$ ${num(c.valor,2)}</div>
-  <div class="pgto">${txt(c.forma_pgto)}${c.banco?' · '+c.banco:''}</div>
-  ${c.pgto_desc?`<div class="pgto" style="margin-top:4px">${esc(c.pgto_desc)}</div>`:''}
-</div>
-<div class="grid">
-  <div class="field"><label>Vendedor Responsável</label><span>${txt(c.vendedor)}</span></div>
-  <div class="field"><label>Data de Assinatura</label><span>${dt(c.data_assinatura)}</span></div>
-</div>
+<h2>2. Dos valores e forma de pagamento</h2>
+<p>2.1. O valor total corresponde a <strong>${fR(c.valor)}</strong>.</p>
+<p>2.2. Forma de pagamento: <strong>${txt(c.forma_pgto)}</strong>${c.banco?' — Banco: '+c.banco:''}${c.pgto_desc?' — '+c.pgto_desc:''}.</p>
 
-<h2>5. Declaração e Assinaturas</h2>
-<p style="font-size:12px;line-height:1.7;margin-bottom:16px">
-  As partes acima identificadas celebram o presente Contrato de Fornecimento e Instalação de Sistema
-  Fotovoltaico, comprometendo-se a cumprir todas as obrigações aqui descritas, conforme proposta
-  comercial previamente aprovada e demais termos acordados entre as partes.
-</p>
-<div class="assinaturas">
-  <div>
-    <div class="ass-linha">${txt(c.nome)}<br>Cliente / Contratante</div>
-  </div>
-  <div>
-    <div class="ass-linha">SER Energia Renovável<br>Contratada</div>
-  </div>
+<div class="highlight">⚠️ DESTAQUE LEGAL (ART. 54, §4º, CDC): A rescisão do contrato após a assinatura do financiamento implicará em multa de 55% sobre o valor total financiado, a qual será repassada à instituição financeira.</div>
+
+<h2>3. Dos prazos</h2>
+<p>3.1. O prazo máximo para conclusão é de <strong>90 (noventa) dias</strong>, contados a partir do cumprimento cumulativo de: (i) realização do pagamento e (ii) entrega dos documentos solicitados. Para inversores ≥ 30 kW, o prazo passa a ser de 180 dias.</p>
+
+<h2>4. Da rescisão</h2>
+<p>4.1. Em caso de inadimplemento, a parte infratora pagará multa equivalente a <strong>20%</strong> do valor total. Se a instalação já foi iniciada, a multa sobe para <strong>35%</strong>. Em caso de financiamento assinado, a multa é de <strong>55%</strong> do valor financiado.</p>
+
+<h2>5. Das garantias</h2>
+<p>5.1. Garantia de mão de obra: <strong>12 meses</strong> para o inversor. Garantia dos fabricantes: <strong>25 anos</strong> de performance e <strong>10 anos</strong> contra defeitos para módulos; <strong>10 anos</strong> para inversores.</p>
+
+<h2>6. Foro</h2>
+<p>6.1. Fica eleito o foro da cidade de <strong>Belém/PA</strong> para dirimir quaisquer dúvidas oriundas do presente instrumento.</p>
+<p>Belém/PA, ${dt(c.data_assinatura)}.</p>
+
+<div class="sign-area">
+  <div><div class="sign-line">${txt(c.nome)}<br>CPF: ${txt(c.cpf)}<br><em>CONTRATANTE</em></div></div>
+  <div><div class="sign-line">SER ENERGIA RENOVÁVEL<br>CNPJ: 58.656.750/0001-04<br><em>CONTRATADA</em></div></div>
 </div>
-<div class="rodape" style="margin-top:24px">
-  Belém – PA &nbsp;·&nbsp; Data: ${dt(c.data_assinatura) !== '___/___/______' ? dt(c.data_assinatura) : new Date().toLocaleDateString('pt-BR')}
+<div class="sign-area" style="margin-top:30px">
+  <div><div class="sign-line">TESTEMUNHA 1<br>${c.vendedor||'_______________'}<br><em>Vendedor responsável</em></div></div>
+  <div><div class="sign-line">TESTEMUNHA 2<br>ÁLVARO FERNANDO DO NASCIMENTO SILVA<br>CPF: 860.231.792-15</div></div>
 </div>
-</body></html>`);
+<div class="footer-doc">SER Energia Renovável · Travessa Antônio Baena, 300 · Marco · Belém/PA · CNPJ: 58.656.750/0001-04</div>
+</div></body></html>`);
   win.document.close();
   if(imprimir) setTimeout(()=>{ win.focus(); win.print(); }, 600);
 }
