@@ -27,7 +27,7 @@ input,select,textarea{font:inherit;color:inherit}
 .auth-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a0a2e,#6B21A8);z-index:9999}
 .auth-box{background:#fff;padding:40px;border-radius:16px;box-shadow:var(--shadow-lg);width:100%;max-width:380px}
 .auth-logo{text-align:center;margin-bottom:24px}
-.auth-logo img{width:160px;height:160px;object-fit:contain;border-radius:0;margin-bottom:8px}
+.auth-logo img{width:180px;height:auto;object-fit:contain;border-radius:0;margin-bottom:8px}
 .auth-logo p{color:var(--text-light);font-size:13px;margin-top:4px}
 .auth-box input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;outline:none;transition:border .2s}
 .auth-box input:focus{border-color:var(--primary)}
@@ -44,8 +44,8 @@ input,select,textarea{font:inherit;color:inherit}
 .sidebar.collapsed{width:64px}
 .sidebar-header{padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:8px}
 .sidebar-header .logo{flex:1;display:flex;align-items:center;justify-content:flex-start;overflow:hidden}
-.sidebar-header .logo img{width:108px;height:108px;object-fit:contain;border-radius:0;flex-shrink:0;transition:all .2s}
-.sidebar.collapsed .sidebar-header .logo img{width:42px;height:42px}
+.sidebar-header .logo img{width:148px;height:auto;object-fit:contain;border-radius:0;flex-shrink:0;transition:width .2s;display:block}
+.sidebar.collapsed .sidebar-header .logo img{width:46px}
 .sidebar-header h2{display:none}
 .sidebar-toggle{flex-shrink:0;color:#cfd4c5;font-size:18px;padding:4px}
 .sidebar.collapsed .sidebar-toggle{margin:0 auto}
@@ -587,7 +587,38 @@ async function renderPipeline(){
 }
 
 function renderStageCol(stage){
-  const items = filterByVendor(State[stage.dataKey]||[]);
+  let items = filterByVendor(State[stage.dataKey]||[]);
+
+  // Oculta itens que já avançaram para a próxima etapa (evita card duplicado)
+  if(stage.id === 'lead'){
+    const promovidos = new Set((State.propostas||[]).map(p=>p.lead_id).filter(Boolean));
+    items = items.filter(l => !promovidos.has(l.id));
+  }
+  if(stage.id === 'proposta'){
+    const promovidos = new Set((State.vistorias||[]).map(v=>v.proposta_id).filter(Boolean));
+    items = items.filter(p => !promovidos.has(p.id));
+  }
+  if(stage.id === 'vistoria'){
+    const promovidos = new Set((State.contratos||[]).map(c=>c.vistoria_id).filter(Boolean));
+    items = items.filter(v => !promovidos.has(v.id));
+  }
+  if(stage.id === 'contrato'){
+    const promovidos = new Set((State.logistica||[]).map(l=>l.contrato_id).filter(Boolean));
+    items = items.filter(c => !promovidos.has(c.id));
+  }
+  if(stage.id === 'logistica'){
+    const promovidos = new Set((State.instalacoes||[]).map(i=>i.logistica_id).filter(Boolean));
+    items = items.filter(l => !promovidos.has(l.id));
+  }
+  if(stage.id === 'instalacao'){
+    const promovidos = new Set((State.homologacoes||[]).map(h=>h.instalacao_id).filter(Boolean));
+    items = items.filter(i => !promovidos.has(i.id));
+  }
+  if(stage.id === 'homologacao'){
+    const promovidos = new Set((State.posvenda||[]).map(p=>p.homologacao_id).filter(Boolean));
+    items = items.filter(h => !promovidos.has(h.id));
+  }
+
   return `
     <div class="kanban-col" data-stage="${stage.id}">
       <div class="kanban-col-header">
