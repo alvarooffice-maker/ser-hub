@@ -1448,11 +1448,33 @@ function openVistoriaModal(item=null){
       data.criado_por = State.user?.id;
       const { error } = await supa.from('vistorias').insert(data);
       if(error) return toast(error.message,'error');
+      toast('Vistoria salva','success');
     } else {
+      const prevResultado = item.resultado || '';
       const { error } = await supa.from('vistorias').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
+
+      // Vistoria aprovada → cria Contrato automaticamente (se ainda não existir)
+      const agoraAprovada = (data.resultado||'').includes('aprovada');
+      const eraAprovada   = prevResultado.includes('aprovada');
+      if(agoraAprovada && !eraAprovada){
+        const jaExiste = (State.contratos||[]).find(c => c.vistoria_id === item.id);
+        if(!jaExiste){
+          await loadAll();
+          const vistAtual = (State.vistorias||[]).find(v=>v.id===item.id) || {...item,...data};
+          const cPayload = buildTransitionPayload(vistAtual, 'vistoria', 'contrato');
+          cPayload.criado_por = State.user?.id;
+          const { error: ce } = await supa.from('contratos').insert(cPayload);
+          if(ce) toast('Vistoria salva, mas erro ao criar contrato: '+ce.message,'error');
+          else toast('Vistoria aprovada → Contrato criado automaticamente! ✓','success');
+        } else {
+          toast('Vistoria salva','success');
+        }
+      } else {
+        toast('Vistoria salva','success');
+      }
     }
-    toast('Vistoria salva','success'); closeModal();
+    closeModal();
     if(State.route==='pipeline') renderPipeline();
   });
 
