@@ -3255,6 +3255,33 @@ function openHomologacaoModal(item=null){
     </form>
   `,'lg');
   const form = $('#homForm');
+
+  // ── Mesmo cliente: replica dados do contrato nos campos do homologador ──
+  const _contrato = linked.contrato || {};
+  function syncHomFields(fill){
+    const map = {
+      hom_nome: _contrato.nome       || '',
+      hom_cpf:  _contrato.cpf        || '',
+      hom_rg:   _contrato.rg         || '',
+      hom_nasc: _contrato.nascimento || ''
+    };
+    Object.entries(map).forEach(([fname, val])=>{
+      const el = form[fname];
+      if(!el) return;
+      if(fill){
+        el.value    = val;
+        el.readOnly = true;
+        el.style.cssText = 'background:#f0ebfc;color:#5e35b1;cursor:not-allowed;';
+      } else {
+        el.readOnly  = false;
+        el.style.cssText = '';
+      }
+    });
+  }
+  // Estado inicial (caso já salvo como mesmo_cliente=true)
+  if(form.mesmo_cliente?.checked) syncHomFields(true);
+  form.mesmo_cliente?.addEventListener('change', ()=> syncHomFields(form.mesmo_cliente.checked));
+
   attachLinkedDocListeners(linked);
   const docStore = {};
   docKeys.forEach(k=> docStore[k] = (docs[k]||[]).slice());
