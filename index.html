@@ -2846,7 +2846,7 @@ function openLogisticaModal(item=null){
           ${formField({label:'Cliente',name:'_nome',value:item.nome,readonly:true})}
           ${formField({label:'kWp',name:'_kwp',value:item.kwp,readonly:true})}
           ${formField({label:'Vendedor',name:'_vendedor',value:item.vendedor,readonly:true})}
-          ${formField({label:'Valor',name:'_valor',value:item.valor,readonly:true})}
+          ${formField({label:'Valor (R$)',name:'valor',type:'number',value:item.valor})}
           ${formField({label:'Distribuidora',name:'distribuidora',value:item.distribuidora})}
           ${formField({label:'Nº Pedido',name:'num_pedido',value:item.num_pedido})}
           ${formField({label:'Nº NF',name:'num_nf',value:item.num_nf})}
