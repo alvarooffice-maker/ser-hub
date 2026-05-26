@@ -1091,6 +1091,7 @@ function openLeadModal(item=null){
           ${formField({label:'Vendedor',name:'vendedor',value:item.vendedor || (isVend()?State.profile.nome:'')})}
           ${formField({label:'Captador',name:'captador',value:item.captador})}
           ${formField({label:'SDR',name:'sdr',value:item.sdr})}
+          ${formField({label:'Nascimento',name:'nascimento',type:'date',value:item.nascimento})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'em_contato',options:statusOpts})}
         </div>
         <div class="form-grid" style="margin-top:14px">
