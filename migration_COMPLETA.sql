@@ -1,9 +1,9 @@
 -- ============================================================
 -- SISTEMA SER — MIGRAÇÃO COMPLETA
--- Consolida: auditoria + flags + dedup + backfill
+-- Consolida: auditoria + flags + dedup + backfill + homologação + pós venda
 -- Execute TODO de uma vez no SQL Editor do Supabase
 -- 100% idempotente: seguro rodar mesmo que partes já existam
--- Gerado em: maio 2026
+-- Atualizado em: maio 2026 (Blocos 1–10)
 -- ============================================================
 
 -- ════════════════════════════════════════════════════════════
@@ -219,6 +219,37 @@ ALTER TABLE tentativas_contato ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "autenticados_tc" ON tentativas_contato;
 CREATE POLICY "autenticados_tc" ON tentativas_contato
   FOR ALL USING (auth.role() = 'authenticated');
+
+-- ════════════════════════════════════════════════════════════
+-- BLOCO 9 — COLUNAS DO FORMULÁRIO DE HOMOLOGAÇÃO
+-- Garante que todos os campos do modal existam na tabela
+-- (seguro para instâncias antigas criadas antes desses campos)
+-- ════════════════════════════════════════════════════════════
+
+ALTER TABLE homologacoes
+  ADD COLUMN IF NOT EXISTS mesmo_cliente   boolean     DEFAULT false,
+  ADD COLUMN IF NOT EXISTS hom_nome        text,
+  ADD COLUMN IF NOT EXISTS hom_cpf         text,
+  ADD COLUMN IF NOT EXISTS hom_rg          text,
+  ADD COLUMN IF NOT EXISTS hom_nasc        date,
+  ADD COLUMN IF NOT EXISTS tecnico         text,
+  ADD COLUMN IF NOT EXISTS concessionaria  text,
+  ADD COLUMN IF NOT EXISTS trt_val         numeric     DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS art_val         numeric     DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS tecnico_val     numeric     DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS estimado        numeric     DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS pago            numeric     DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS data_assinatura date,
+  ADD COLUMN IF NOT EXISTS obs             text,
+  ADD COLUMN IF NOT EXISTS docs            jsonb       DEFAULT '{}';
+
+-- ════════════════════════════════════════════════════════════
+-- BLOCO 10 — COLUNAS DO FORMULÁRIO DE PÓS VENDA
+-- ════════════════════════════════════════════════════════════
+
+ALTER TABLE posvenda
+  ADD COLUMN IF NOT EXISTS data_ativacao   date,
+  ADD COLUMN IF NOT EXISTS obs             text;
 
 -- ════════════════════════════════════════════════════════════
 -- VERIFICAÇÃO — descomente e rode para confirmar
