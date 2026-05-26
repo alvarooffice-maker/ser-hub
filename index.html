@@ -1664,7 +1664,7 @@ function openContratoModal(item=null){
           const { error: eLog } = await supa.from('logistica').insert(payload);
           if(eLog) toast('Avançou para Logística: '+eLog.message,'error');
           else toast('Contrato assinado → movido para Logística ✓','success');
-          await loadData(); closeModal();
+          await loadAll(); closeModal();
           if(State.route==='pipeline') renderPipeline();
           return;
         }
