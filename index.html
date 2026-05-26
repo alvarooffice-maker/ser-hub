@@ -1414,6 +1414,8 @@ function openVistoriaModal(item=null){
       </div>
       <div class="modal-footer">
         ${!isNew?`<button type="button" class="btn btn-danger" id="delVistBtn">Excluir</button>`:''}
+        ${!isNew && item.proposta_id?`<button type="button" class="btn btn-secondary" id="vizPropVistBtn" title="Visualizar proposta original">📄 Proposta</button>`:''}
+        ${!isNew && item.proposta_id?`<button type="button" class="btn btn-secondary" id="dlPropVistBtn" title="Baixar PDF da proposta">⬇️ PDF Proposta</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
       </div>
@@ -1422,6 +1424,17 @@ function openVistoriaModal(item=null){
 
   const form = $('#vistForm');
   attachCEP(form);
+
+  // Botões da proposta vinculada
+  if(!isNew && item.proposta_id){
+    const propOriginal = (State.propostas||[]).find(p=>p.id===item.proposta_id);
+    if(propOriginal){
+      $('#vizPropVistBtn')?.addEventListener('click', ()=> abrirPropostaJanela(propOriginal, false));
+      $('#dlPropVistBtn')?.addEventListener('click',  ()=> abrirPropostaJanela(propOriginal, true));
+    } else {
+      $('#vizPropVistBtn')?.addEventListener('click', ()=> toast('Proposta original não encontrada','warning'));
+    }
+  }
   const allFiles = {};
   [...fotoKeys, ...docKeys].forEach(k=>{
     allFiles[k] = (fotos[k] || docs[k] || []).slice();
@@ -1576,8 +1589,10 @@ function openContratoModal(item=null){
       </div>
       <div class="modal-footer">
         ${!isNew?`<button type="button" class="btn btn-secondary" id="clickSignBtn">📝 ClickSign</button>`:''}
-        ${!isNew?`<button type="button" class="btn btn-secondary" id="vizContBtn">👁️ Visualizar</button>`:''}
-        ${!isNew?`<button type="button" class="btn btn-secondary" id="dlContBtn">⬇️ Download PDF</button>`:''}
+        ${!isNew?`<button type="button" class="btn btn-secondary" id="vizContBtn">👁️ Contrato</button>`:''}
+        ${!isNew?`<button type="button" class="btn btn-secondary" id="dlContBtn">⬇️ PDF Contrato</button>`:''}
+        ${!isNew && item.proposta_id?`<button type="button" class="btn btn-secondary" id="vizPropContBtn" title="Visualizar proposta original">📄 Proposta</button>`:''}
+        ${!isNew && item.proposta_id?`<button type="button" class="btn btn-secondary" id="dlPropContBtn" title="Baixar PDF da proposta">⬇️ PDF Proposta</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-danger" id="delContBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
@@ -1635,6 +1650,17 @@ function openContratoModal(item=null){
 
   $('#vizContBtn')?.addEventListener('click', ()=> abrirContratoJanela(item, false));
   $('#dlContBtn')?.addEventListener('click',  ()=> abrirContratoJanela(item, true));
+
+  // Proposta original vinculada ao contrato
+  if(!isNew && item.proposta_id){
+    const propOriginal = (State.propostas||[]).find(p=>p.id===item.proposta_id);
+    if(propOriginal){
+      $('#vizPropContBtn')?.addEventListener('click', ()=> abrirPropostaJanela(propOriginal, false));
+      $('#dlPropContBtn')?.addEventListener('click',  ()=> abrirPropostaJanela(propOriginal, true));
+    } else {
+      $('#vizPropContBtn')?.addEventListener('click', ()=> toast('Proposta original não encontrada','warning'));
+    }
+  }
 
   $('#delContBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir contrato?')) return;
