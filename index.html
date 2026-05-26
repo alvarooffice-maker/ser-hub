@@ -1142,12 +1142,15 @@ function getLinkedDocs(item){
   let proposta  = _f(State.propostas,  item.proposta_id)
                || (contrato ? _f(State.propostas, contrato.proposta_id)  : null)
                || (vistoria ? _f(State.propostas, vistoria.proposta_id)  : null);
-  let logistica = _f(State.logistica,  item.logistica_id);
+  // Resolve instalacao primeiro (direto ou via homologacao_id)
   let instalacao= _f(State.instalacoes,item.instalacao_id)
                || (() => {
                     const hom = _f(State.homologacoes, item.homologacao_id);
                     return hom ? _f(State.instalacoes, hom.instalacao_id) : null;
                   })();
+  // Resolve logistica: direto, ou via instalacao (cadeia homologacao→instalacao→logistica)
+  let logistica = _f(State.logistica,  item.logistica_id)
+               || (instalacao ? _f(State.logistica, instalacao.logistica_id) : null);
   return { proposta, vistoria, contrato, logistica, instalacao };
 }
 
