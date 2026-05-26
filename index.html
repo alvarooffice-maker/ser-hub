@@ -825,10 +825,10 @@ async function transitionCard(id, fromStage, toStage){
   const guard = checkGuard(item, fromStage, toStage);
   if(!guard.ok){ toast(guard.msg, 'error'); return; }
 
-  // Check duplicate
+  // Check duplicate — consulta o banco para evitar race condition
   const linkField = fromStage+'_id';
-  const existing = (State[toCfg.dataKey]||[]).find(x => String(x[linkField]) === String(item.id));
-  if(existing){ toast('Já existe registro nesta etapa para este item.','info'); return; }
+  const { data: dupCheck } = await supa.from(toCfg.table).select('id').eq(linkField, item.id).maybeSingle();
+  if(dupCheck){ toast('Já existe registro nesta etapa para este item.','info'); return; }
 
   const payload = buildTransitionPayload(item, fromStage, toStage);
   payload.criado_por = State.user?.id;
@@ -1781,8 +1781,9 @@ function openContratoModal(item=null){
       if(error) return toast(error.message,'error');
       // Auto-avançar para Logística quando assinado
       if(data.status === 'assinado'){
-        const jaExiste = (State.logistica||[]).some(l=>l.contrato_id===item.id);
-        if(!jaExiste){
+        // Verifica no banco (não no State) para evitar duplicata por race condition
+        const { data: logExist } = await supa.from('logistica').select('id').eq('contrato_id', item.id).maybeSingle();
+        if(!logExist){
           const contAtual = { ...item, ...data };
           const payload = buildTransitionPayload(contAtual,'contrato','logistica');
           payload.criado_por = State.user?.id;
