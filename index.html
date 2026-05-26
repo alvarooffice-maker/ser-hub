@@ -2043,12 +2043,24 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
 .pg-header img{height:36px}
 .pg-header-right{font-size:10px;color:#a78bfa;text-align:right;line-height:1.5}
 
+@page{size:A4 portrait;margin:0}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  body{background:#fff}
+  html,body{margin:0;padding:0;background:#fff;width:210mm}
   .print-bar{display:none!important}
-  .page{margin:0;box-shadow:none;page-break-after:always}
-  .page:last-child{page-break-after:auto}
+  .page{
+    margin:0 auto;
+    box-shadow:none;
+    page-break-after:always;
+    break-after:page;
+    width:210mm;
+    min-height:297mm;
+    max-width:210mm;
+    overflow:hidden;
+    display:block
+  }
+  .page:last-child{page-break-after:auto;break-after:auto}
+  .capa{min-height:inherit}
 }
 </style></head><body>
 <div class="print-bar">
@@ -3236,7 +3248,12 @@ async function renderUsuarios(){
     <tbody>${tbody}</tbody>
   </table></div></div>`;
   $$('[data-edit]', $('#content')).forEach(b=>{
-    b.addEventListener('click', ()=> openUserModal(items[+b.dataset.edit]));
+    b.addEventListener('click', ()=>{
+      const u = items[+b.dataset.edit];
+      if(!u){ toast('Usuário não encontrado no índice '+b.dataset.edit,'error'); return; }
+      try{ openUserModal(u); }
+      catch(e){ toast('Erro ao abrir editor: '+e.message,'error'); console.error(e); }
+    });
   });
   $$('[data-tog]', $('#content')).forEach(b=>{
     b.addEventListener('click', async ()=>{
