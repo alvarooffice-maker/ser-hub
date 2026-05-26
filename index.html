@@ -170,6 +170,15 @@ tbody tr:hover{background:#fafaf6}
 .rank-tabs{display:flex;gap:2px;margin-bottom:10px;border-bottom:1px solid var(--border)}
 .rank-tab{padding:7px 14px;font-size:12.5px;color:var(--text-light);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-weight:500}
 .rank-tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:700}
+/* Linked docs bar (inside modal body) */
+.linked-docs-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 12px;background:#f5f0fc;border-radius:8px;margin-top:14px;border:1px solid #e2d6f3}
+.linked-docs-label{font-size:11px;font-weight:700;color:#5e35b1;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;margin-right:2px}
+.btn-group{display:inline-flex;border-radius:7px;overflow:hidden}
+.btn-group .btn{border-radius:0;border-right:1px solid rgba(0,0,0,.08)}
+.btn-group .btn:first-child{border-radius:7px 0 0 7px}
+.btn-group .btn:last-child{border-radius:0 7px 7px 0;border-right:none}
+.btn-group .btn:only-child{border-radius:7px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;background:#fafaf6;border-radius:0 0 14px 14px}
 .flag{display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:600;border:1px solid transparent;white-space:nowrap;line-height:1.4}
 .flag.ok{background:#d1e7dd;color:#0f5132;border-color:#b8dcc9}
 .flag.warn{background:#fff3cd;color:#856404;border-color:#ffe8a1}
@@ -1101,49 +1110,62 @@ function buildTransitionPayload(item, fromStage, toStage){
    ============================================================ */
 function getLinkedDocs(item){
   const _f = (arr,id) => id ? (arr||[]).find(x=>String(x.id)===String(id)) : null;
-  // Busca direta pelos IDs do item
-  let contrato = _f(State.contratos, item.contrato_id);
-  let vistoria = _f(State.vistorias, item.vistoria_id)
-              // Fallback: vistoria via contrato (registros antigos sem vistoria_id direto)
-              || (contrato ? _f(State.vistorias, contrato.vistoria_id) : null);
-  let proposta = _f(State.propostas, item.proposta_id)
-              // Fallback: proposta via contrato ou vistoria
-              || (contrato  ? _f(State.propostas, contrato.proposta_id)  : null)
-              || (vistoria  ? _f(State.propostas, vistoria.proposta_id)  : null);
-  return { proposta, vistoria, contrato };
+  let contrato  = _f(State.contratos,  item.contrato_id);
+  let vistoria  = _f(State.vistorias,  item.vistoria_id)
+               || (contrato ? _f(State.vistorias, contrato.vistoria_id) : null);
+  let proposta  = _f(State.propostas,  item.proposta_id)
+               || (contrato ? _f(State.propostas, contrato.proposta_id)  : null)
+               || (vistoria ? _f(State.propostas, vistoria.proposta_id)  : null);
+  let logistica = _f(State.logistica,  item.logistica_id);
+  let instalacao= _f(State.instalacoes,item.instalacao_id)
+               || (() => {
+                    const hom = _f(State.homologacoes, item.homologacao_id);
+                    return hom ? _f(State.instalacoes, hom.instalacao_id) : null;
+                  })();
+  return { proposta, vistoria, contrato, logistica, instalacao };
 }
 
+/* Renderiza barra de documentos vinculados dentro do modal-body.
+   Cada doc: [✏️ Editar X]  +  [🖨️ PDF] (quando disponível). */
 function renderLinkedDocBtns(linked){
-  const { proposta, vistoria, contrato } = linked;
-  let h = '';
-  if(proposta){
-    h += `<button type="button" class="btn btn-secondary" id="lnkPropBtn" title="Visualizar proposta original">📄 Proposta</button>`;
-    h += `<button type="button" class="btn btn-secondary" id="lnkPropDlBtn" title="Download PDF da proposta">⬇️ PDF Proposta</button>`;
-  }
-  if(vistoria){
-    h += `<button type="button" class="btn btn-secondary" id="lnkVistBtn" title="Dados técnicos da vistoria">🔍 Vistoria</button>`;
-    h += `<button type="button" class="btn btn-secondary" id="lnkVistDlBtn" title="Imprimir/baixar laudo da vistoria">⬇️ PDF Vistoria</button>`;
-  }
-  if(contrato){
-    h += `<button type="button" class="btn btn-secondary" id="lnkContBtn" title="Visualizar contrato">📋 Contrato</button>`;
-    h += `<button type="button" class="btn btn-secondary" id="lnkContDlBtn" title="Download PDF do contrato">⬇️ PDF Contrato</button>`;
-  }
-  return h;
+  const { proposta, vistoria, contrato, logistica, instalacao } = linked;
+  const items = [];
+  if(proposta)  items.push({icon:'📄', label:'Proposta',   editId:'lnkPropEditBtn',  pdfId:'lnkPropDlBtn'});
+  if(vistoria)  items.push({icon:'🔍', label:'Vistoria',   editId:'lnkVistEditBtn',  pdfId:'lnkVistDlBtn'});
+  if(contrato)  items.push({icon:'✍️', label:'Contrato',   editId:'lnkContEditBtn',  pdfId:'lnkContDlBtn'});
+  if(logistica) items.push({icon:'📦', label:'Logística',  editId:'lnkLogEditBtn',   pdfId:null});
+  if(instalacao)items.push({icon:'🔧', label:'Instalação', editId:'lnkInstEditBtn',  pdfId:null});
+  if(!items.length) return '';
+  return `
+    <div class="linked-docs-bar">
+      <span class="linked-docs-label">🔗 Vincular:</span>
+      ${items.map(it=>`
+        <div class="btn-group">
+          <button type="button" class="btn btn-secondary btn-sm" id="${it.editId}">✏️ ${it.icon} ${it.label}</button>
+          ${it.pdfId?`<button type="button" class="btn btn-secondary btn-sm" id="${it.pdfId}" title="Imprimir / PDF">🖨️</button>`:''}
+        </div>`).join('')}
+    </div>`;
 }
 
 function attachLinkedDocListeners(linked){
-  const { proposta, vistoria, contrato } = linked;
+  const { proposta, vistoria, contrato, logistica, instalacao } = linked;
   if(proposta){
-    $('#lnkPropBtn')?.addEventListener('click',   ()=> abrirPropostaJanela(proposta, false));
-    $('#lnkPropDlBtn')?.addEventListener('click', ()=> abrirPropostaJanela(proposta, true));
+    $('#lnkPropEditBtn')?.addEventListener('click', ()=>{ closeModal(); openPropostaModal(proposta); });
+    $('#lnkPropDlBtn')?.addEventListener('click',   ()=> abrirPropostaJanela(proposta, true));
   }
   if(vistoria){
-    $('#lnkVistBtn')?.addEventListener('click',   ()=> abrirVistoriaJanela(vistoria, false));
-    $('#lnkVistDlBtn')?.addEventListener('click', ()=> abrirVistoriaJanela(vistoria, true));
+    $('#lnkVistEditBtn')?.addEventListener('click', ()=>{ closeModal(); openVistoriaModal(vistoria); });
+    $('#lnkVistDlBtn')?.addEventListener('click',   ()=> abrirVistoriaJanela(vistoria, true));
   }
   if(contrato){
-    $('#lnkContBtn')?.addEventListener('click',   ()=> abrirContratoJanela(contrato, false));
-    $('#lnkContDlBtn')?.addEventListener('click', ()=> abrirContratoJanela(contrato, true));
+    $('#lnkContEditBtn')?.addEventListener('click', ()=>{ closeModal(); openContratoModal(contrato); });
+    $('#lnkContDlBtn')?.addEventListener('click',   ()=> abrirContratoJanela(contrato, true));
+  }
+  if(logistica){
+    $('#lnkLogEditBtn')?.addEventListener('click',  ()=>{ closeModal(); openLogisticaModal(logistica); });
+  }
+  if(instalacao){
+    $('#lnkInstEditBtn')?.addEventListener('click', ()=>{ closeModal(); openInstalacaoModal(instalacao); });
   }
 }
 
@@ -1511,8 +1533,7 @@ function openPropostaModal(item=null){
         </div>
       </div>
       <div class="modal-footer">
-        ${!isNew?`<button type="button" class="btn btn-secondary" id="vizPropBtn">👁️ Visualizar</button>`:''}
-        ${!isNew?`<button type="button" class="btn btn-secondary" id="dlPropBtn">⬇️ Download PDF</button>`:''}
+        ${!isNew?`<div class="btn-group"><button type="button" class="btn btn-secondary" id="vizPropBtn">👁️ Visualizar</button><button type="button" class="btn btn-secondary" id="dlPropBtn" title="Imprimir / PDF">🖨️ PDF</button></div>`:''}
         ${!isNew?`<button type="button" class="btn btn-danger" id="delPropBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
@@ -1789,10 +1810,10 @@ function openVistoriaModal(item=null){
             ${docKeys.map(k=>fileUploadBlock(k.replace(/_/g,' '), k, 'vistorias', docs[k]||[], false)).join('')}
           </div></div>
         </div>
+        ${!isNew?renderLinkedDocBtns(linked):''}
       </div>
       <div class="modal-footer">
         ${!isNew?`<button type="button" class="btn btn-danger" id="delVistBtn">Excluir</button>`:''}
-        ${!isNew?renderLinkedDocBtns(linked):''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
       </div>
@@ -1955,12 +1976,12 @@ function openContratoModal(item=null){
           </div></div>
         </div>
         ${!isNew && item.clicksign_url ? `<div class="card" style="background:#e6f7ed">📝 ClickSign: <a href="${esc(item.clicksign_url)}" target="_blank">${esc(item.clicksign_url)}</a></div>` : ''}
+        ${!isNew?renderLinkedDocBtns(linked):''}
       </div>
       <div class="modal-footer">
         ${!isNew?`<button type="button" class="btn btn-secondary" id="clickSignBtn">📝 ClickSign</button>`:''}
-        ${!isNew?`<button type="button" class="btn btn-secondary" id="vizContBtn">👁️ Contrato</button>`:''}
-        ${!isNew?`<button type="button" class="btn btn-secondary" id="dlContBtn">⬇️ PDF Contrato</button>`:''}
-        ${!isNew?renderLinkedDocBtns(linked):''}
+        ${!isNew?`<button type="button" class="btn btn-secondary" id="vizContBtn">👁️ Ver Contrato</button>`:''}
+        ${!isNew?`<button type="button" class="btn btn-secondary" id="dlContBtn">🖨️ PDF</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-danger" id="delContBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
@@ -3040,10 +3061,10 @@ function openLogisticaModal(item=null){
         <div style="margin-top:10px;padding:10px;background:#fffbeb;border-radius:8px;font-size:12px;color:#856404">
           💡 Ao marcar como <strong>Comprado</strong> e salvar, o card será automaticamente movido para <strong>Instalação</strong>.
         </div>
+        ${renderLinkedDocBtns(linked)}
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" id="delLogBtn">Excluir</button>
-        ${renderLinkedDocBtns(linked)}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
       </div>
@@ -3136,11 +3157,10 @@ function openInstalacaoModal(item=null){
             ${fileUploadBlock('Fotos da instalação','geral','instalacoes',fotos.geral||[],true)}
           </div>
         </div>
+        ${renderLinkedDocBtns(linked)}
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" id="delInstBtn">Excluir</button>
-        ${logistica?`<button type="button" class="btn btn-secondary" id="editLogBtn">📦 Editar Logística</button>`:''}
-        ${renderLinkedDocBtns(linked)}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
       </div>
@@ -3164,11 +3184,6 @@ function openInstalacaoModal(item=null){
     if(!await confirmDel('Excluir?')) return;
     await supa.from('instalacoes').delete().eq('id',item.id);
     toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
-  });
-  // Botão para editar a logística vinculada
-  $('#editLogBtn')?.addEventListener('click', ()=>{
-    closeModal();
-    if(logistica) openLogisticaModal(logistica);
   });
 }
 
@@ -3211,10 +3226,10 @@ function openHomologacaoModal(item=null){
             ${docKeys.map(k=>fileUploadBlock(k.replace(/_/g,' '), k, 'homologacoes', docs[k]||[], false)).join('')}
           </div></div>
         </div>
+        ${renderLinkedDocBtns(linked)}
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" id="delHomBtn">Excluir</button>
-        ${renderLinkedDocBtns(linked)}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
       </div>
@@ -3261,10 +3276,10 @@ function openPosVendaModal(item=null){
           ${formField({label:'Data Ativação',name:'data_ativacao',type:'date',value:item.data_ativacao})}
           ${formField({label:'Observações',name:'obs',type:'textarea',value:item.obs,full:true})}
         </div>
+        ${renderLinkedDocBtns(linked)}
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" id="delPvBtn">Excluir</button>
-        ${renderLinkedDocBtns(linked)}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
       </div>
