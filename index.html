@@ -355,6 +355,7 @@ const DL_POT_INVERSOR  = ['1,5','2','3','3,3','3,5','3,6','4','5','6','7','8','1
 const DL_POT_BATERIA   = ['2,56','5','5,12','7,1','10','10,24','14,2','20'];
 const DL_BANCO         = ['BV Financeira','Santander Financiamentos','Sicoob','Sicredi','Portocred','PortoBank','Solfácil','Sol Agora','Creditas','BNB','Caixa Econômica','Bradesco','Banco do Brasil','77Sol','BTG','BanPará'];
 const DL_DISTRIBUIDORA = ['Aldo Solar','Greener','Canal Solar','Renovigi','WEG','Intelbras','EcoSolys','DFV Solar','BlueSol','Solar Premium','FortLev','SouEnergy','Fotus','Solfácil','77Sol','BelSol'];
+const DL_TECNICO       = ['CMD','3L Soluções','Paulo Adriano','Michel Darlan'];
 const uid = ()=> 'id_'+Math.random().toString(36).slice(2,11);
 
 function toast(msg,type='info',ms=3200){
@@ -1730,7 +1731,7 @@ function openVistoriaModal(item=null){
             ${formField({label:'Email',name:'email',type:'email',value:item.email})}
             ${formField({label:'Data Agendamento',name:'data_agendamento',type:'date',value:item.data_agendamento,required:true})}
             ${formField({label:'Hora Agendamento',name:'hora_agendamento',type:'time',value:item.hora_agendamento})}
-            ${formField({label:'Técnico',name:'tecnico',value:item.tecnico})}
+            ${formField({label:'Técnico',name:'tecnico',value:item.tecnico,datalist:DL_TECNICO})}
             ${formField({label:'Google Maps URL',name:'gmap',value:item.gmap})}
             ${formField({label:'Cliente Presente',name:'cliente_presente',type:'toggle',value:item.cliente_presente})}
             ${formField({label:'Responsável (se ausente)',name:'responsavel_ausencia',value:item.responsavel_ausencia})}
@@ -3152,7 +3153,7 @@ function openInstalacaoModal(item=null){
           ${formField({label:'Cliente',name:'_nome',value:item.nome,readonly:true})}
           ${formField({label:'kWp',name:'_kwp',value:item.kwp,readonly:true})}
           ${formField({label:'Vendedor',name:'_vendedor',value:item.vendedor,readonly:true})}
-          ${formField({label:'Técnico',name:'tecnico',value:item.tecnico,required:true})}
+          ${formField({label:'Técnico',name:'tecnico',value:item.tecnico,required:true,datalist:DL_TECNICO})}
           ${formField({label:'Data Instalação',name:'data_instalacao',type:'date',value:item.data_instalacao,required:true})}
           ${formField({label:'Hora',name:'hora_instalacao',type:'time',value:item.hora_instalacao})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'agendada',options:statusOpts})}
@@ -3230,7 +3231,7 @@ function openHomologacaoModal(item=null){
           ${formField({label:'Concessionária',name:'concessionaria',value:item.concessionaria})}
           ${formField({label:'Vendedor',name:'_vendedor',value:item.vendedor,readonly:true})}
           ${formField({label:'Etapa',name:'etapa',type:'select',value:item.etapa||'aguardando_docs',options:etapaOpts})}
-          ${formField({label:'Técnico',name:'tecnico',value:item.tecnico})}
+          ${formField({label:'Técnico',name:'tecnico',value:item.tecnico,datalist:DL_TECNICO})}
           ${formField({label:'Mesmo cliente?',name:'mesmo_cliente',type:'toggle',value:item.mesmo_cliente})}
           ${formField({label:'Nome Homologação',name:'hom_nome',value:item.hom_nome})}
           ${formField({label:'CPF Homologação',name:'hom_cpf',value:item.hom_cpf})}
