@@ -2104,7 +2104,23 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
   body>.page:nth-child(7){page-break-after:auto!important;break-after:auto!important}
   body>.page:nth-child(8)>.pg-header{display:none!important}
 
-  /* ── Contato: fluxo normal, centralizado ── */
+  /* Trajetória oculta: espaço cedido ao contato */
+  body>.page:nth-child(7) .trajetoria-block{display:none!important}
+
+  /* ── Sobre compacto para dividir folha com contato ── */
+  body>.page:nth-child(7) .page-inner{padding:14px 44px 8px}
+  body>.page:nth-child(7) .sec-title{font-size:20px;margin-bottom:10px}
+  body>.page:nth-child(7) .missao-grid{gap:10px;margin-bottom:12px}
+  body>.page:nth-child(7) .missao-card{padding:12px 14px}
+  body>.page:nth-child(7) .missao-card p{font-size:11.5px;line-height:1.6}
+  body>.page:nth-child(7) .ser-title{margin-bottom:10px}
+  body>.page:nth-child(7) .ser-grid{gap:10px;margin-top:0}
+  body>.page:nth-child(7) .ser-card{padding:12px 10px;border-top-width:4px}
+  body>.page:nth-child(7) .ser-letter{font-size:52px;margin-bottom:4px}
+  body>.page:nth-child(7) .ser-word{font-size:13px;margin-bottom:4px}
+  body>.page:nth-child(7) .ser-text{font-size:10.5px;line-height:1.55}
+
+  /* ── Contato compacto: dados do vendedor abaixo do quem somos ── */
   .contact-wrap{
     position:static!important;
     height:auto!important;
@@ -2113,20 +2129,15 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
     align-items:center;
     justify-content:flex-start;
     text-align:center;
-    padding:16px 40px 28px
+    padding:10px 40px 14px
   }
-
-  /* ── Sobre (pág 4 no PDF final): ampliar para preencher mais ── */
-  body>.page:nth-child(7) .page-inner{padding:28px 44px}
-  body>.page:nth-child(7) .sec-title{font-size:24px;margin-bottom:16px}
-  body>.page:nth-child(7) .missao-card{padding:18px 16px}
-  body>.page:nth-child(7) .missao-card p{font-size:12.5px;line-height:1.8}
-  body>.page:nth-child(7) .ser-grid{gap:16px;margin-top:8px}
-  body>.page:nth-child(7) .ser-card{padding:18px 14px;border-top-width:5px}
-  body>.page:nth-child(7) .ser-letter{font-size:72px;margin-bottom:8px}
-  body>.page:nth-child(7) .ser-word{font-size:15px;margin-bottom:8px}
-  body>.page:nth-child(7) .ser-text{font-size:11.5px;line-height:1.75}
-  body>.page:nth-child(7) .missao-grid{gap:14px;margin-bottom:20px}
+  .contact-avatar{width:60px!important;height:60px!important;font-size:22px!important;margin-bottom:8px!important}
+  .contact-name{font-size:18px!important;margin-bottom:3px!important}
+  .contact-role{font-size:11px!important;margin-bottom:8px!important}
+  .contact-site{font-size:12px!important;margin-bottom:12px!important}
+  .contact-divider{margin:6px auto!important}
+  .contact-company{font-size:10px!important;line-height:1.6!important}
+  .contact-validity{margin-top:8px!important;padding:8px 16px!important;font-size:10px!important}
 }
 </style></head><body>
 <div class="print-bar">
@@ -2373,7 +2384,7 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
   </div>
 
   <!-- NOSSA TRAJETÓRIA -->
-  <div style="margin-top:24px;border-top:1px solid #e9e2f5;padding-top:22px">
+  <div class="trajetoria-block" style="margin-top:24px;border-top:1px solid #e9e2f5;padding-top:22px">
     <div style="font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#1a0a2e;margin-bottom:14px">NOSSA TRAJETÓRIA</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
       <div style="text-align:center;background:linear-gradient(135deg,#f9f5ff,#f0eaf8);border-radius:12px;padding:16px 10px;border:1px solid #e9e2f5">
