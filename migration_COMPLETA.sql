@@ -1,9 +1,9 @@
 -- ============================================================
 -- SISTEMA SER — MIGRAÇÃO COMPLETA
--- Consolida: auditoria + flags + dedup + backfill + homologação + pós venda + técnicos
+-- Consolida: auditoria + flags + dedup + backfill + homologação + pós venda + técnicos + instalação
 -- Execute TODO de uma vez no SQL Editor do Supabase
 -- 100% idempotente: seguro rodar mesmo que partes já existam
--- Atualizado em: maio 2026 (Blocos 1–11)
+-- Atualizado em: maio 2026 (Blocos 1–12)
 -- ============================================================
 
 -- ════════════════════════════════════════════════════════════
@@ -263,6 +263,23 @@ ALTER TABLE vistorias
 ALTER TABLE instalacoes
   ADD COLUMN IF NOT EXISTS tecnico          text,
   ADD COLUMN IF NOT EXISTS data_instalacao  date;
+
+-- ════════════════════════════════════════════════════════════
+-- BLOCO 12 — COLUNAS COMPLETAS DO FORMULÁRIO DE INSTALAÇÃO
+-- Valores extras, hora, obs e fotos
+-- ════════════════════════════════════════════════════════════
+
+ALTER TABLE instalacoes
+  ADD COLUMN IF NOT EXISTS hora_instalacao   time,
+  ADD COLUMN IF NOT EXISTS endereco          text,
+  ADD COLUMN IF NOT EXISTS obs               text,
+  ADD COLUMN IF NOT EXISTS fotos             jsonb    DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS tem_poste         boolean  DEFAULT false,
+  ADD COLUMN IF NOT EXISTS val_poste         numeric  DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS tem_troca_padrao  boolean  DEFAULT false,
+  ADD COLUMN IF NOT EXISTS val_troca_padrao  numeric  DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS estimado          numeric  DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS pago              numeric  DEFAULT 0;
 
 -- ════════════════════════════════════════════════════════════
 -- VERIFICAÇÃO — descomente e rode para confirmar
