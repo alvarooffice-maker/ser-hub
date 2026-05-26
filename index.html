@@ -343,14 +343,14 @@ const fmtDateTime = d => d ? new Date(d).toLocaleString('pt-BR') : '';
 const today = ()=> new Date().toISOString().slice(0,10);
 
 /* ── Listas pré-estabelecidas para evitar erros de digitação ── */
-const DL_MARCA_MODULO  = ['Canadian Solar','JA Solar','LONGi','BYD','DAH Solar','Risen Energy','Jinko Solar','Trina Solar','Astronergy','Tongwei Solar'];
-const DL_MARCA_INVERSOR= ['Growatt','Solis','Deye','SAJ','Fronius','Huawei','GoodWe','SOFAR','Fox ESS','Chint Power'];
-const DL_MARCA_BATERIA = ['BYD','Pylontech','Dyness','Alpha-ESS','Fox ESS','Growatt','Deye'];
-const DL_POT_MODULO    = ['400','410','420','430','440','450','460','470','480','490','500','510','520','530','540','550','560','570'];
-const DL_POT_INVERSOR  = ['1,5','2','3','4','5','6','7','8','10','12','15','17','20','25','30'];
+const DL_MARCA_MODULO  = ['Canadian Solar','JA Solar','LONGi','BYD','DAH Solar','Risen Energy','Jinko Solar','Trina Solar','Astronergy','Tongwei Solar','Leapton','Pulling Energy','Osda','Ronma','Hanersun','Maxeon','Renepv','Aiko','Gokin','Dmegc','Era Solar'];
+const DL_MARCA_INVERSOR= ['Growatt','Solis','Deye','SAJ','Fronius','Huawei','GoodWe','SOFAR','Fox ESS','Chint Power','Solplanet','Sungrow','Auxsol'];
+const DL_MARCA_BATERIA = ['BYD','Pylontech','Dyness','Alpha-ESS','Fox ESS','Growatt','Deye','Solplanet','GoodWe','Huawei'];
+const DL_POT_MODULO    = ['400','410','420','430','440','450','460','470','480','490','500','510','520','530','540','550','560','570','580','590','600','610','620','630','640','650','660','670','680','690','700','710'];
+const DL_POT_INVERSOR  = ['1,5','2','3','4','5','6','7','8','10','12','15','17','20','25','30','33','36','40','50','60','75'];
 const DL_POT_BATERIA   = ['2,56','5','5,12','7,1','10','10,24','14,2','20'];
-const DL_BANCO         = ['BV Financeira','Santander Financiamentos','Sicoob','Sicredi','Portocred','Solfácil','Sol Agora','Creditas','BNB','Caixa Econômica','Bradesco','Banco do Brasil'];
-const DL_DISTRIBUIDORA = ['Aldo Solar','Greener','Canal Solar','Renovigi','WEG','Intelbras','EcoSolys','DFV Solar','BlueSol','Solar Premium'];
+const DL_BANCO         = ['BV Financeira','Santander Financiamentos','Sicoob','Sicredi','Portocred','PortoBank','Solfácil','Sol Agora','Creditas','BNB','Caixa Econômica','Bradesco','Banco do Brasil','77Sol','BTG','BanPará'];
+const DL_DISTRIBUIDORA = ['Aldo Solar','Greener','Canal Solar','Renovigi','WEG','Intelbras','EcoSolys','DFV Solar','BlueSol','Solar Premium','FortLev','SouEnergy','Fotus','Solfácil','77Sol','BelSol'];
 const uid = ()=> 'id_'+Math.random().toString(36).slice(2,11);
 
 function toast(msg,type='info',ms=3200){
