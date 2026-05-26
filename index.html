@@ -702,8 +702,10 @@ function stageFlags(item, stage){
   // ── Lookups da cadeia do funil ────────────────────────────
   const find = (arr, id) => id ? (arr||[]).find(x=>String(x.id)===String(id)) : null;
 
-  const vistoria = find(State.vistorias, item.vistoria_id);
   const contrato = find(State.contratos, item.contrato_id);
+  // Fallback: vistoria via contrato (registros antigos sem vistoria_id direto)
+  const vistoria = find(State.vistorias, item.vistoria_id)
+               || (contrato ? find(State.vistorias, contrato.vistoria_id) : null);
 
   // Logística e Instalação: trace a cadeia conforme o estágio
   let logistica = null, instalacao = null;
@@ -924,9 +926,16 @@ function buildTransitionPayload(item, fromStage, toStage){
    Disponível em qualquer estágio: Proposta, Contrato, e ambos os PDFs
    ============================================================ */
 function getLinkedDocs(item){
-  const proposta  = item.proposta_id  ? (State.propostas||[]).find(p=>p.id===item.proposta_id)  : null;
-  const vistoria  = item.vistoria_id  ? (State.vistorias||[]).find(v=>v.id===item.vistoria_id)  : null;
-  const contrato  = item.contrato_id  ? (State.contratos||[]).find(c=>c.id===item.contrato_id)  : null;
+  const _f = (arr,id) => id ? (arr||[]).find(x=>String(x.id)===String(id)) : null;
+  // Busca direta pelos IDs do item
+  let contrato = _f(State.contratos, item.contrato_id);
+  let vistoria = _f(State.vistorias, item.vistoria_id)
+              // Fallback: vistoria via contrato (registros antigos sem vistoria_id direto)
+              || (contrato ? _f(State.vistorias, contrato.vistoria_id) : null);
+  let proposta = _f(State.propostas, item.proposta_id)
+              // Fallback: proposta via contrato ou vistoria
+              || (contrato  ? _f(State.propostas, contrato.proposta_id)  : null)
+              || (vistoria  ? _f(State.propostas, vistoria.proposta_id)  : null);
   return { proposta, vistoria, contrato };
 }
 
