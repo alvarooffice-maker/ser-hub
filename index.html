@@ -2048,19 +2048,27 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   html,body{margin:0;padding:0;background:#fff;width:210mm}
   .print-bar{display:none!important}
+  /* Cada .page = exatamente uma folha A4 */
   .page{
     margin:0 auto;
     box-shadow:none;
     page-break-after:always;
     break-after:page;
     width:210mm;
-    min-height:297mm;
+    height:297mm;
     max-width:210mm;
     overflow:hidden;
-    display:block
+    display:flex;
+    flex-direction:column
   }
   .page:last-child{page-break-after:auto;break-after:auto}
-  .capa{min-height:inherit}
+  /* Capa: preenche toda a altura com o gradiente */
+  .capa{flex:1;min-height:0}
+  /* Páginas com header: header fixo, conteúdo expande */
+  .pg-header{flex-shrink:0}
+  .page-inner{flex:1;min-height:0}
+  /* Investimento e Contato: centralizar verticalmente */
+  .invest-wrap,.contact-wrap{justify-content:center}
 }
 </style></head><body>
 <div class="print-bar">
