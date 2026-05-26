@@ -1873,151 +1873,405 @@ ${v.resultado==='reprovada'?`<div class="alert" style="background:#fee2e2;border
    GERADOR DE PROPOSTA HTML/PDF
    ============================================================ */
 function abrirPropostaJanela(p, imprimir=false){
-  const fR = v => 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  const fR  = v => 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  const fRk = v => { const n=Number(v||0); return n>=1000?'R$ '+Math.round(n/1000)+'k':fR(n); };
   const txt = v => v||'—';
+  const hoje    = new Date().toLocaleDateString('pt-BR');
+  const valStr  = p.validade ? (() => {
+    const d = new Date(p.validade+'T12:00:00');
+    const diff = Math.round((d-new Date())/(1000*60*60*24));
+    return diff > 0 ? `${diff} dias (até ${d.toLocaleDateString('pt-BR')})` : d.toLocaleDateString('pt-BR');
+  })() : '7 dias';
+
+  // economia projetada
+  const eco   = Number(p.economia_mensal||0);
+  const proj25= eco*300;
+  const pct   = p.conta_sem_solar ? Math.round(eco/Number(p.conta_sem_solar)*100) : 85;
+  const pctCom= 100 - pct;
+
+  // retorno table
+  const retornos = [
+    ['1 ano',  eco*12],
+    ['2 anos', eco*24],
+    ['5 anos', eco*60],
+    ['10 anos',eco*120],
+    ['25 anos',eco*300],
+  ];
+
+  // barras mensais de geração (padrão sazonal Belém/PA)
+  const base = Number(p.kwh||400);
+  const fatores = [0.85,0.87,0.90,0.93,0.97,1.00,1.00,0.98,0.95,0.92,0.88,0.85];
+  const meses   = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const geracoes = fatores.map(f=>Math.round(base*f));
+  const maxG    = Math.max(...geracoes);
+
+  // consultor inicial
+  const inicial = (p.vendedor||'S').trim().charAt(0).toUpperCase();
+
   const win = window.open('','_blank');
-  const hoje = new Date().toLocaleDateString('pt-BR');
-  const validade = p.validade ? new Date(p.validade+'T12:00:00').toLocaleDateString('pt-BR') : '7 dias';
-  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Proposta SER Energia — ${txt(p.nome)}</title>
+  win.document.write(`<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<title>Proposta SER — ${p.nome||''}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0eaf8;color:#1a1a1a}
-.wrap{max-width:700px;margin:0 auto;padding:0}
-.print-bar{position:sticky;top:0;z-index:100;background:#fff;padding:10px 24px;border-bottom:2px solid #4B0082;display:flex;justify-content:space-between;align-items:center}
-.print-bar span{font-size:13px;color:#4B0082;font-weight:700}
-.print-bar button{background:#4B0082;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
-.hero{background:linear-gradient(135deg,#1a0a2e 0%,#4B0082 60%,#6B21A8 100%);color:#fff;padding:40px 36px 32px;position:relative;overflow:hidden}
-.hero::before{content:'⚡';font-size:120px;position:absolute;right:-10px;top:-10px;opacity:.15}
-.hero-badge{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;background:rgba(255,255,255,.2);display:inline-block;padding:4px 12px;border-radius:99px;margin-bottom:12px}
-.hero-kwp{font-size:48px;font-weight:800;line-height:1}
-.hero-sub{font-size:16px;opacity:.85;margin-top:6px}
-.hero-client{margin-top:20px;font-size:13px;opacity:.7}
-.hero-client strong{font-size:18px;opacity:1;display:block;color:#fff}
-.hero-meta{display:flex;gap:20px;margin-top:16px;font-size:12px;opacity:.75}
-.section{background:#fff;margin:0;padding:28px 36px;border-bottom:1px solid #e8e2f0}
-.section:last-child{border-bottom:none}
-.sec-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#4B0082;margin-bottom:16px}
-.economia-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:0}
-.eco-card{border-radius:10px;padding:16px;text-align:center}
-.eco-card.red{background:#fcebeb;border:1px solid #e8a0a0}
-.eco-card.green{background:#ede9fb;border:1px solid #c4b5fd}
-.eco-card.gold{background:#f3e8ff;border:1px solid #a855f7}
-.eco-label{font-size:11px;color:#6b6960;margin-bottom:4px}
-.eco-val{font-size:22px;font-weight:800}
-.eco-val.red{color:#A32D2D}.eco-val.green{color:#4B0082}.eco-val.gold{color:#6B21A8}
-.eco-sub{font-size:11px;color:#6b6960;margin-top:2px}
-.kit-table{width:100%;border-collapse:collapse}
-.kit-table td{padding:8px 12px;border-bottom:1px solid #e8e2f0;font-size:13px}
-.kit-table td:first-child{color:#6b6960;width:40%}
-.kit-table td:last-child{font-weight:600}
-.kit-table tr:last-child td{border-bottom:none}
-.spec-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.spec-item{background:#f5f0fa;border-radius:8px;padding:12px}
-.spec-label{font-size:11px;color:#6b6960;margin-bottom:4px}
-.spec-val{font-size:16px;font-weight:700;color:#1a1a1a}
-.valores-box{background:linear-gradient(135deg,#1a0a2e,#6B21A8);border-radius:12px;padding:24px;color:#fff;text-align:center;margin-bottom:16px}
-.valores-price{font-size:40px;font-weight:800}
-.valores-sub{font-size:13px;opacity:.8;margin-top:4px}
-.disclaimer{font-size:11px;color:#6b6960;font-style:italic;line-height:1.5;background:#f5f0fa;border-radius:8px;padding:12px}
-.missao{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.missao-card{text-align:center;padding:16px;background:#f5f0fa;border-radius:10px}
-.missao-ic{font-size:24px;margin-bottom:8px}
-.missao-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#4B0082;margin-bottom:4px}
-.missao-text{font-size:11px;color:#6b6960;line-height:1.4}
-.footer{background:#1a0a2e;color:#a89fc0;padding:24px 36px;font-size:12px}
-.footer strong{color:#fff;display:block;font-size:14px;margin-bottom:4px}
-@media print{body{background:#fff}.wrap{max-width:100%}.print-bar{display:none!important}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0eaf8;color:#111}
+.print-bar{position:fixed;top:0;left:0;right:0;z-index:1000;background:#1a0a2e;padding:10px 24px;display:flex;justify-content:space-between;align-items:center}
+.print-bar span{font-size:13px;color:#c4b5fd;font-weight:600}
+.print-bar button{background:#6B21A8;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700}
+
+/* ── PAGE BASE ── */
+.page{max-width:794px;margin:0 auto 32px;background:#fff;min-height:1123px;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.15)}
+
+/* ── PAGE 1: CAPA ── */
+.capa{background:linear-gradient(160deg,#0f0720 0%,#1a0a2e 40%,#2d1550 70%,#4B0082 100%);color:#fff;display:flex;flex-direction:column;min-height:1123px}
+.capa-top{padding:32px 44px 0;display:flex;justify-content:space-between;align-items:flex-start}
+.capa-logo img{height:56px}
+.capa-badge{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:6px 16px;font-size:11px;color:#c4b5fd;letter-spacing:.06em}
+.capa-hero{flex:1;display:flex;flex-direction:column;justify-content:center;padding:32px 44px}
+.capa-tag{font-size:11px;font-weight:700;letter-spacing:.18em;color:#a78bfa;text-transform:uppercase;margin-bottom:8px}
+.capa-title{font-size:42px;font-weight:900;line-height:1.1;margin-bottom:4px}
+.capa-title span{color:#c4b5fd}
+.capa-kwp{font-size:72px;font-weight:900;color:#fff;line-height:1;margin:16px 0 8px}
+.capa-kwp sup{font-size:24px;font-weight:700;color:#a78bfa;vertical-align:super}
+.capa-para{font-size:12px;letter-spacing:.1em;color:#a78bfa;text-transform:uppercase;margin-bottom:6px}
+.capa-client{font-size:28px;font-weight:800;color:#fff}
+.capa-meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-top:1px solid rgba(255,255,255,.12);margin:28px 44px 0}
+.capa-meta-item{padding:16px 20px;border-right:1px solid rgba(255,255,255,.12)}
+.capa-meta-item:last-child{border-right:none}
+.capa-meta-label{font-size:9px;font-weight:700;letter-spacing:.12em;color:#a78bfa;text-transform:uppercase;margin-bottom:4px}
+.capa-meta-val{font-size:13px;font-weight:700;color:#fff}
+.capa-eco{background:rgba(255,255,255,.06);border-top:1px solid rgba(255,255,255,.1);padding:20px 44px;display:flex;justify-content:space-between;align-items:center}
+.capa-eco-label{font-size:10px;font-weight:700;letter-spacing:.12em;color:#a78bfa;text-transform:uppercase}
+.capa-eco-val{font-size:38px;font-weight:900;color:#fff;line-height:1}
+.capa-eco-sub{font-size:12px;color:#c4b5fd;margin-top:4px}
+.capa-eco-proj{text-align:right}
+.capa-eco-proj .big{font-size:22px;font-weight:800;color:#a78bfa}
+.capa-footer{padding:14px 44px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center}
+.capa-footer-left{font-size:10px;color:#a78bfa;line-height:1.6}
+.capa-footer-right{font-size:10px;color:#a78bfa;text-align:right;line-height:1.6}
+
+/* ── PAGE 2: RESUMO ── */
+.page-inner{padding:44px}
+.sec-tag{font-size:9px;font-weight:700;letter-spacing:.15em;color:#6B21A8;text-transform:uppercase;margin-bottom:4px}
+.sec-title{font-size:22px;font-weight:900;color:#1a0a2e;margin-bottom:24px}
+.metric-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:28px}
+.metric-card{border:1px solid #e9e2f5;border-radius:12px;padding:20px;text-align:center}
+.metric-icon{font-size:28px;margin-bottom:8px}
+.metric-val{font-size:32px;font-weight:900;color:#4B0082}
+.metric-unit{font-size:13px;font-weight:600;color:#6b5f7a;margin-left:2px}
+.metric-label{font-size:9px;font-weight:700;letter-spacing:.1em;color:#9ca3af;text-transform:uppercase;margin-top:4px}
+.comp-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1a0a2e;margin-bottom:14px}
+.comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.comp-card{border-radius:12px;padding:20px}
+.comp-card.red{background:#fef2f2;border:1px solid #fecaca}
+.comp-card.green{background:#f0fdf4;border:1px solid #bbf7d0}
+.comp-card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.comp-card.red .comp-card-label{color:#b91c1c}
+.comp-card.green .comp-card-label{color:#15803d}
+.comp-val{font-size:28px;font-weight:900}
+.comp-card.red .comp-val{color:#dc2626}
+.comp-card.green .comp-val{color:#16a34a}
+.comp-sub{font-size:11px;color:#6b7280;margin-top:4px}
+.eco-highlight{background:linear-gradient(135deg,#4B0082,#6B21A8);border-radius:12px;padding:20px 24px;color:#fff;display:flex;justify-content:space-between;align-items:center}
+.eco-hl-left .label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#c4b5fd;margin-bottom:6px}
+.eco-hl-left .val{font-size:36px;font-weight:900}
+.eco-hl-right{text-align:right}
+.eco-hl-right .pct{font-size:40px;font-weight:900;color:#a78bfa}
+.eco-hl-right .sub{font-size:11px;color:#c4b5fd;margin-top:2px}
+
+/* ── PAGE 3: PROJEÇÃO ── */
+.chart-wrap{margin-bottom:28px}
+.chart-bars{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;height:140px;align-items:flex-end;margin-bottom:8px}
+.bar-col{display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar-fill{background:linear-gradient(180deg,#6B21A8,#4B0082);border-radius:4px 4px 0 0;width:100%;transition:height .3s}
+.bar-val{font-size:8px;color:#6b5f7a;font-weight:600}
+.bar-label{font-size:9px;color:#9ca3af;font-weight:600}
+.retorno-table{width:100%;border-collapse:collapse}
+.retorno-table th{background:#1a0a2e;color:#fff;padding:10px 16px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;text-align:left}
+.retorno-table td{padding:12px 16px;font-size:13px;border-bottom:1px solid #f0eaf8}
+.retorno-table tr:last-child td{border:none;font-weight:700;color:#4B0082;font-size:15px}
+.retorno-table .periodo{color:#6b5f7a;font-size:12px}
+.retorno-table .eco{font-weight:700;color:#16a34a}
+.nota{font-size:9.5px;color:#9ca3af;margin-top:10px;line-height:1.6;font-style:italic}
+
+/* ── PAGE 4: EQUIPAMENTOS ── */
+.kit-header{font-size:13px;font-weight:700;color:#1a0a2e;margin-bottom:16px}
+.kit-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
+.kit-card{border:2px solid #e9e2f5;border-radius:16px;padding:24px 20px;text-align:center;position:relative}
+.kit-card.inv{border-color:#4B0082}
+.kit-card-icon{font-size:36px;margin-bottom:10px}
+.kit-card-qtd{position:absolute;top:12px;right:12px;background:#4B0082;color:#fff;font-size:11px;font-weight:700;border-radius:20px;padding:2px 10px}
+.kit-card-brand{font-size:14px;font-weight:800;color:#1a0a2e;margin-bottom:2px}
+.kit-card-type{font-size:11px;color:#6b5f7a;margin-bottom:8px}
+.kit-card-pot{font-size:24px;font-weight:900;color:#4B0082}
+.kit-card-pot span{font-size:13px;font-weight:600;color:#9ca3af}
+.kit-card-opt{font-size:10px;color:#f59e0b;font-weight:700;margin-top:6px}
+.disclaimer{background:#f9f5ff;border-left:3px solid #6B21A8;border-radius:0 8px 8px 0;padding:14px 16px;font-size:10.5px;color:#6b5f7a;line-height:1.7;font-style:italic;margin-top:8px}
+
+/* ── PAGE 5: INVESTIMENTO ── */
+.invest-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:600px}
+.invest-label{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#6B21A8;margin-bottom:12px}
+.invest-val{font-size:64px;font-weight:900;color:#1a0a2e;line-height:1}
+.invest-sub{font-size:12px;color:#9ca3af;margin-top:16px;text-align:center;max-width:380px;line-height:1.6}
+
+/* ── PAGE 6: SOBRE ── */
+.missao-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+.missao-card{background:#f9f5ff;border-radius:12px;padding:20px}
+.missao-card h4{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6B21A8;margin-bottom:8px}
+.missao-card p{font-size:12px;color:#374151;line-height:1.7}
+.ser-title{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#1a0a2e;margin-bottom:16px}
+.ser-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.ser-card{border-top:4px solid #6B21A8;padding:20px 16px}
+.ser-letter{font-size:48px;font-weight:900;color:#4B0082;line-height:1;margin-bottom:6px}
+.ser-word{font-size:14px;font-weight:800;color:#1a0a2e;margin-bottom:8px}
+.ser-text{font-size:11px;color:#6b7280;line-height:1.6}
+
+/* ── PAGE 7: CONTATO ── */
+.contact-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:600px;text-align:center}
+.contact-avatar{width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#4B0082,#6B21A8);color:#fff;font-size:40px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.contact-name{font-size:24px;font-weight:900;color:#1a0a2e;margin-bottom:4px}
+.contact-role{font-size:12px;color:#6B21A8;font-weight:600;margin-bottom:24px}
+.contact-site{font-size:13px;color:#4B0082;margin-bottom:24px}
+.contact-divider{width:60px;height:3px;background:#6B21A8;margin:0 auto 24px;border-radius:2px}
+.contact-company{font-size:11px;color:#6b7280;line-height:1.8}
+.contact-validity{margin-top:24px;background:#f9f5ff;border-radius:8px;padding:12px 24px;font-size:11px;color:#6B21A8;font-weight:600}
+
+/* ── PAGE HEADER ── */
+.pg-header{background:#1a0a2e;padding:14px 44px;display:flex;justify-content:space-between;align-items:center}
+.pg-header img{height:36px}
+.pg-header-right{font-size:10px;color:#a78bfa;text-align:right;line-height:1.5}
+
+@media print{
+  body{background:#fff}
+  .print-bar{display:none!important}
+  .page{margin:0;box-shadow:none;page-break-after:always}
+  .page:last-child{page-break-after:auto}
+}
 </style></head><body>
-<div class="print-bar"><span>SER Energia Renovável</span><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>
-<div class="wrap">
-<div class="hero">
-  <div class="hero-badge">Proposta Comercial · SER Energia Renovável</div>
-  <div class="hero-kwp">${p.kwp||'—'} kWp</div>
-  <div class="hero-sub">Sistema Fotovoltaico · ${p.kwh||'—'} kWh/mês gerados</div>
-  <div class="hero-client"><span>Proposta para:</span><strong>${txt(p.nome)}</strong></div>
-  <div class="hero-meta">
-    <span>📅 Data: ${hoje}</span>
-    <span>⏳ Validade: ${validade}</span>
-    ${p.area_minima?`<span>📐 Área: ${p.area_minima} m²</span>`:''}
-  </div>
+<div class="print-bar">
+  <span>SER Energia Renovável — Proposta Comercial</span>
+  <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
 </div>
 
-${(p.conta_sem_solar||p.conta_com_solar||p.economia_mensal)?`
-<div class="section">
-  <div class="sec-title">💰 Sua economia com energia solar</div>
-  <div class="economia-grid">
-    <div class="eco-card red"><div class="eco-label">Sem Energia Solar</div><div class="eco-val red">${fR(p.conta_sem_solar)}</div><div class="eco-sub">por mês</div></div>
-    <div class="eco-card green"><div class="eco-label">Com Energia Solar</div><div class="eco-val green">${fR(p.conta_com_solar)}</div><div class="eco-sub">por mês</div></div>
-    <div class="eco-card gold"><div class="eco-label">Sua Economia</div><div class="eco-val gold">${fR(p.economia_mensal)}</div><div class="eco-sub">por mês</div></div>
+<!-- ══════════════════ PÁGINA 1: CAPA ══════════════════ -->
+<div class="page">
+<div class="capa">
+  <div class="capa-top">
+    <div class="capa-logo"><img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/></div>
+    <div class="capa-badge">PROPOSTA COMERCIAL · SISTEMA FOTOVOLTAICO</div>
   </div>
-  ${p.economia_5anos?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-    <div style="background:#ede9fb;border:1px solid #c4b5fd;border-radius:10px;padding:16px;text-align:center">
-      <div style="font-size:11px;color:#6b6960;margin-bottom:4px">📅 Economia em 1 ano</div>
-      <div style="font-size:24px;font-weight:800;color:#4B0082">${fR((p.economia_mensal||0)*12)}</div>
+  <div class="capa-hero">
+    <div class="capa-tag">ENERGIA SOLAR</div>
+    <div class="capa-title">SISTEMA<br><span>FOTOVOLTAICO</span></div>
+    <div class="capa-kwp">${p.kwp||'—'}<sup>kWp</sup></div>
+    <div style="font-size:13px;color:#a78bfa;margin-bottom:2px">de potência instalada</div>
+    <div style="height:1px;background:rgba(255,255,255,.1);margin:20px 0"></div>
+    <div class="capa-para">PROPOSTA PARA</div>
+    <div class="capa-client">${txt(p.nome).toUpperCase()}</div>
+  </div>
+  <div class="capa-meta">
+    <div class="capa-meta-item"><div class="capa-meta-label">DATA</div><div class="capa-meta-val">${hoje}</div></div>
+    <div class="capa-meta-item"><div class="capa-meta-label">VALIDADE</div><div class="capa-meta-val">${valStr}</div></div>
+    <div class="capa-meta-item"><div class="capa-meta-label">CONSUMO</div><div class="capa-meta-val">${p.kwh||'—'} kWh/mês</div></div>
+  </div>
+  <div class="capa-eco">
+    <div>
+      <div class="capa-eco-label">ECONOMIA ESTIMADA</div>
+      <div class="capa-eco-val">${fR(p.economia_mensal)}</div>
+      <div class="capa-eco-sub">/mês · SER Energia Renovável</div>
     </div>
-    <div style="background:#ede9fb;border:1px solid #c4b5fd;border-radius:10px;padding:16px;text-align:center">
-      <div style="font-size:11px;color:#6b6960;margin-bottom:4px">🗓️ Economia em 5 anos</div>
-      <div style="font-size:24px;font-weight:800;color:#4B0082">${fR(p.economia_5anos)}</div>
+    <div class="capa-eco-proj">
+      <div class="big">${fRk(proj25)} projetados em 25 anos</div>
+      <div style="font-size:10px;color:#a78bfa;margin-top:4px">Belém · Pará · Brasil</div>
+    </div>
+  </div>
+  <div class="capa-footer">
+    <div class="capa-footer-left">CNPJ 58.656.750/0001-04<br>Travessa Antônio Baena, 300 · Marco · Belém/PA</div>
+    <div class="capa-footer-right">${txt(p.vendedor)}<br>${p.vend_telefone||''}</div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════ PÁGINA 2: RESUMO ══════════════════ -->
+<div class="page">
+<div class="pg-header"><img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/><div class="pg-header-right">PROPOSTA COMERCIAL<br>${txt(p.nome)}</div></div>
+<div class="page-inner">
+  <div class="sec-tag">RESUMO DO PROJETO</div>
+  <div class="sec-title">Seus números em destaque</div>
+  <div class="metric-row">
+    <div class="metric-card"><div class="metric-icon">⚡</div><div><span class="metric-val">${p.kwp||'—'}</span><span class="metric-unit">kWp</span></div><div class="metric-label">POTÊNCIA INSTALADA</div></div>
+    <div class="metric-card"><div class="metric-icon">☀️</div><div><span class="metric-val">${p.kwh||'—'}</span><span class="metric-unit">kWh/mês</span></div><div class="metric-label">GERAÇÃO ESTIMADA</div></div>
+    <div class="metric-card"><div class="metric-icon">📐</div><div><span class="metric-val">${p.area_minima||'—'}</span><span class="metric-unit">m²</span></div><div class="metric-label">ÁREA MÍNIMA</div></div>
+  </div>
+  ${(p.conta_sem_solar||p.conta_com_solar||p.economia_mensal)?`
+  <div class="comp-title">COMPARATIVO DE CUSTOS</div>
+  <div class="comp-grid">
+    <div class="comp-card red">
+      <div class="comp-card-label">SEM ENERGIA SOLAR</div>
+      <div class="comp-val">${fR(p.conta_sem_solar)}</div>
+      <div class="comp-sub">por mês na conta de luz</div>
+    </div>
+    <div class="comp-card green">
+      <div class="comp-card-label">COM ENERGIA SOLAR</div>
+      <div class="comp-val">${fR(p.conta_com_solar)}</div>
+      <div class="comp-sub">apenas ${pctCom}% da conta atual</div>
+    </div>
+  </div>
+  <div class="eco-highlight">
+    <div class="eco-hl-left">
+      <div class="label">SUA ECONOMIA MENSAL SERÁ DE</div>
+      <div class="val">${fR(p.economia_mensal)}</div>
+      <div style="font-size:11px;color:#c4b5fd;margin-top:6px">${pct}% a menos na conta de energia · Todo mês · Por 25+ anos</div>
+    </div>
+    <div class="eco-hl-right">
+      <div class="pct">${pct}%</div>
+      <div class="sub">de economia</div>
     </div>
   </div>`:''}
-</div>`:''}
-
-<div class="section">
-  <div class="sec-title">🔧 Descrição detalhada do kit</div>
-  <div style="font-size:13px;font-weight:600;margin-bottom:12px">01 Kit Fotovoltaico de potência ${p.kwp||'—'} kWp</div>
-  <table class="kit-table">
-    ${p.qtd_modulos||p.marca_modulo?`<tr><td>Módulos Solares</td><td>${p.qtd_modulos?p.qtd_modulos+'x ':''} ${p.marca_modulo||'—'} ${p.pot_modulo?p.pot_modulo+'W':''}</td></tr>`:''}
-    ${p.qtd_inversores||p.marca_inversor?`<tr><td>Inversor(es)</td><td>${p.qtd_inversores?p.qtd_inversores+'x ':''} ${p.marca_inversor||'—'} ${p.pot_inversor?p.pot_inversor+'kW':''}</td></tr>`:''}
-    ${p.qtd_baterias?`<tr><td>Baterias</td><td>${p.qtd_baterias}x ${p.marca_bateria||'—'} ${p.pot_bateria?p.pot_bateria+'kWh':''}</td></tr>`:''}
-    ${p.area_minima?`<tr><td>Área mínima necessária</td><td>${p.area_minima} m²</td></tr>`:''}
-  </table>
+</div>
 </div>
 
-<div class="section">
-  <div class="sec-title">⚡ Especificações do sistema</div>
-  <div class="spec-grid">
-    <div class="spec-item"><div class="spec-label">Potência do sistema</div><div class="spec-val">${p.kwp||'—'} kWp</div></div>
-    <div class="spec-item"><div class="spec-label">Consumo atual</div><div class="spec-val">${p.kwh||'—'} kWh/mês</div></div>
-    ${p.economia_mensal?`<div class="spec-item"><div class="spec-label">Economia mensal estimada</div><div class="spec-val">${fR(p.economia_mensal)}</div></div>`:''}
-    ${p.area_minima?`<div class="spec-item"><div class="spec-label">Área mínima</div><div class="spec-val">${p.area_minima} m²</div></div>`:''}
+<!-- ══════════════════ PÁGINA 3: PROJEÇÃO ══════════════════ -->
+<div class="page">
+<div class="pg-header"><img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/><div class="pg-header-right">PROJEÇÃO DE GERAÇÃO<br>${txt(p.nome)}</div></div>
+<div class="page-inner">
+  <div class="sec-tag">PROJEÇÃO DE GERAÇÃO</div>
+  <div class="sec-title">Geração estimada ao longo do ano</div>
+  <div class="chart-wrap">
+    <div style="font-size:10px;font-weight:700;color:#6b5f7a;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">ENERGIA GERADA MENSALMENTE (kWh)</div>
+    <div class="chart-bars">
+      ${geracoes.map((g,i)=>`<div class="bar-col"><div class="bar-val">${g}</div><div class="bar-fill" style="height:${Math.round(g/maxG*120)}px"></div><div class="bar-label">${meses[i]}</div></div>`).join('')}
+    </div>
+    <p class="nota">* Estimativa baseada no consumo informado. Valores podem variar conforme inclinação, orientação do telhado e condições climáticas locais.</p>
   </div>
+  ${eco>0?`
+  <div class="sec-tag" style="margin-top:8px">RETORNO DO INVESTIMENTO</div>
+  <div class="sec-title">Quanto você vai economizar?</div>
+  <table class="retorno-table">
+    <thead><tr><th>PERÍODO</th><th>ECONOMIA ACUMULADA</th></tr></thead>
+    <tbody>
+      ${retornos.map(([per,val],i)=>`<tr><td class="periodo">${per}</td><td class="eco">${fR(val)}</td></tr>`).join('')}
+    </tbody>
+  </table>
+  <p class="nota">* Projeção baseada em economia mensal de ${fR(eco)} com correção linear. Valores reais podem variar.</p>`:''}
+</div>
 </div>
 
-<div class="section">
-  <div class="sec-title">💵 Investimento</div>
-  <div class="valores-box">
-    <div class="valores-sub">Valor total do projeto</div>
-    <div class="valores-price">${fR(p.valor)}</div>
-    <div class="valores-sub" style="margin-top:8px">Simulação sujeita a análise de crédito conforme a instituição financeira escolhida</div>
+<!-- ══════════════════ PÁGINA 4: EQUIPAMENTOS ══════════════════ -->
+<div class="page">
+<div class="pg-header"><img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/><div class="pg-header-right">EQUIPAMENTOS<br>${txt(p.nome)}</div></div>
+<div class="page-inner">
+  <div class="sec-tag">EQUIPAMENTOS</div>
+  <div class="sec-title">Descrição detalhada do kit</div>
+  <div class="kit-header">01 Kit Fotovoltaico de potência ${p.kwp||'—'} kWp</div>
+  <div class="kit-cards">
+    <div class="kit-card inv">
+      <div class="kit-card-qtd">${p.qtd_inversores||'1'}x</div>
+      <div class="kit-card-icon">⚡</div>
+      <div class="kit-card-brand">${p.marca_inversor||'—'}</div>
+      <div class="kit-card-type">Inversor · ${p.pot_inversor||'—'} kW${p.fase?' · '+p.fase:''}${p.tensao?' · '+p.tensao+'V':''}</div>
+      <div class="kit-card-pot">${p.pot_inversor||'—'}<span> kW</span></div>
+    </div>
+    <div class="kit-card">
+      <div class="kit-card-qtd">${p.qtd_modulos||'—'}x</div>
+      <div class="kit-card-icon">🔆</div>
+      <div class="kit-card-brand">${p.marca_modulo||'—'}</div>
+      <div class="kit-card-type">Módulos · ${p.pot_modulo||'—'} W cada</div>
+      <div class="kit-card-pot">${p.pot_modulo||'—'}<span> W</span></div>
+    </div>
+    ${p.qtd_baterias?`<div class="kit-card">
+      <div class="kit-card-qtd">${p.qtd_baterias}x</div>
+      <div class="kit-card-icon">🔋</div>
+      <div class="kit-card-brand">${p.marca_bateria||'—'}</div>
+      <div class="kit-card-type">Bateria · ${p.pot_bateria||'—'} kWh</div>
+      <div class="kit-card-pot">${p.pot_bateria||'—'}<span> kWh</span></div>
+    </div>`:''}
   </div>
   <div class="disclaimer">"Para o correto dimensionamento e precificação do seu projeto é fundamental a nossa visita técnica. Uma vez que a face e a inclinação do telhado podem alterar a geração de energia do sistema fotovoltaico. Na visita avaliaremos também as condições da estrutura física e elétrica. É possível que sejam necessárias adequações para a sua segurança e acarrete homologação do sistema junto à concessionária de Energia."</div>
 </div>
+</div>
 
-<div class="section">
-  <div class="sec-title">🌿 Quem somos</div>
-  <div class="missao">
-    <div class="missao-card"><div class="missao-ic">🛡️</div><div class="missao-title">S · Segurança</div><div class="missao-text">Responsabilidade, excelência técnica e total transparência em cada etapa.</div></div>
-    <div class="missao-card"><div class="missao-ic">💰</div><div class="missao-title">E · Economia</div><div class="missao-text">Soluções acessíveis, eficientes e duradouras com ganhos contínuos.</div></div>
-    <div class="missao-card"><div class="missao-ic">⚡</div><div class="missao-title">R · Rapidez</div><div class="missao-text">Ágeis e comprometidos. Entregamos, homologamos e resolvemos.</div></div>
+<!-- ══════════════════ PÁGINA 5: INVESTIMENTO ══════════════════ -->
+<div class="page">
+<div class="pg-header"><img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/><div class="pg-header-right">INVESTIMENTO<br>${txt(p.nome)}</div></div>
+<div class="page-inner invest-wrap">
+  <div class="invest-label">INVESTIMENTO TOTAL</div>
+  <div class="invest-val">${fR(p.valor)}</div>
+  <div class="invest-sub">Simulação sujeita a análise de crédito conforme a instituição financeira escolhida</div>
+  ${(p.forma_pgto||p.pgto_desc||p.banco)?`
+  <div style="margin-top:32px;background:#f9f5ff;border-radius:12px;padding:20px 32px;text-align:center;max-width:400px">
+    <div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6B21A8;margin-bottom:6px">FORMA DE PAGAMENTO</div>
+    <div style="font-size:15px;font-weight:700;color:#1a0a2e">${p.forma_pgto||''}</div>
+    ${p.banco?`<div style="font-size:12px;color:#6b7280;margin-top:4px">${p.banco}</div>`:''}
+    ${p.pgto_desc?`<div style="font-size:12px;color:#6b7280;margin-top:4px">${p.pgto_desc}</div>`:''}
+  </div>`:''}
+</div>
+</div>
+
+<!-- ══════════════════ PÁGINA 6: SOBRE A EMPRESA ══════════════════ -->
+<div class="page">
+<div class="pg-header"><img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/><div class="pg-header-right">SOBRE A EMPRESA<br>Quem somos</div></div>
+<div class="page-inner">
+  <div class="sec-tag">SOBRE A EMPRESA</div>
+  <div class="sec-title">Quem somos</div>
+  <div class="missao-grid">
+    <div class="missao-card">
+      <h4>🎯 Missão</h4>
+      <p>Tornar a energia limpa e renovável um direito, e não um privilégio.</p>
+    </div>
+    <div class="missao-card">
+      <h4>🔭 Visão</h4>
+      <p>Ser o principal ecossistema de soluções em energia renovável do Pará, impulsionando a transição energética no Brasil.</p>
+    </div>
+  </div>
+  <div class="ser-title">VALORES S.E.R.</div>
+  <div class="ser-grid">
+    <div class="ser-card">
+      <div class="ser-letter">S</div>
+      <div class="ser-word">SEGURANÇA</div>
+      <div class="ser-text">Atuamos com responsabilidade, excelência técnica e total transparência, garantindo tranquilidade em cada etapa — do projeto à geração de energia.</div>
+    </div>
+    <div class="ser-card">
+      <div class="ser-letter">E</div>
+      <div class="ser-word">ECONOMIA</div>
+      <div class="ser-text">Geramos valor real. Oferecemos soluções acessíveis, eficientes e duradouras, promovendo economia imediata e ganhos contínuos ao longo dos anos.</div>
+    </div>
+    <div class="ser-card">
+      <div class="ser-letter">R</div>
+      <div class="ser-word">RAPIDEZ</div>
+      <div class="ser-text">Somos ágeis, precisos e comprometidos com a melhor experiência. Entregamos, homologamos e resolvemos com velocidade, sem perder qualidade.</div>
+    </div>
   </div>
 </div>
-
-<div class="footer">
-  <strong>${txt(p.vendedor)}</strong>
-  ${p.vend_telefone?`📱 ${p.vend_telefone}`:''}${p.vend_email?' · 📧 '+p.vend_email:''}
-  <div style="margin-top:10px;font-size:11px;color:#8878a8">SER Energia Renovável · Travessa Antônio Baena, 300 · Marco · Belém/PA</div>
-  <div style="margin-top:4px;font-size:10px;color:#6B21A8">CNPJ: 58.656.750/0001-04 · Proposta válida até ${validade}</div>
 </div>
-</div></body></html>`);
+
+<!-- ══════════════════ PÁGINA 7: CONTATO ══════════════════ -->
+<div class="page">
+<div class="pg-header"><img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/><div class="pg-header-right">CONTATO<br>Seu consultor de energia</div></div>
+<div class="page-inner contact-wrap">
+  <div class="contact-avatar">${inicial}</div>
+  <div class="contact-name">${txt(p.vendedor).toUpperCase()}</div>
+  <div class="contact-role">Consultor de Energia Renovável · SER Energia Renovável</div>
+  ${p.vend_telefone?`<div style="font-size:13px;color:#4B0082;margin-bottom:8px">📱 ${p.vend_telefone}</div>`:''}
+  ${p.vend_email?`<div style="font-size:13px;color:#4B0082;margin-bottom:8px">📧 ${p.vend_email}</div>`:''}
+  <div class="contact-site">🌐 www.serenergia.com.br</div>
+  <div class="contact-divider"></div>
+  <div class="contact-company">
+    SOLUÇÕES EM ENERGIA RENOVÁVEL MATRIZ LTDA · CNPJ 58.656.750/0001-04<br>
+    Travessa Antônio Baena, 300 · Bairro Marco · CEP 66.093-635 · Belém/PA
+  </div>
+  <div class="contact-validity">Esta proposta é válida por ${valStr} a partir da data de emissão e está sujeita a visita técnica.</div>
+</div>
+</div>
+
+</body></html>`);
   win.document.close();
-  if(imprimir) setTimeout(()=>{ win.focus(); win.print(); }, 600);
+  if(imprimir) setTimeout(()=>{ win.focus(); win.print(); }, 800);
 }
 
-/* ============================================================
-   GERADOR DE CONTRATO HTML/PDF
-   ============================================================ */
+
 function abrirContratoJanela(c, imprimir=false){
   const fR = v => 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const txt = v => v||'_______________';
@@ -2976,6 +3230,8 @@ async function renderUsuarios(){
             <td class="row-actions">
               <button class="btn btn-sm btn-secondary" data-user="${u.id}">Editar</button>
               ${isAdmin()?`<button class="btn btn-sm btn-secondary" data-toggle="${u.id}">${u.ativo?'Desativar':'Ativar'}</button>`:''}
+              ${isAdmin()?`<button class="btn btn-sm btn-secondary" data-resetpwd="${esc(u.email||'')}">Redefinir senha</button>`:''}
+              ${isAdmin() && String(u.id)!==String(State.user?.id)?`<button class="btn btn-sm btn-danger" data-delusr="${u.id}">Excluir</button>`:''}
             </td>
           </tr>`).join(''):'<tr><td colspan="5" class="empty">Sem usuários</td></tr>'}
       </tbody>
@@ -2986,6 +3242,22 @@ async function renderUsuarios(){
     const u = items.find(x=>String(x.id)===b.dataset.toggle);
     await supa.from('perfis').update({ ativo:!u.ativo }).eq('id',u.id);
     toast('Status atualizado','success'); renderUsuarios();
+  }));
+  $$('[data-resetpwd]').forEach(b=>b.addEventListener('click', async ()=>{
+    const email = b.dataset.resetpwd;
+    if(!email){ toast('E-mail não encontrado','error'); return; }
+    const { error } = await supa.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if(error) toast(error.message,'error');
+    else toast(`E-mail de redefinição enviado para ${email}`,'success');
+  }));
+  $$('[data-delusr]').forEach(b=>b.addEventListener('click', async ()=>{
+    const u = items.find(x=>String(x.id)===b.dataset.delusr);
+    if(!u) return;
+    const ok = await confirmDel(`Excluir o usuário "${u.nome||u.email}"? Esta ação não pode ser desfeita.`);
+    if(!ok) return;
+    const { error } = await supa.from('perfis').delete().eq('id',u.id);
+    if(error) return toast(error.message,'error');
+    toast('Usuário excluído','success'); renderUsuarios();
   }));
 }
 
