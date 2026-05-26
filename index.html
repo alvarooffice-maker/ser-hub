@@ -627,25 +627,16 @@ function renderStageCol(stage){
     items = items.filter(h => !promovidos.has(h.id));
   }
 
-  // Deduplicação interna por FK — rede de segurança contra duplicatas no banco
-  // Mantém o mais recente por chave estrangeira de origem
-  const dedupField = {
-    contrato:   'vistoria_id',
-    logistica:  'contrato_id',
-    instalacao: 'logistica_id',
-    homologacao:'instalacao_id',
-    posvenda:   'homologacao_id',
-  }[stage.id];
-  if(dedupField){
+  // Deduplicação por lead_id (cliente) — garante 1 card por pessoa por coluna
+  // Funciona mesmo quando há 2 contratos/logísticas para o mesmo lead
+  if(['contrato','logistica','instalacao','homologacao','posvenda'].includes(stage.id)){
     const seen = new Map();
     items.forEach(it => {
-      const key = it[dedupField];
-      if(!key){ return; } // sem FK: sempre exibe
+      const key = it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim());
       const prev = seen.get(key);
       if(!prev || (it.criado_em||'') > (prev.criado_em||'')) seen.set(key, it);
     });
-    const semFK = items.filter(it => !it[dedupField]);
-    items = [...seen.values(), ...semFK];
+    items = [...seen.values()];
   }
 
   return `
