@@ -3243,42 +3243,35 @@ async function renderUsuarios(){
         ${isAdmin()&&u.email!==State.user?.email?`<button class="btn btn-sm btn-danger" data-del="${i}">Excluir</button>`:''}
       </td>
     </tr>`).join('') : '<tr><td colspan="5" class="empty">Sem usuários</td></tr>';
+  window._usrItems = items;
   $('#content').innerHTML = `<div class="card"><div class="table-wrap"><table>
     <thead><tr><th>Nome</th><th>Email</th><th>Perfil</th><th>Status</th><th></th></tr></thead>
     <tbody>${tbody}</tbody>
   </table></div></div>`;
-  $$('[data-edit]', $('#content')).forEach(b=>{
-    b.addEventListener('click', ()=>{
-      const u = items[+b.dataset.edit];
-      if(!u){ toast('Usuário não encontrado no índice '+b.dataset.edit,'error'); return; }
-      try{ openUserModal(u); }
-      catch(e){ toast('Erro ao abrir editor: '+e.message,'error'); console.error(e); }
-    });
-  });
-  $$('[data-tog]', $('#content')).forEach(b=>{
-    b.addEventListener('click', async ()=>{
-      const u = items[+b.dataset.tog]; if(!u) return;
+  $('#content').addEventListener('click', async e=>{
+    const btn = e.target.closest('button[data-edit],button[data-tog],button[data-del],button[data-rpwd]');
+    if(!btn) return;
+    const ds = btn.dataset;
+    if(ds.edit!==undefined){
+      const u = window._usrItems[+ds.edit];
+      if(!u){ toast('Usuário não encontrado','error'); return; }
+      try{ openUserModal(u); } catch(err){ toast('Erro: '+err.message,'error'); }
+    } else if(ds.tog!==undefined){
+      const u = window._usrItems[+ds.tog]; if(!u) return;
       await supa.from('perfis').update({ ativo:!u.ativo }).eq('email',u.email);
       toast('Status atualizado','success'); renderUsuarios();
-    });
-  });
-  $$('[data-rpwd]', $('#content')).forEach(b=>{
-    b.addEventListener('click', async ()=>{
-      const u = items[+b.dataset.rpwd]; if(!u||!u.email) return;
-      const { error } = await supa.auth.resetPasswordForEmail(u.email, { redirectTo: location.origin + location.pathname });
+    } else if(ds.rpwd!==undefined){
+      const u = window._usrItems[+ds.rpwd]; if(!u||!u.email) return;
+      const { error } = await supa.auth.resetPasswordForEmail(u.email, { redirectTo: location.origin+location.pathname });
       if(error) toast(error.message,'error');
-      else toast(`E-mail de redefinição enviado para ${u.email}`,'success');
-    });
-  });
-  $$('[data-del]', $('#content')).forEach(b=>{
-    b.addEventListener('click', async ()=>{
-      const u = items[+b.dataset.del]; if(!u) return;
-      const ok = await confirmDel(`Excluir o usuário "${u.nome||u.email}"? Esta ação não pode ser desfeita.`);
-      if(!ok) return;
+      else toast(`Reset enviado para ${u.email}`,'success');
+    } else if(ds.del!==undefined){
+      const u = window._usrItems[+ds.del]; if(!u) return;
+      if(!await confirmDel(`Excluir "${u.nome||u.email}"?`)) return;
       const { error } = await supa.from('perfis').delete().eq('email',u.email);
       if(error) return toast(error.message,'error');
-      toast('Usuário excluído','success'); renderUsuarios();
-    });
+      toast('Excluído','success'); renderUsuarios();
+    }
   });
 }
 
