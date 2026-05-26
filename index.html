@@ -2100,6 +2100,10 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
   .invest-label{font-size:12px;margin-bottom:14px}
   .invest-val{font-size:56px}
 
+  /* ── FUSÃO: Sobre + Contato → 1 folha ── */
+  body>.page:nth-child(7){page-break-after:auto!important;break-after:auto!important}
+  body>.page:nth-child(8)>.pg-header{display:none!important}
+
   /* ── Contato: fluxo normal, centralizado ── */
   .contact-wrap{
     position:static!important;
@@ -2109,7 +2113,7 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
     align-items:center;
     justify-content:flex-start;
     text-align:center;
-    padding:20px 40px
+    padding:16px 40px 28px
   }
 
   /* ── Sobre (pág 4 no PDF final): ampliar para preencher mais ── */
