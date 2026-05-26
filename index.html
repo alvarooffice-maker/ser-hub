@@ -3217,53 +3217,51 @@ async function renderUsuarios(){
   const items = State.perfis;
   $('#pageActions').innerHTML = isAdmin() ? `<button class="btn btn-primary" id="newUserBtn">+ Novo Usuário</button>` : '';
   $('#newUserBtn')?.addEventListener('click', ()=> openUserModal());
-  $('#content').innerHTML = `
-    <div class="card"><div class="table-wrap"><table>
-      <thead><tr><th>Nome</th><th>Email</th><th>Perfil</th><th>Status</th><th></th></tr></thead>
-      <tbody>
-        ${items.length?items.map(u=>`
-          <tr>
-            <td>${esc(u.nome||'')}</td>
-            <td>${esc(u.email||'')}</td>
-            <td><span class="badge">${esc(u.perfil||'')}</span></td>
-            <td>${u.ativo?'<span class="badge badge-ativo">Ativo</span>':'<span class="badge badge-inativo">Inativo</span>'}</td>
-            <td class="row-actions">
-              <button class="btn btn-sm btn-secondary" data-user="${esc(u.email||'')}">Editar</button>
-              ${isAdmin()?`<button class="btn btn-sm btn-secondary" data-toggle="${esc(u.email||'')}">${u.ativo?'Desativar':'Ativar'}</button>`:''}
-              ${isAdmin()?`<button class="btn btn-sm btn-secondary" data-resetpwd="${esc(u.email||'')}">Redefinir senha</button>`:''}
-              ${isAdmin() && u.email!==State.user?.email?`<button class="btn btn-sm btn-danger" data-delusr="${esc(u.email||'')}">Excluir</button>`:''}
-            </td>
-          </tr>`).join(''):'<tr><td colspan="5" class="empty">Sem usuários</td></tr>'}
-      </tbody>
-    </table></div></div>
-  `;
-  $$('[data-user]').forEach(b=>b.addEventListener('click', ()=>{
-    const u = items.find(x=>x.email===b.dataset.user);
-    if(!u){ toast('Usuário não encontrado','error'); return; }
-    openUserModal(u);
-  }));
-  $$('[data-toggle]').forEach(b=>b.addEventListener('click', async ()=>{
-    const u = items.find(x=>x.email===b.dataset.toggle);
-    if(!u) return;
-    await supa.from('perfis').update({ ativo:!u.ativo }).eq('email',u.email);
-    toast('Status atualizado','success'); renderUsuarios();
-  }));
-  $$('[data-resetpwd]').forEach(b=>b.addEventListener('click', async ()=>{
-    const email = b.dataset.resetpwd;
-    if(!email){ toast('E-mail não encontrado','error'); return; }
-    const { error } = await supa.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
-    if(error) toast(error.message,'error');
-    else toast(`E-mail de redefinição enviado para ${email}`,'success');
-  }));
-  $$('[data-delusr]').forEach(b=>b.addEventListener('click', async ()=>{
-    const u = items.find(x=>x.email===b.dataset.delusr);
-    if(!u) return;
-    const ok = await confirmDel(`Excluir o usuário "${u.nome||u.email}"? Esta ação não pode ser desfeita.`);
-    if(!ok) return;
-    const { error } = await supa.from('perfis').delete().eq('email',u.email);
-    if(error) return toast(error.message,'error');
-    toast('Usuário excluído','success'); renderUsuarios();
-  }));
+  const tbody = items.length ? items.map((u,i)=>`
+    <tr>
+      <td>${esc(u.nome||'')}</td>
+      <td>${esc(u.email||'')}</td>
+      <td><span class="badge">${esc(u.perfil||'')}</span></td>
+      <td>${u.ativo?'<span class="badge badge-ativo">Ativo</span>':'<span class="badge badge-inativo">Inativo</span>'}</td>
+      <td class="row-actions">
+        <button class="btn btn-sm btn-secondary" data-edit="${i}">Editar</button>
+        ${isAdmin()?`<button class="btn btn-sm btn-secondary" data-tog="${i}">${u.ativo?'Desativar':'Ativar'}</button>`:''}
+        ${isAdmin()?`<button class="btn btn-sm btn-secondary" data-rpwd="${i}">Redefinir senha</button>`:''}
+        ${isAdmin()&&u.email!==State.user?.email?`<button class="btn btn-sm btn-danger" data-del="${i}">Excluir</button>`:''}
+      </td>
+    </tr>`).join('') : '<tr><td colspan="5" class="empty">Sem usuários</td></tr>';
+  $('#content').innerHTML = `<div class="card"><div class="table-wrap"><table>
+    <thead><tr><th>Nome</th><th>Email</th><th>Perfil</th><th>Status</th><th></th></tr></thead>
+    <tbody>${tbody}</tbody>
+  </table></div></div>`;
+  $$('[data-edit]', $('#content')).forEach(b=>{
+    b.addEventListener('click', ()=> openUserModal(items[+b.dataset.edit]));
+  });
+  $$('[data-tog]', $('#content')).forEach(b=>{
+    b.addEventListener('click', async ()=>{
+      const u = items[+b.dataset.tog]; if(!u) return;
+      await supa.from('perfis').update({ ativo:!u.ativo }).eq('email',u.email);
+      toast('Status atualizado','success'); renderUsuarios();
+    });
+  });
+  $$('[data-rpwd]', $('#content')).forEach(b=>{
+    b.addEventListener('click', async ()=>{
+      const u = items[+b.dataset.rpwd]; if(!u||!u.email) return;
+      const { error } = await supa.auth.resetPasswordForEmail(u.email, { redirectTo: location.origin + location.pathname });
+      if(error) toast(error.message,'error');
+      else toast(`E-mail de redefinição enviado para ${u.email}`,'success');
+    });
+  });
+  $$('[data-del]', $('#content')).forEach(b=>{
+    b.addEventListener('click', async ()=>{
+      const u = items[+b.dataset.del]; if(!u) return;
+      const ok = await confirmDel(`Excluir o usuário "${u.nome||u.email}"? Esta ação não pode ser desfeita.`);
+      if(!ok) return;
+      const { error } = await supa.from('perfis').delete().eq('email',u.email);
+      if(error) return toast(error.message,'error');
+      toast('Usuário excluído','success'); renderUsuarios();
+    });
+  });
 }
 
 function openUserModal(item=null){
@@ -3299,8 +3297,9 @@ function openUserModal(item=null){
         toast('Usuário criado','success');
       }catch(err){ return toast(err.message,'error'); }
     } else {
-      const { error } = await supa.from('perfis').update({ nome:data.nome, perfil:data.perfil, ativo:data.ativo }).eq('email',item.email);
+      const { data:updated, error } = await supa.from('perfis').update({ nome:data.nome, perfil:data.perfil, ativo:data.ativo }).eq('email',item.email).select();
       if(error) return toast(error.message,'error');
+      if(!updated||updated.length===0) return toast('Não foi possível salvar. Verifique as permissões no Supabase (RLS).','error');
       toast('Atualizado','success');
     }
     closeModal(); renderUsuarios();
