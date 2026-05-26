@@ -791,11 +791,15 @@ function getLinkedDocs(item){
 }
 
 function renderLinkedDocBtns(linked){
-  const { proposta, contrato } = linked;
+  const { proposta, vistoria, contrato } = linked;
   let h = '';
   if(proposta){
     h += `<button type="button" class="btn btn-secondary" id="lnkPropBtn" title="Visualizar proposta original">📄 Proposta</button>`;
     h += `<button type="button" class="btn btn-secondary" id="lnkPropDlBtn" title="Download PDF da proposta">⬇️ PDF Proposta</button>`;
+  }
+  if(vistoria){
+    h += `<button type="button" class="btn btn-secondary" id="lnkVistBtn" title="Dados técnicos da vistoria">🔍 Vistoria</button>`;
+    h += `<button type="button" class="btn btn-secondary" id="lnkVistDlBtn" title="Imprimir/baixar laudo da vistoria">⬇️ PDF Vistoria</button>`;
   }
   if(contrato){
     h += `<button type="button" class="btn btn-secondary" id="lnkContBtn" title="Visualizar contrato">📋 Contrato</button>`;
@@ -805,10 +809,14 @@ function renderLinkedDocBtns(linked){
 }
 
 function attachLinkedDocListeners(linked){
-  const { proposta, contrato } = linked;
+  const { proposta, vistoria, contrato } = linked;
   if(proposta){
     $('#lnkPropBtn')?.addEventListener('click',   ()=> abrirPropostaJanela(proposta, false));
     $('#lnkPropDlBtn')?.addEventListener('click', ()=> abrirPropostaJanela(proposta, true));
+  }
+  if(vistoria){
+    $('#lnkVistBtn')?.addEventListener('click',   ()=> abrirVistoriaJanela(vistoria, false));
+    $('#lnkVistDlBtn')?.addEventListener('click', ()=> abrirVistoriaJanela(vistoria, true));
   }
   if(contrato){
     $('#lnkContBtn')?.addEventListener('click',   ()=> abrirContratoJanela(contrato, false));
@@ -1690,6 +1698,175 @@ function openContratoModal(item=null){
     await supa.from('contratos').delete().eq('id',item.id);
     toast('Excluído','success'); closeModal(); renderPipeline();
   });
+}
+
+/* ============================================================
+   LAUDO DE VISTORIA TÉCNICA HTML/PDF
+   ============================================================ */
+function abrirVistoriaJanela(v, imprimir=false){
+  const txt = x => x||'—';
+  const num = (x,d=0) => x!=null?Number(x).toFixed(d):'—';
+  const dt  = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+  const bool= b => b?'Sim':'Não';
+  const dp  = v.dados_padrao||{};
+  const dec = v.dados_eletrodutos||{};
+  const dc  = v.dados_cabeamento||{};
+  const di  = v.dados_inversor||{};
+  const de  = v.dados_estrutura||{};
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<title>Laudo Vistoria — ${v.nome||''}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;background:#f0eaf8;color:#111;padding:20px}
+.print-bar{position:sticky;top:0;z-index:100;background:#fff;padding:10px 20px;border-bottom:2px solid #4B0082;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.print-bar span{font-size:13px;color:#4B0082;font-weight:700}
+.print-bar button{background:#4B0082;color:#fff;border:none;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
+.wrap{max-width:820px;margin:0 auto;background:#fff;padding:36px 44px;box-shadow:0 2px 16px rgba(0,0,0,.1)}
+.doc-header{text-align:center;margin-bottom:20px}
+.doc-header img{height:60px;margin-bottom:10px;display:block;margin-left:auto;margin-right:auto}
+.doc-header h1{font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#1a0a2e}
+.doc-header .sub{font-size:10px;color:#666;margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
+hr.rule{border:none;border-top:2px solid #6B21A8;margin:14px 0 20px}
+/* resultado badge */
+.result-badge{display:inline-block;padding:4px 14px;border-radius:20px;font-weight:700;font-size:12px;letter-spacing:.04em}
+.result-badge.aprovada{background:#d1fae5;color:#065f46}
+.result-badge.reprovada{background:#fee2e2;color:#991b1b}
+.result-badge.obra{background:#fef3c7;color:#92400e}
+/* ID box */
+.id-box{background:#f5f0fc;border-left:4px solid #6B21A8;border-radius:6px;padding:14px 18px;margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 16px;font-size:11.5px}
+.id-box .lbl{font-weight:600;color:#4B0082;font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+.id-box .val{color:#1a0a2e;margin-top:1px}
+/* Sections */
+h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#4B0082;padding:5px 0 4px;border-bottom:1px solid #c4b5fd;margin:20px 0 10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-bottom:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 16px;margin-bottom:10px}
+.grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px 12px;margin-bottom:10px}
+.item .lbl{font-size:9.5px;font-weight:600;color:#6b5f7a;text-transform:uppercase;letter-spacing:.04em}
+.item .val{font-size:12px;color:#1a0a2e;margin-top:2px}
+.item .val strong{color:#4B0082}
+/* Kit table */
+table.kit{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:11px}
+table.kit th{background:#4B0082;color:#fff;padding:6px 8px;text-align:left;font-size:10px;letter-spacing:.04em;font-weight:700}
+table.kit td{padding:6px 8px;border-bottom:1px solid #e9e2f5}
+table.kit tr:nth-child(even) td{background:#faf7ff}
+table.kit .hl{color:#4B0082;font-weight:700}
+/* Resultado + parecer */
+.result-row{display:flex;align-items:center;gap:12px;margin:10px 0}
+.parecer-box{background:#f5f0fc;border-radius:6px;padding:12px 16px;font-size:12px;line-height:1.7;margin-top:8px;white-space:pre-wrap}
+/* Alert box */
+.alert{background:#fffbeb;border:1px solid #f59e0b;border-radius:6px;padding:10px 14px;margin:14px 0;font-size:11px;font-weight:600}
+@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;padding:24px 32px}.print-bar{display:none!important}}
+</style></head><body>
+<div class="print-bar">
+  <span>SER Energia — Laudo de Vistoria Técnica</span>
+  <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+</div>
+<div class="wrap">
+
+<div class="doc-header">
+  <img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/>
+  <h1>Laudo de Vistoria Técnica</h1>
+  <div class="sub">SER Energia Renovável · CNPJ 58.656.750/0001-04</div>
+</div>
+<hr class="rule"/>
+
+<div class="id-box">
+  <div><div class="lbl">Cliente</div><div class="val"><strong>${txt(v.nome)}</strong></div></div>
+  <div><div class="lbl">Telefone</div><div class="val">${txt(v.telefone)}</div></div>
+  <div><div class="lbl">Email</div><div class="val">${txt(v.email)}</div></div>
+  <div><div class="lbl">Data Agendamento</div><div class="val">${dt(v.data_agendamento)}</div></div>
+  <div><div class="lbl">Técnico</div><div class="val">${txt(v.tecnico)}</div></div>
+  <div><div class="lbl">Vendedor</div><div class="val">${txt(v.vendedor)}</div></div>
+  <div><div class="lbl">CEP</div><div class="val">${txt(v.cep)}</div></div>
+  <div style="grid-column:span 2"><div class="lbl">Endereço</div><div class="val">${[v.rua,v.numero?'nº '+v.numero:'',v.complemento,v.bairro,v.cidade,v.estado].filter(Boolean).join(', ')||'—'}</div></div>
+  ${v.gmap?`<div style="grid-column:span 3"><div class="lbl">Google Maps</div><div class="val"><a href="${v.gmap}" target="_blank" style="color:#4B0082">${v.gmap}</a></div></div>`:''}
+</div>
+
+<div class="result-row">
+  <div class="item"><div class="lbl">Resultado da Vistoria</div></div>
+  <span class="result-badge ${(v.resultado||'').includes('aprovada')?((v.resultado||'').includes('obra')||v.resultado==='aprovada_com_sombreamento'?'obra':'aprovada'):'reprovada'}">
+    ${{aprovada:'✅ Aprovada',reprovada:'❌ Reprovada',aprovada_com_obra:'⚠️ Aprovada c/ Obra',aprovada_com_sombreamento:'⚠️ Aprovada c/ Sombreamento',aprovada_com_obra_e_sombreamento:'⚠️ Aprovada c/ Obra e Sombreamento'}[v.resultado]||txt(v.resultado)}
+  </span>
+  <span style="font-size:11px;color:#555">Status: <strong>${txt(v.status)}</strong></span>
+  <span style="font-size:11px;color:#555">Cliente presente: <strong>${bool(v.cliente_presente)}</strong></span>
+</div>
+
+<h2>📦 Kit Confirmado</h2>
+<table class="kit">
+  <thead><tr><th>ITEM</th><th>QTD.</th><th>MARCA</th><th>POTÊNCIA</th><th>kWp TOTAL</th></tr></thead>
+  <tbody>
+    <tr><td>Módulos Solares</td><td class="hl">${v.qtd_modulos||'—'} un.</td><td class="hl">${v.marca_modulo||'—'}</td><td>${v.pot_modulo||'—'} W</td><td rowspan="2" style="text-align:center;font-size:18px;font-weight:800;color:#4B0082;vertical-align:middle">${v.kwp||'—'}<br><span style="font-size:10px;font-weight:400">kWp</span></td></tr>
+    <tr><td>Inversor</td><td class="hl">${v.qtd_inversores||'—'} un.</td><td class="hl">${v.marca_inversor||'—'}</td><td>${v.pot_inversor||'—'} kW</td></tr>
+    ${v.qtd_baterias?`<tr><td>Baterias</td><td class="hl">${v.qtd_baterias} un.</td><td class="hl">${v.marca_bateria||'—'}</td><td>${v.pot_bateria||'—'} kWh</td><td>—</td></tr>`:''}
+  </tbody>
+</table>
+
+<h2>🔌 Dados do Padrão</h2>
+<div class="grid3">
+  <div class="item"><div class="lbl">Aumento de Carga</div><div class="val">${txt(dp.aumento_carga)}</div></div>
+  <div class="item"><div class="lbl">Tipo da Caixa</div><div class="val">${txt(dp.tipo_caixa)}</div></div>
+  <div class="item"><div class="lbl">Tipo Cabo Linha</div><div class="val">${txt(dp.tipo_cabo_linha)}</div></div>
+  <div class="item"><div class="lbl">Tipo Cabo Carga</div><div class="val">${txt(dp.tipo_cabo_carga)}</div></div>
+  <div class="item"><div class="lbl">Dist. Padrão–Ancoragem</div><div class="val"><strong>${txt(dp.dist_padrao_ancoragem)}</strong></div></div>
+  <div class="item"><div class="lbl">Dist. Ancoragem–Ramal</div><div class="val"><strong>${txt(dp.dist_ancoragem_ramal)}</strong></div></div>
+  <div class="item"><div class="lbl">Eletroduto Carga (qtd)</div><div class="val">${txt(dp.qtd_eletroduto_carga)}</div></div>
+  <div class="item"><div class="lbl">Curvas Carga (qtd)</div><div class="val">${txt(dp.qtd_curvas_carga)}</div></div>
+  <div class="item"><div class="lbl">Eletroduto Linha (qtd)</div><div class="val">${txt(dp.qtd_eletroduto_linha)}</div></div>
+  <div class="item"><div class="lbl">Curvas Linha (qtd)</div><div class="val">${txt(dp.qtd_curvas_linha)}</div></div>
+  ${dp.obs_padrao?`<div class="item" style="grid-column:span 3"><div class="lbl">Obs. Padrão</div><div class="val">${dp.obs_padrao}</div></div>`:''}
+</div>
+
+<h2>⚡ Eletrodutos CC / CA / Aterramento</h2>
+<div class="grid3">
+  <div class="item"><div class="lbl">CC — Eletroduto</div><div class="val"><strong>${txt(dec.cc_eletroduto)}</strong></div></div>
+  <div class="item"><div class="lbl">CC — Curvas</div><div class="val">${txt(dec.cc_curvas)}</div></div>
+  <div class="item"><div class="lbl">CC — Condulete</div><div class="val">${txt(dec.cc_condulete)}</div></div>
+  <div class="item"><div class="lbl">CA — Eletroduto</div><div class="val"><strong>${txt(dec.ca_eletroduto)}</strong></div></div>
+  <div class="item"><div class="lbl">CA — Curvas</div><div class="val">${txt(dec.ca_curvas)}</div></div>
+  <div class="item"><div class="lbl">CA — Condulete</div><div class="val">${txt(dec.ca_condulete)}</div></div>
+  <div class="item"><div class="lbl">AT — Eletroduto</div><div class="val"><strong>${txt(dec.at_eletroduto)}</strong></div></div>
+  <div class="item"><div class="lbl">AT — Curvas</div><div class="val">${txt(dec.at_curvas)}</div></div>
+  <div class="item"><div class="lbl">AT — Caixas</div><div class="val">${txt(dec.at_caixas)}</div></div>
+</div>
+
+<h2>🔗 Cabeamento</h2>
+<div class="grid3">
+  <div class="item"><div class="lbl">Flexível CC</div><div class="val">${txt(dc.flex_cc)}</div></div>
+  <div class="item"><div class="lbl">Cabo CC Mod→Inv</div><div class="val">${txt(dc.cabo_cc_mod_inv)}</div></div>
+  <div class="item"><div class="lbl">AT Mod→Inv</div><div class="val">${txt(dc.at_mod_inv)}</div></div>
+  <div class="item"><div class="lbl">AT Inv→ART</div><div class="val">${txt(dc.at_inv_art)}</div></div>
+  <div class="item"><div class="lbl">Flexível CA</div><div class="val">${txt(dc.flex_ca)}</div></div>
+  <div class="item"><div class="lbl">Cabo CA Inv→Conexão</div><div class="val">${txt(dc.cabo_ca_inv_conexao)}</div></div>
+</div>
+
+<h2>🏗️ Estrutura e Telhado</h2>
+<div class="grid3">
+  <div class="item"><div class="lbl">Tipo de Estrutura</div><div class="val"><strong>${txt(de.tipo_estrutura)}</strong></div></div>
+  <div class="item"><div class="lbl">Tipo de Telha</div><div class="val"><strong>${txt(de.tipo_telha)}</strong></div></div>
+  <div class="item"><div class="lbl">Módulos que Comporta</div><div class="val"><strong style="font-size:16px;color:#4B0082">${txt(de.modulos_comporta)}</strong></div></div>
+  <div class="item"><div class="lbl">Estruturas Aptas</div><div class="val">${txt(de.estruturas_aptas)}</div></div>
+  <div class="item"><div class="lbl">Estruturas c/ Obra</div><div class="val">${txt(de.estruturas_obra)}</div></div>
+  <div class="item"><div class="lbl">Trocar Inv. (inclinação)</div><div class="val">${bool(de.trocar_inversor_inclinacao)}</div></div>
+  ${de.desc_obra?`<div class="item" style="grid-column:span 3"><div class="lbl">Descrição da Obra Necessária</div><div class="val" style="background:#fffbeb;padding:8px;border-radius:4px;border:1px solid #fbbf24"><strong>${de.desc_obra}</strong></div></div>`:''}
+  ${di.obs_inversor?`<div class="item" style="grid-column:span 3"><div class="lbl">Obs. Inversor</div><div class="val">${di.obs_inversor}</div></div>`:''}
+  ${de.obs_estrutura?`<div class="item" style="grid-column:span 3"><div class="lbl">Obs. Estrutura</div><div class="val">${de.obs_estrutura}</div></div>`:''}
+</div>
+
+${v.parecer_final?`<h2>📋 Parecer Final do Técnico</h2><div class="parecer-box">${v.parecer_final}</div>`:''}
+
+${(v.resultado||'').includes('obra')||(v.resultado||'').includes('sombreamento')?`
+<div class="alert">⚠️ ATENÇÃO: Esta vistoria foi aprovada com ressalvas. Verifique o parecer final e a descrição de obras antes de iniciar a instalação.</div>`:''}
+${v.resultado==='reprovada'?`<div class="alert" style="background:#fee2e2;border-color:#ef4444">❌ VISTORIA REPROVADA — Instalação não autorizada. Verifique as pendências com a equipe técnica.</div>`:''}
+
+<div style="text-align:center;margin-top:28px;font-size:10px;color:#888;border-top:1px solid #ddd;padding-top:12px">
+  SER Energia Renovável · CNPJ 58.656.750/0001-04 · Laudo gerado em ${new Date().toLocaleDateString('pt-BR')}
+</div>
+</div></body></html>`);
+  win.document.close();
+  if(imprimir) setTimeout(()=>{ win.focus(); win.print(); }, 600);
 }
 
 /* ============================================================
