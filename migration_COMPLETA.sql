@@ -174,6 +174,53 @@ WHERE p.contrato_id = c.id AND p.lead_id IS NULL AND c.lead_id IS NOT NULL;
 UPDATE perfis SET perfil = 'admin' WHERE email = 'alvaro.office@gmail.com';
 
 -- ════════════════════════════════════════════════════════════
+-- BLOCO 6 — TABELA METAS (meta mensal do dashboard)
+-- ════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS metas (
+  id          uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  mes         text        NOT NULL UNIQUE,   -- formato 'YYYY-MM'
+  valor       numeric     DEFAULT 0,
+  criado_em   timestamptz DEFAULT now(),
+  atualizado_em timestamptz DEFAULT now()
+);
+
+ALTER TABLE metas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "autenticados_metas" ON metas;
+CREATE POLICY "autenticados_metas" ON metas
+  FOR ALL USING (auth.role() = 'authenticated');
+
+-- ════════════════════════════════════════════════════════════
+-- BLOCO 7 — COLUNAS EXTRAS EM INSTALACOES
+-- (endereço herdado do contrato e Google Maps)
+-- ════════════════════════════════════════════════════════════
+
+ALTER TABLE instalacoes
+  ADD COLUMN IF NOT EXISTS cep  text,
+  ADD COLUMN IF NOT EXISTS gmap text;
+
+-- ════════════════════════════════════════════════════════════
+-- BLOCO 8 — TABELA TENTATIVAS_CONTATO (se ainda não existir)
+-- ════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS tentativas_contato (
+  id         uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  lead_id    uuid        REFERENCES leads(id),
+  tipo       text,
+  resultado  text,
+  obs        text,
+  criado_por uuid,
+  criado_em  timestamptz DEFAULT now()
+);
+
+ALTER TABLE tentativas_contato ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "autenticados_tc" ON tentativas_contato;
+CREATE POLICY "autenticados_tc" ON tentativas_contato
+  FOR ALL USING (auth.role() = 'authenticated');
+
+-- ════════════════════════════════════════════════════════════
 -- VERIFICAÇÃO — descomente e rode para confirmar
 -- ════════════════════════════════════════════════════════════
 /*

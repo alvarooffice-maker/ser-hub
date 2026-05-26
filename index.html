@@ -128,7 +128,7 @@ tbody tr:hover{background:#fafaf6}
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
 .modal-overlay.active{display:flex}
-.modal{background:#fff;border-radius:14px;width:100%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);overflow:hidden}
 .modal.lg{max-width:1100px}
 .modal.sm{max-width:520px}
 .modal-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
@@ -153,13 +153,23 @@ tbody tr:hover{background:#fafaf6}
 .kanban-col-header .count{background:var(--primary);color:#fff;padding:2px 9px;border-radius:11px;font-size:11px}
 .kanban-col-body{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
 .kanban-col-body.drag-over{background:#fff5d9}
-.kanban-card{background:#fff;border-radius:8px;padding:11px 12px;box-shadow:var(--shadow);cursor:grab;border-left:3px solid var(--primary);transition:transform .1s, box-shadow .15s}
+.kanban-card{background:#fff;border-radius:8px;padding:11px 12px;box-shadow:var(--shadow);cursor:grab;border-left:3px solid var(--primary);transition:transform .1s, box-shadow .15s;max-height:340px;overflow-y:auto}
 .kanban-card:hover{box-shadow:var(--shadow-lg)}
 .kanban-card.dragging{opacity:.4}
 .kanban-card .name{font-weight:600;font-size:13px;margin-bottom:4px;display:flex;align-items:center;gap:6px}
 .kanban-card .meta{font-size:11.5px;color:var(--text-light);margin-bottom:3px}
-.kanban-card .footer{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.kanban-card .footer{display:flex;justify-content:space-between;align-items:center;margin-top:6px;position:sticky;bottom:0;background:#fff;padding-top:4px}
 .card-flags{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;margin-bottom:2px}
+/* Meta clock */
+.meta-clock-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.meta-clock-val{font-size:13px;font-weight:700;color:var(--primary);text-align:center}
+.meta-clock-label{font-size:11px;color:var(--text-light);text-align:center}
+.period-filter{display:flex;gap:4px;background:#f5f4f0;border-radius:8px;padding:4px}
+.period-btn{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:500;color:var(--text-light);cursor:pointer;transition:all .15s}
+.period-btn.active{background:#fff;color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.1);font-weight:600}
+.rank-tabs{display:flex;gap:2px;margin-bottom:10px;border-bottom:1px solid var(--border)}
+.rank-tab{padding:7px 14px;font-size:12.5px;color:var(--text-light);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-weight:500}
+.rank-tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:700}
 .flag{display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:600;border:1px solid transparent;white-space:nowrap;line-height:1.4}
 .flag.ok{background:#d1e7dd;color:#0f5132;border-color:#b8dcc9}
 .flag.warn{background:#fff3cd;color:#856404;border-color:#ffe8a1}
@@ -301,6 +311,7 @@ const State = {
   user:null, profile:null, route:'dashboard',
   leads:[], propostas:[], vistorias:[], contratos:[], logistica:[], instalacoes:[], homologacoes:[], posvenda:[],
   remarketing:[], comissoes:[], receitas:[], despesas:[], cadastros:[], perfis:[],
+  tentativas_contato:[], metas:[],
   charts:{}
 };
 
@@ -470,7 +481,7 @@ function navigate(route){
    DATA LOADERS
    ============================================================ */
 async function loadAll(){
-  const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis'];
+  const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis','tentativas_contato','metas'];
   const stateMap = { financeiro_receitas:'receitas', financeiro_despesas:'despesas' };
   await Promise.all(tables.map(async t => {
     try{
@@ -492,6 +503,21 @@ async function loadTable(table){
 /* ============================================================
    DASHBOARD
    ============================================================ */
+function getPeriodRange(period){
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const toStr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const end = toStr(now);
+  switch(period){
+    case 'dia': return [toStr(now), end];
+    case 'mes': return [toStr(new Date(now.getFullYear(),now.getMonth(),1)), end];
+    case 'trimestre': { const q=Math.floor(now.getMonth()/3); return [toStr(new Date(now.getFullYear(),q*3,1)),end]; }
+    case 'semestre': { const h=Math.floor(now.getMonth()/6); return [toStr(new Date(now.getFullYear(),h*6,1)),end]; }
+    case 'ano': return [toStr(new Date(now.getFullYear(),0,1)), end];
+    default: return [null, null];
+  }
+}
+
 async function renderDashboard(){
   await loadAll();
   const leads = filterByVendor(State.leads);
@@ -501,41 +527,72 @@ async function renderDashboard(){
   const totalKwp = instal.reduce((s,i)=>s+(Number(i.kwp)||0),0);
   const propsAbertas = props.filter(p=> !['aceita','recusada'].includes(p.status)).length;
   const contratosAssin = contratos.filter(c=>c.status==='assinado').length;
+  const td = today();
+  const mesAtual = td.slice(0,7); // YYYY-MM
+
+  // Meta do mês
+  const metaRec = (State.metas||[]).find(m=>m.mes===mesAtual);
+  const metaValor = Number(metaRec?.valor||0);
+  const [mesStart] = getPeriodRange('mes');
+  const valorMes = contratos.filter(c=>c.status==='assinado'&&c.data_assinatura>=mesStart&&c.data_assinatura<=td)
+    .reduce((s,c)=>s+(Number(c.valor)||0),0);
+  const pctMeta = metaValor > 0 ? Math.min(1, valorMes/metaValor) : 0;
+  const circum = 339.3; // 2*π*54
+  const dashOffset = circum * (1 - pctMeta);
 
   const fn = {
-    Lead: leads.length,
-    Proposta: props.length,
-    Vistoria: filterByVendor(State.vistorias).length,
-    Contrato: contratos.length,
-    Logística: filterByVendor(State.logistica).length,
-    Instalação: instal.length,
-    Homologação: filterByVendor(State.homologacoes).length,
-    'Pós Venda': filterByVendor(State.posvenda).length
+    Lead: leads.length, Proposta: props.length,
+    Vistoria: filterByVendor(State.vistorias).length, Contrato: contratos.length,
+    Logística: filterByVendor(State.logistica).length, Instalação: instal.length,
+    Homologação: filterByVendor(State.homologacoes).length, 'Pós Venda': filterByVendor(State.posvenda).length
   };
-  const maxFn = Math.max(1, ...Object.values(fn));
+  const maxFn = Math.max(1,...Object.values(fn));
 
   const threeDaysAgo = new Date(Date.now()-3*24*60*60*1000);
   const leadsSemContato = leads.filter(l => new Date(l.atualizado_em||l.criado_em) < threeDaysAgo && l.status==='em_contato').length;
-  const td = today();
   const vistHoje = filterByVendor(State.vistorias).filter(v=>v.data_agendamento===td).length;
   const instHoje = instal.filter(i=>i.data_instalacao===td).length;
 
-  const rank = {};
-  contratos.filter(c=>c.status==='assinado').forEach(c=>{
-    const v = c.vendedor||'—';
-    rank[v] = (rank[v]||0) + (Number(c.valor)||0);
-  });
-  const rankSorted = Object.entries(rank).sort((a,b)=>b[1]-a[1]).slice(0,8);
-
   $('#content').innerHTML = `
-    <div class="metrics">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <span style="font-size:13px;color:var(--text-light);font-weight:500">Filtrar rankings por período:</span>
+      <div class="period-filter" id="periodFilter">
+        <div class="period-btn" data-p="dia">Hoje</div>
+        <div class="period-btn active" data-p="mes">Mês</div>
+        <div class="period-btn" data-p="trimestre">Trimestre</div>
+        <div class="period-btn" data-p="semestre">Semestre</div>
+        <div class="period-btn" data-p="ano">Ano</div>
+      </div>
+    </div>
+
+    <div class="metrics" style="margin-bottom:16px">
       <div class="metric"><div class="metric-label">Total Leads</div><div class="metric-value">${leads.length}</div></div>
       <div class="metric"><div class="metric-label">Propostas Abertas</div><div class="metric-value">${propsAbertas}</div></div>
       <div class="metric"><div class="metric-label">Contratos Assinados</div><div class="metric-value">${contratosAssin}</div></div>
       <div class="metric"><div class="metric-label">kWp Instalado</div><div class="metric-value">${fmtNum(totalKwp,2)}</div></div>
     </div>
 
-    <div class="charts-grid">
+    <div style="display:grid;grid-template-columns:180px 1fr 220px;gap:16px;margin-bottom:16px">
+      <!-- Meta do mês -->
+      <div class="card" style="padding:16px;display:flex;flex-direction:column;align-items:center;gap:6px">
+        <div style="font-size:12px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Meta do Mês</div>
+        <div class="meta-clock-wrap">
+          <svg viewBox="0 0 140 140" width="110" height="110">
+            <circle cx="70" cy="70" r="54" fill="none" stroke="#e9e2f5" stroke-width="13"/>
+            <circle cx="70" cy="70" r="54" fill="none" stroke="var(--primary)" stroke-width="13"
+              stroke-dasharray="${circum}" stroke-dashoffset="${dashOffset.toFixed(1)}"
+              stroke-linecap="round" transform="rotate(-90 70 70)"
+              style="transition:stroke-dashoffset .6s ease"/>
+            <text x="70" y="65" text-anchor="middle" font-size="18" font-weight="800" fill="var(--primary)" font-family="inherit">${Math.round(pctMeta*100)}%</text>
+            <text x="70" y="82" text-anchor="middle" font-size="9" fill="#6b5f7a" font-family="inherit">DA META</text>
+          </svg>
+          <div class="meta-clock-val">${fmtBRL(valorMes)}</div>
+          <div class="meta-clock-label">de ${fmtBRL(metaValor)}</div>
+          ${isAdmin()?`<button class="btn btn-sm btn-secondary" id="editMetaBtn" style="margin-top:4px;font-size:11px">✏️ Definir meta</button>`:''}
+        </div>
+      </div>
+
+      <!-- Funil -->
       <div class="card">
         <div class="card-header"><h3>Funil do Pipeline</h3></div>
         <div class="funnel">
@@ -546,27 +603,119 @@ async function renderDashboard(){
             </div>`).join('')}
         </div>
       </div>
+
+      <!-- Alertas -->
       <div class="card">
         <div class="card-header"><h3>Alertas</h3></div>
         <div style="display:flex;flex-direction:column;gap:10px">
-          <div style="padding:12px;background:#fff3cd;border-radius:8px"><strong>${leadsSemContato}</strong> leads sem contato há +3 dias</div>
-          <div style="padding:12px;background:#cfe2ff;border-radius:8px"><strong>${vistHoje}</strong> vistorias agendadas para hoje</div>
-          <div style="padding:12px;background:#d1e7dd;border-radius:8px"><strong>${instHoje}</strong> instalações agendadas para hoje</div>
+          <div style="padding:12px;background:#fff3cd;border-radius:8px;font-size:13px"><strong>${leadsSemContato}</strong> leads sem contato há +3 dias</div>
+          <div style="padding:12px;background:#cfe2ff;border-radius:8px;font-size:13px"><strong>${vistHoje}</strong> vistorias para hoje</div>
+          <div style="padding:12px;background:#d1e7dd;border-radius:8px;font-size:13px"><strong>${instHoje}</strong> instalações para hoje</div>
         </div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header"><h3>Ranking de Vendedores (contratos assinados)</h3></div>
-      ${rankSorted.length ? `
-      <table>
-        <thead><tr><th>#</th><th>Vendedor</th><th>Valor fechado</th></tr></thead>
-        <tbody>
-          ${rankSorted.map(([v,val],i)=>`<tr><td>${i+1}</td><td>${esc(v)}</td><td>${fmtBRL(val)}</td></tr>`).join('')}
-        </tbody>
-      </table>` : '<div class="empty">Nenhuma venda registrada ainda.</div>'}
+    <!-- Rankings -->
+    <div class="card" id="rankingsCard">
+      <div class="card-header" style="margin-bottom:0"><h3>Rankings <span style="font-size:11px;color:var(--text-light);font-weight:400" id="rankPeriodLabel">(Mês atual)</span></h3></div>
+      <div class="rank-tabs" style="margin-top:12px">
+        <div class="rank-tab active" data-rank="vendedores">🏆 Vendedores</div>
+        <div class="rank-tab" data-rank="bancos">🏦 Bancos</div>
+        <div class="rank-tab" data-rank="forma_pgto">💳 Forma Pgto</div>
+        <div class="rank-tab" data-rank="distribuidores">📦 Distribuidores</div>
+      </div>
+      <div id="rankBody"></div>
     </div>
   `;
+
+  // Estado interno do dashboard
+  let dashPeriod = 'mes';
+  let dashRankTab = 'vendedores';
+
+  function renderRankings(){
+    const [startD, endD] = getPeriodRange(dashPeriod);
+    const periodLabels = {dia:'Hoje',mes:'Mês atual',trimestre:'Trimestre',semestre:'Semestre',ano:'Ano atual'};
+    $('#rankPeriodLabel').textContent = `(${periodLabels[dashPeriod]||dashPeriod})`;
+
+    const contFiltrados = contratos.filter(c=>c.status==='assinado' && c.data_assinatura >= startD && c.data_assinatura <= endD);
+    let rows = [];
+
+    if(dashRankTab === 'vendedores'){
+      const grp = {};
+      contFiltrados.forEach(c=>{ const k=c.vendedor||'—'; grp[k]=(grp[k]||0)+(Number(c.valor)||0); });
+      rows = Object.entries(grp).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${esc(k)}</td><td>${fmtBRL(v)}</td><td>${contFiltrados.filter(c=>(c.vendedor||'—')===k).length} contratos</td></tr>`);
+      $('#rankBody').innerHTML = rows.length ? `<table><thead><tr><th>#</th><th>Vendedor</th><th>Volume</th><th>Qtd</th></tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div class="empty">Nenhum dado no período.</div>';
+    }
+    else if(dashRankTab === 'bancos'){
+      const grp = {};
+      contFiltrados.filter(c=>c.banco).forEach(c=>{ const k=c.banco||'—'; grp[k]=(grp[k]||0)+(Number(c.valor)||0); });
+      rows = Object.entries(grp).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${esc(k)}</td><td>${fmtBRL(v)}</td></tr>`);
+      $('#rankBody').innerHTML = rows.length ? `<table><thead><tr><th>#</th><th>Banco</th><th>Volume</th></tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div class="empty">Nenhum financiamento no período.</div>';
+    }
+    else if(dashRankTab === 'forma_pgto'){
+      const grp = {};
+      contFiltrados.forEach(c=>{ const k=c.forma_pgto||'—'; grp[k]=(grp[k]||0)+1; });
+      rows = Object.entries(grp).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${esc(k)}</td><td>${v}</td><td>${Math.round(v/Math.max(1,contFiltrados.length)*100)}%</td></tr>`);
+      $('#rankBody').innerHTML = rows.length ? `<table><thead><tr><th>#</th><th>Forma Pagamento</th><th>Qtd</th><th>%</th></tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div class="empty">Nenhum dado no período.</div>';
+    }
+    else if(dashRankTab === 'distribuidores'){
+      const logFiltrados = filterByVendor(State.logistica).filter(l=>l.criado_em>=startD+'T00:00:00' && l.criado_em<=endD+'T23:59:59' && l.distribuidora);
+      const grp = {};
+      logFiltrados.forEach(l=>{ const k=l.distribuidora||'—'; grp[k]=(grp[k]||0)+1; });
+      rows = Object.entries(grp).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${esc(k)}</td><td>${v}</td></tr>`);
+      $('#rankBody').innerHTML = rows.length ? `<table><thead><tr><th>#</th><th>Distribuidora</th><th>Qtd pedidos</th></tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div class="empty">Nenhum dado no período.</div>';
+    }
+  }
+
+  renderRankings();
+
+  // Filtro de período
+  $$('.period-btn','#periodFilter' in document ? document : document).forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('.period-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      dashPeriod = btn.dataset.p;
+      renderRankings();
+    });
+  });
+
+  // Tabs de ranking
+  $$('.rank-tab').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+      $$('.rank-tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      dashRankTab = tab.dataset.rank;
+      renderRankings();
+    });
+  });
+
+  // Editar meta
+  $('#editMetaBtn')?.addEventListener('click',()=>{
+    const metaAtual = metaValor||'';
+    openModal(`
+      <div class="modal-header"><h2>Meta do Mês — ${mesAtual}</h2><button class="modal-close">×</button></div>
+      <form id="metaForm"><div class="modal-body">
+        <div class="form-grid">
+          ${formField({label:`Meta para ${mesAtual}`,name:'valor',type:'number',value:metaAtual,required:true,placeholder:'0'})}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar meta</button>
+      </div></form>
+    `,'sm');
+    $('#metaForm').addEventListener('submit', async e=>{
+      e.preventDefault();
+      const d = readForm($('#metaForm'));
+      const val = parseBR(d.valor)||0;
+      if(metaRec){
+        await supa.from('metas').update({valor:val,atualizado_em:new Date().toISOString()}).eq('id',metaRec.id);
+      } else {
+        await supa.from('metas').insert({mes:mesAtual,valor:val});
+      }
+      toast('Meta salva!','success'); closeModal(); renderDashboard();
+    });
+  });
 }
 
 /* ============================================================
@@ -694,6 +843,24 @@ function stageStatus(item,stage){
    ───────────────────────────────────────────────────────────── */
 function stageFlags(item, stage){
   const sid = stage.id;
+
+  // ── FLAGS DE CONTATO PARA LEADS ───────────────────────────
+  if(sid === 'lead' && item.status !== 'proposta'){
+    const attempts = (State.tentativas_contato||[])
+      .filter(t=>t.lead_id===item.id)
+      .sort((a,b)=> (a.criado_em||'')<(b.criado_em||'') ? -1 : 1);
+    if(!attempts.length) return '';
+    const ordinal = n => n===1?'1º':n===2?'2º':n===3?'3º':`${n}º`;
+    const flagsL = attempts.map((t,i)=>{
+      const res = t.resultado||'';
+      let c = 'warn';
+      if(/contato_feito|interessado|agendou_retorno/.test(res)) c = 'ok';
+      else if(/nao_interessado/.test(res)) c = 'danger';
+      return `<span class="flag ${c}" title="${ordinal(i+1)} Contato: ${t.tipo} → ${res}">📞 ${ordinal(i+1)} ${t.tipo}</span>`;
+    });
+    return `<div class="card-flags">${flagsL.join('')}</div>`;
+  }
+
   if(!['contrato','logistica','instalacao','homologacao','posvenda'].includes(sid)) return '';
 
   const flags = [];
@@ -906,10 +1073,17 @@ function buildTransitionPayload(item, fromStage, toStage){
     ...base, contrato_id:item.id, proposta_id:item.proposta_id||null, vistoria_id:item.vistoria_id||null,
     kwp:item.kwp, valor:item.valor, status:'aguardando'
   };
-  if(toStage==='instalacao') return {
-    ...base, logistica_id:item.id, contrato_id:item.contrato_id, proposta_id:item.proposta_id||null, vistoria_id:item.vistoria_id||null,
-    kwp:item.kwp, valor:item.valor, distribuidora:item.distribuidora, status:'agendada'
-  };
+  if(toStage==='instalacao'){
+    // Herda endereço do contrato para facilitar a equipe técnica
+    const contrato = (State.contratos||[]).find(c=>String(c.id)===String(item.contrato_id));
+    const endParts = [contrato?.rua, contrato?.numero?`nº ${contrato.numero}`:'', contrato?.complemento, contrato?.bairro, contrato?.cidade, contrato?.estado].filter(Boolean);
+    const endereco = endParts.length ? endParts.join(', ') : (item.endereco||'');
+    return {
+      ...base, logistica_id:item.id, contrato_id:item.contrato_id, proposta_id:item.proposta_id||null, vistoria_id:item.vistoria_id||null,
+      kwp:item.kwp, valor:item.valor, distribuidora:item.distribuidora, status:'agendada', endereco,
+      cep:contrato?.cep||null, gmap:contrato?.gmap||null
+    };
+  }
   if(toStage==='homologacao') return {
     ...base, instalacao_id:item.id, contrato_id:item.contrato_id, proposta_id:item.proposta_id||null, vistoria_id:item.vistoria_id||null,
     kwp:item.kwp, etapa:'aguardando_docs'
@@ -2848,7 +3022,7 @@ function openLogisticaModal(item=null){
   const statusOpts = [['aguardando','Aguardando'],['comprado','Comprado'],['enviado','Enviado'],['entregue','Entregue']];
 
   openModal(`
-    <div class="modal-header"><h2>Logística</h2><button class="modal-close">×</button></div>
+    <div class="modal-header"><h2>Logística — ${esc(item.nome||'')}</h2><button class="modal-close">×</button></div>
     <form id="logForm">
       <div class="modal-body">
         <div class="form-grid">
@@ -2862,6 +3036,9 @@ function openLogisticaModal(item=null){
           ${formField({label:'Data Prevista Entrega',name:'data_prevista_entrega',type:'date',value:item.data_prevista_entrega})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'aguardando',options:statusOpts})}
           ${formField({label:'Observações',name:'obs',type:'textarea',value:item.obs,full:true})}
+        </div>
+        <div style="margin-top:10px;padding:10px;background:#fffbeb;border-radius:8px;font-size:12px;color:#856404">
+          💡 Ao marcar como <strong>Comprado</strong> e salvar, o card será automaticamente movido para <strong>Instalação</strong>.
         </div>
       </div>
       <div class="modal-footer">
@@ -2878,8 +3055,25 @@ function openLogisticaModal(item=null){
     e.preventDefault();
     const data = readForm(form);
     Object.keys(data).filter(k=>k.startsWith('_')).forEach(k=>delete data[k]);
+    // Garante que valor seja número
+    if(data.valor !== null) data.valor = Number(data.valor)||null;
     const { error } = await supa.from('logistica').update(data).eq('id',item.id);
-    if(error) return toast(error.message,'error');
+    if(error) return toast('Erro ao salvar: '+error.message,'error');
+
+    // Auto-avanço para Instalação quando marcado como comprado
+    if(data.status === 'comprado'){
+      const { data: instExist } = await supa.from('instalacoes').select('id').eq('logistica_id', item.id).maybeSingle();
+      if(!instExist){
+        const logAtual = {...item, ...data};
+        const instPayload = buildTransitionPayload(logAtual, 'logistica', 'instalacao');
+        instPayload.criado_por = State.user?.id;
+        const { error: instErr } = await supa.from('instalacoes').insert(instPayload);
+        if(instErr) toast('Logística salva. Erro ao criar instalação: '+instErr.message,'error');
+        else toast('Comprado ✓ → Instalação criada automaticamente!','success');
+        await loadAll(); closeModal(); renderPipeline();
+        return;
+      }
+    }
     toast('Salvo','success'); await loadAll(); closeModal(); renderPipeline();
   });
   $('#delLogBtn')?.addEventListener('click', async ()=>{
@@ -2898,27 +3092,45 @@ function openInstalacaoModal(item=null){
   const statusOpts = [['agendada','Agendada'],['em_andamento','Em andamento'],['concluida','Concluída'],['cancelada','Cancelada']];
   const fotos = item.fotos || {};
 
+  // Busca endereço do contrato para pré-preencher
+  const logistica = (State.logistica||[]).find(l=>String(l.id)===String(item.logistica_id));
+  const contrato = (State.contratos||[]).find(c=>String(c.id)===String(item.contrato_id||logistica?.contrato_id));
+  const endContrato = contrato ? [contrato.rua, contrato.numero?`nº ${contrato.numero}`:'', contrato.complemento, contrato.bairro, contrato.cidade, contrato.estado].filter(Boolean).join(', ') : '';
+  const enderecoFinal = item.endereco || endContrato || '';
+  const gmapFinal = item.gmap || contrato?.gmap || '';
+  const cepFinal = item.cep || contrato?.cep || '';
+
   openModal(`
-    <div class="modal-header"><h2>Instalação</h2><button class="modal-close">×</button></div>
+    <div class="modal-header"><h2>Instalação — ${esc(item.nome||'')}</h2><button class="modal-close">×</button></div>
     <form id="instForm">
       <div class="modal-body">
         <div class="form-grid">
           ${formField({label:'Cliente',name:'_nome',value:item.nome,readonly:true})}
           ${formField({label:'kWp',name:'_kwp',value:item.kwp,readonly:true})}
-          ${formField({label:'Endereço',name:'endereco',value:item.endereco})}
           ${formField({label:'Vendedor',name:'_vendedor',value:item.vendedor,readonly:true})}
           ${formField({label:'Técnico',name:'tecnico',value:item.tecnico,required:true})}
           ${formField({label:'Data Instalação',name:'data_instalacao',type:'date',value:item.data_instalacao,required:true})}
           ${formField({label:'Hora',name:'hora_instalacao',type:'time',value:item.hora_instalacao})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'agendada',options:statusOpts})}
-          ${formField({label:'Tem Poste',name:'tem_poste',type:'toggle',value:item.tem_poste})}
-          ${formField({label:'Valor Poste',name:'val_poste',type:'number',value:item.val_poste})}
-          ${formField({label:'Tem Troca Padrão',name:'tem_troca_padrao',type:'toggle',value:item.tem_troca_padrao})}
-          ${formField({label:'Valor Troca Padrão',name:'val_troca_padrao',type:'number',value:item.val_troca_padrao})}
-          ${formField({label:'Estimado',name:'estimado',type:'number',value:item.estimado})}
-          ${formField({label:'Pago',name:'pago',type:'number',value:item.pago})}
-          ${formField({label:'Observações',name:'obs',type:'textarea',value:item.obs,full:true})}
         </div>
+        <div class="section" style="margin-top:14px"><div class="section-header"><h4>📍 Endereço da Instalação</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body"><div class="form-grid">
+            ${formField({label:'CEP',name:'cep',value:cepFinal})}
+            ${formField({label:'Endereço completo',name:'endereco',value:enderecoFinal,full:true})}
+            ${formField({label:'Google Maps',name:'gmap',value:gmapFinal,full:true})}
+          </div></div>
+        </div>
+        <div class="section collapsed" style="margin-top:10px"><div class="section-header"><h4>💰 Valores Extras</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body"><div class="form-grid">
+            ${formField({label:'Tem Poste',name:'tem_poste',type:'toggle',value:item.tem_poste})}
+            ${formField({label:'Valor Poste',name:'val_poste',type:'number',value:item.val_poste})}
+            ${formField({label:'Tem Troca Padrão',name:'tem_troca_padrao',type:'toggle',value:item.tem_troca_padrao})}
+            ${formField({label:'Valor Troca Padrão',name:'val_troca_padrao',type:'number',value:item.val_troca_padrao})}
+            ${formField({label:'Estimado',name:'estimado',type:'number',value:item.estimado})}
+            ${formField({label:'Pago',name:'pago',type:'number',value:item.pago})}
+          </div></div>
+        </div>
+        ${formField({label:'Observações',name:'obs',type:'textarea',value:item.obs,full:true})}
         <div class="section" style="margin-top:14px"><div class="section-header"><h4>📸 Fotos Pós-Instalação</h4><span class="section-toggle">▼</span></div>
           <div class="section-body">
             ${fileUploadBlock('Fotos da instalação','geral','instalacoes',fotos.geral||[],true)}
@@ -2927,12 +3139,13 @@ function openInstalacaoModal(item=null){
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" id="delInstBtn">Excluir</button>
+        ${logistica?`<button type="button" class="btn btn-secondary" id="editLogBtn">📦 Editar Logística</button>`:''}
         ${renderLinkedDocBtns(linked)}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
       </div>
     </form>
-  `);
+  `,'lg');
   const form = $('#instForm');
   attachLinkedDocListeners(linked);
   const filesStore = { geral: (fotos.geral||[]).slice() };
@@ -2944,13 +3157,18 @@ function openInstalacaoModal(item=null){
     Object.keys(data).filter(k=>k.startsWith('_')).forEach(k=>delete data[k]);
     data.fotos = filesStore;
     const { error } = await supa.from('instalacoes').update(data).eq('id',item.id);
-    if(error) return toast(error.message,'error');
+    if(error) return toast('Erro ao salvar: '+error.message,'error');
     toast('Salvo','success'); await loadAll(); closeModal(); renderPipeline();
   });
   $('#delInstBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir?')) return;
     await supa.from('instalacoes').delete().eq('id',item.id);
     toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
+  });
+  // Botão para editar a logística vinculada
+  $('#editLogBtn')?.addEventListener('click', ()=>{
+    closeModal();
+    if(logistica) openLogisticaModal(logistica);
   });
 }
 
