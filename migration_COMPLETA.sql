@@ -1,9 +1,9 @@
 -- ============================================================
 -- SISTEMA SER — MIGRAÇÃO COMPLETA
--- Consolida: auditoria + flags + dedup + backfill + homologação + pós venda
+-- Consolida: auditoria + flags + dedup + backfill + homologação + pós venda + técnicos
 -- Execute TODO de uma vez no SQL Editor do Supabase
 -- 100% idempotente: seguro rodar mesmo que partes já existam
--- Atualizado em: maio 2026 (Blocos 1–10)
+-- Atualizado em: maio 2026 (Blocos 1–11)
 -- ============================================================
 
 -- ════════════════════════════════════════════════════════════
@@ -250,6 +250,19 @@ ALTER TABLE homologacoes
 ALTER TABLE posvenda
   ADD COLUMN IF NOT EXISTS data_ativacao   date,
   ADD COLUMN IF NOT EXISTS obs             text;
+
+-- ════════════════════════════════════════════════════════════
+-- BLOCO 11 — TÉCNICO EM VISTORIAS E INSTALAÇÕES
+-- Campo adicionado ao datalist e formulários em mai/2026
+-- ════════════════════════════════════════════════════════════
+
+ALTER TABLE vistorias
+  ADD COLUMN IF NOT EXISTS tecnico          text,
+  ADD COLUMN IF NOT EXISTS hora_agendamento time;
+
+ALTER TABLE instalacoes
+  ADD COLUMN IF NOT EXISTS tecnico          text,
+  ADD COLUMN IF NOT EXISTS data_instalacao  date;
 
 -- ════════════════════════════════════════════════════════════
 -- VERIFICAÇÃO — descomente e rode para confirmar
