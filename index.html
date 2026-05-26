@@ -1693,7 +1693,7 @@ function openVistoriaModal(item=null){
   $('#delVistBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir vistoria?')) return;
     await supa.from('vistorias').delete().eq('id',item.id);
-    toast('Excluído','success'); closeModal(); renderPipeline();
+    toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
   });
 }
 
@@ -1851,7 +1851,7 @@ function openContratoModal(item=null){
   $('#delContBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir contrato?')) return;
     await supa.from('contratos').delete().eq('id',item.id);
-    toast('Excluído','success'); closeModal(); renderPipeline();
+    toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
   });
 }
 
@@ -2880,12 +2880,12 @@ function openLogisticaModal(item=null){
     Object.keys(data).filter(k=>k.startsWith('_')).forEach(k=>delete data[k]);
     const { error } = await supa.from('logistica').update(data).eq('id',item.id);
     if(error) return toast(error.message,'error');
-    toast('Salvo','success'); closeModal(); renderPipeline();
+    toast('Salvo','success'); await loadAll(); closeModal(); renderPipeline();
   });
   $('#delLogBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir?')) return;
     await supa.from('logistica').delete().eq('id',item.id);
-    toast('Excluído','success'); closeModal(); renderPipeline();
+    toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
   });
 }
 
@@ -2945,12 +2945,12 @@ function openInstalacaoModal(item=null){
     data.fotos = filesStore;
     const { error } = await supa.from('instalacoes').update(data).eq('id',item.id);
     if(error) return toast(error.message,'error');
-    toast('Salvo','success'); closeModal(); renderPipeline();
+    toast('Salvo','success'); await loadAll(); closeModal(); renderPipeline();
   });
   $('#delInstBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir?')) return;
     await supa.from('instalacoes').delete().eq('id',item.id);
-    toast('Excluído','success'); closeModal(); renderPipeline();
+    toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
   });
 }
 
@@ -3015,12 +3015,12 @@ function openHomologacaoModal(item=null){
     data.docs = docStore;
     const { error } = await supa.from('homologacoes').update(data).eq('id',item.id);
     if(error) return toast(error.message,'error');
-    toast('Salvo','success'); closeModal(); renderPipeline();
+    toast('Salvo','success'); await loadAll(); closeModal(); renderPipeline();
   });
   $('#delHomBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir?')) return;
     await supa.from('homologacoes').delete().eq('id',item.id);
-    toast('Excluído','success'); closeModal(); renderPipeline();
+    toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
   });
 }
 
@@ -3060,12 +3060,12 @@ function openPosVendaModal(item=null){
     Object.keys(data).filter(k=>k.startsWith('_')).forEach(k=>delete data[k]);
     const { error } = await supa.from('posvenda').update(data).eq('id',item.id);
     if(error) return toast(error.message,'error');
-    toast('Salvo','success'); closeModal(); renderPipeline();
+    toast('Salvo','success'); await loadAll(); closeModal(); renderPipeline();
   });
   $('#delPvBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir?')) return;
     await supa.from('posvenda').delete().eq('id',item.id);
-    toast('Excluído','success'); closeModal(); renderPipeline();
+    toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
   });
 }
 
