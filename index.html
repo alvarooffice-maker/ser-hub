@@ -1719,7 +1719,7 @@ function abrirVistoriaJanela(v, imprimir=false){
 <meta charset="UTF-8">
 <title>Laudo Vistoria — ${v.nome||''}</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;background:#f0eaf8;color:#111;padding:20px}
 .print-bar{position:sticky;top:0;z-index:100;background:#fff;padding:10px 20px;border-bottom:2px solid #4B0082;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .print-bar span{font-size:13px;color:#4B0082;font-weight:700}
@@ -1914,7 +1914,7 @@ function abrirPropostaJanela(p, imprimir=false){
 <meta charset="UTF-8">
 <title>Proposta SER — ${p.nome||''}</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0eaf8;color:#111}
 .print-bar{position:fixed;top:0;left:0;right:0;z-index:1000;background:#1a0a2e;padding:10px 24px;display:flex;justify-content:space-between;align-items:center}
 .print-bar span{font-size:13px;color:#c4b5fd;font-weight:600}
@@ -1924,7 +1924,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .page{max-width:794px;margin:0 auto 24px;background:#fff;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.15)}
 
 /* ── PAGE 1: CAPA ── */
-.capa{background:linear-gradient(160deg,#0f0720 0%,#1a0a2e 40%,#2d1550 70%,#4B0082 100%);color:#fff;display:flex;flex-direction:column}
+.capa{background:linear-gradient(160deg,#0f0720 0%,#1a0a2e 40%,#2d1550 70%,#4B0082 100%);color:#fff;display:flex;flex-direction:column;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .capa-top{padding:20px 44px 0;display:flex;justify-content:space-between;align-items:flex-start}
 .capa-logo img{height:56px}
 .capa-badge{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:6px 16px;font-size:11px;color:#c4b5fd;letter-spacing:.06em}
@@ -2039,7 +2039,7 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
 .contact-validity{margin-top:12px;background:#f9f5ff;border-radius:8px;padding:10px 20px;font-size:11px;color:#6B21A8;font-weight:600}
 
 /* ── PAGE HEADER ── */
-.pg-header{background:#1a0a2e;padding:14px 44px;display:flex;justify-content:space-between;align-items:center}
+.pg-header{background:#1a0a2e;padding:14px 44px;display:flex;justify-content:space-between;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .pg-header img{height:36px}
 .pg-header-right{font-size:10px;color:#a78bfa;text-align:right;line-height:1.5}
 
@@ -2297,7 +2297,7 @@ function abrirContratoJanela(c, imprimir=false){
 <meta charset="UTF-8">
 <title>Contrato — ${c.nome||'SER Energia'}</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:'Times New Roman',Times,serif;font-size:12pt;line-height:1.7;color:#111;background:#f0eaf8;padding:24px}
 .print-bar{position:sticky;top:0;z-index:100;background:#fff;padding:10px 24px;border-bottom:2px solid #4B0082;display:flex;justify-content:space-between;align-items:center}
 .print-bar span{font-size:13px;color:#4B0082;font-weight:700}
