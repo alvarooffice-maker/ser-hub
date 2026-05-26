@@ -309,6 +309,10 @@ const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const fmtBRL = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const fmtNum = (v,d=2) => (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+// Converte "1.500,50" → 1500.5 (aceita digitação brasileira com vírgula)
+const parseBR = v => { if(v==null||v==='') return null; const s=String(v).replace(/[^\d,.\-]/g,'').replace(/\./g,'').replace(',','.'); const n=parseFloat(s); return isNaN(n)?null:n; };
+// Formata número para exibir em input (ex: 1500.5 → "1500,5")
+const fmtInputNum = v => { if(v==null||v===''||v===undefined) return ''; const n=parseFloat(v); if(isNaN(n)||n===0) return ''; return String(n).replace('.',','); };
 const fmtDate = d => d ? new Date(d+ (String(d).length===10?'T00:00:00':'')).toLocaleDateString('pt-BR') : '';
 const fmtDateTime = d => d ? new Date(d).toLocaleString('pt-BR') : '';
 const today = ()=> new Date().toISOString().slice(0,10);
@@ -1062,6 +1066,9 @@ function formField({label,name,type='text',value='',options=null,required=false,
   } else if(type==='toggle'){
     inp = `<label class="toggle"><input type="checkbox" name="${name}" ${v?'checked':''}/><span>${esc(label)}</span></label>`;
     return `<div class="form-group ${full?'full':''}">${inp}</div>`;
+  } else if(type==='number'){
+    // Usa text+inputmode para aceitar vírgula decimal (padrão BR)
+    inp = `<input type="text" inputmode="decimal" name="${name}" value="${esc(fmtInputNum(v))}" placeholder="${esc(placeholder||'0')}" data-numtype="1" ${required?'required':''} ${readonly?'readonly':''}/>`;
   } else {
     inp = `<input type="${type}" name="${name}" value="${esc(v)}" placeholder="${esc(placeholder)}" ${required?'required':''} ${readonly?'readonly':''}/>`;
   }
@@ -1072,8 +1079,9 @@ function readForm(formEl){
   const data = {};
   $$('input,select,textarea',formEl).forEach(el=>{
     if(!el.name) return;
-    if(el.type==='checkbox') data[el.name] = el.checked;
-    else data[el.name] = el.value === '' ? null : el.value;
+    if(el.type==='checkbox')   data[el.name] = el.checked;
+    else if(el.dataset.numtype) data[el.name] = parseBR(el.value); // converte "1.500,50" → 1500.5
+    else                        data[el.name] = el.value === '' ? null : el.value;
   });
   return data;
 }
@@ -1133,7 +1141,7 @@ function openLeadModal(item=null){
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
-    data.kwh = data.kwh?Number(data.kwh):null;
+    data.kwh = data.kwh!=null ? Number(data.kwh) : null;
     if(isNew){
       data.criado_por = State.user?.id;
       const { error } = await supa.from('leads').insert(data);
@@ -1332,20 +1340,20 @@ function openPropostaModal(item=null){
   const form = $('#propForm');
   attachCEP(form);
   function recalc(){
-    const qm = Number(form.qtd_modulos.value)||0;
-    const pm = Number(form.pot_modulo.value)||0;
+    const qm = parseBR(form.qtd_modulos.value)||0;
+    const pm = parseBR(form.pot_modulo.value)||0;
     const kwp = qm*pm/1000;
-    form.kwp.value = kwp.toFixed(2);
+    form.kwp.value = kwp ? fmtInputNum(parseFloat(kwp.toFixed(4))) : '';
     // Área mínima: ~8 m² por kWp (inclinação padrão 15°, orientação norte)
-    form.area_minima.value = kwp ? (kwp * 8).toFixed(1) : '';
+    form.area_minima.value = kwp ? fmtInputNum(parseFloat((kwp*8).toFixed(1))) : '';
     recalcEco();
   }
   function recalcEco(){
-    const semSolar = Number(form.conta_sem_solar.value)||0;
-    const comSolar = Number(form.conta_com_solar.value)||0;
+    const semSolar = parseBR(form.conta_sem_solar.value)||0;
+    const comSolar = parseBR(form.conta_com_solar.value)||0;
     const eco = Math.max(0, semSolar - comSolar);
-    form.economia_mensal.value = eco ? eco.toFixed(2) : '';
-    form.economia_5anos.value  = eco ? (eco * 60).toFixed(2) : '';
+    form.economia_mensal.value = eco ? fmtInputNum(parseFloat(eco.toFixed(2))) : '';
+    form.economia_5anos.value  = eco ? fmtInputNum(parseFloat((eco*60).toFixed(2))) : '';
   }
   ['qtd_modulos','pot_modulo'].forEach(n=> form[n].addEventListener('input',recalc));
   ['conta_sem_solar','conta_com_solar'].forEach(n=> form[n].addEventListener('input',recalcEco));
@@ -1354,7 +1362,7 @@ function openPropostaModal(item=null){
     e.preventDefault();
     const data = readForm(form);
     ['qtd_modulos','pot_modulo','qtd_inversores','pot_inversor','qtd_baterias','pot_bateria','kwp','kwh','valor',
-     'conta_sem_solar','conta_com_solar','economia_mensal','economia_5anos','area_minima'].forEach(k=>{ data[k] = data[k]?Number(data[k]):null; });
+     'conta_sem_solar','conta_com_solar','economia_mensal','economia_5anos','area_minima'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     if(isNew){
       data.criado_por = State.user?.id;
       const { error } = await supa.from('propostas').insert(data);
@@ -1783,7 +1791,7 @@ function openContratoModal(item=null){
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
-    ['kwp','qtd_modulos','pot_modulo','qtd_inversores','pot_inversor','qtd_baterias','pot_bateria','valor'].forEach(k=>{ data[k] = data[k]?Number(data[k]):null; });
+    ['kwp','qtd_modulos','pot_modulo','qtd_inversores','pot_inversor','qtd_baterias','pot_bateria','valor'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     if(isNew){
       data.criado_por = State.user?.id;
       const { error } = await supa.from('contratos').insert(data);
@@ -2923,7 +2931,7 @@ function openInstalacaoModal(item=null){
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
-    ['val_poste','val_troca_padrao','estimado','pago'].forEach(k=>{ data[k] = data[k]?Number(data[k]):null; });
+    ['val_poste','val_troca_padrao','estimado','pago'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     Object.keys(data).filter(k=>k.startsWith('_')).forEach(k=>delete data[k]);
     data.fotos = filesStore;
     const { error } = await supa.from('instalacoes').update(data).eq('id',item.id);
@@ -2993,7 +3001,7 @@ function openHomologacaoModal(item=null){
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
-    ['trt_val','art_val','tecnico_val','estimado','pago'].forEach(k=>{ data[k] = data[k]?Number(data[k]):null; });
+    ['trt_val','art_val','tecnico_val','estimado','pago'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     Object.keys(data).filter(k=>k.startsWith('_')).forEach(k=>delete data[k]);
     data.docs = docStore;
     const { error } = await supa.from('homologacoes').update(data).eq('id',item.id);
@@ -3259,7 +3267,7 @@ function openComissaoModal(item=null){
     const data = readForm(form);
     const calc = recalc();
     Object.assign(data, calc);
-    ['valor_contrato','valor_vendido','vend_pct','vend_major_pct','sup_pct','sdr_pct','cap_pct','ind_pct','obra_val','pres_val'].forEach(k=>{ data[k] = data[k]?Number(data[k]):null; });
+    ['valor_contrato','valor_vendido','vend_pct','vend_major_pct','sup_pct','sdr_pct','cap_pct','ind_pct','obra_val','pres_val'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     if(isNew){
       data.criado_por = State.user?.id;
       const { error } = await supa.from('comissoes').insert(data);
