@@ -3284,6 +3284,12 @@ function openHomologacaoModal(item=null){
   }
   // Estado inicial (caso já salvo como mesmo_cliente=true)
   if(form.mesmo_cliente?.checked) syncHomFields(true);
+
+  // ── Data Assinatura: herda do contrato vinculado se campo estiver vazio ──
+  const _dtAssin = form.data_assinatura;
+  if(_dtAssin && !_dtAssin.value && _contrato.data_assinatura){
+    _dtAssin.value = _contrato.data_assinatura;
+  }
   form.mesmo_cliente?.addEventListener('change', ()=> syncHomFields(form.mesmo_cliente.checked));
 
   attachLinkedDocListeners(linked);
