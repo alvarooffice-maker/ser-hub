@@ -761,18 +761,59 @@ function buildTransitionPayload(item, fromStage, toStage){
     status:'pendente'
   };
   if(toStage==='logistica') return {
-    ...base, contrato_id:item.id, kwp:item.kwp, valor:item.valor, status:'aguardando'
+    ...base, contrato_id:item.id, proposta_id:item.proposta_id||null, vistoria_id:item.vistoria_id||null,
+    kwp:item.kwp, valor:item.valor, status:'aguardando'
   };
   if(toStage==='instalacao') return {
-    ...base, logistica_id:item.id, contrato_id:item.contrato_id, kwp:item.kwp, valor:item.valor, distribuidora:item.distribuidora, status:'agendada'
+    ...base, logistica_id:item.id, contrato_id:item.contrato_id, proposta_id:item.proposta_id||null, vistoria_id:item.vistoria_id||null,
+    kwp:item.kwp, valor:item.valor, distribuidora:item.distribuidora, status:'agendada'
   };
   if(toStage==='homologacao') return {
-    ...base, instalacao_id:item.id, contrato_id:item.contrato_id, kwp:item.kwp, etapa:'aguardando_docs'
+    ...base, instalacao_id:item.id, contrato_id:item.contrato_id, proposta_id:item.proposta_id||null, vistoria_id:item.vistoria_id||null,
+    kwp:item.kwp, etapa:'aguardando_docs'
   };
   if(toStage==='posvenda') return {
-    ...base, homologacao_id:item.id, contrato_id:item.contrato_id, kwp:item.kwp, status:'ativo'
+    ...base, homologacao_id:item.id, contrato_id:item.contrato_id, proposta_id:item.proposta_id||null, vistoria_id:item.vistoria_id||null,
+    kwp:item.kwp, status:'ativo'
   };
   return base;
+}
+
+/* ============================================================
+   HELPER — Documentos vinculados (cadeia completa do funil)
+   Disponível em qualquer estágio: Proposta, Contrato, e ambos os PDFs
+   ============================================================ */
+function getLinkedDocs(item){
+  const proposta  = item.proposta_id  ? (State.propostas||[]).find(p=>p.id===item.proposta_id)  : null;
+  const vistoria  = item.vistoria_id  ? (State.vistorias||[]).find(v=>v.id===item.vistoria_id)  : null;
+  const contrato  = item.contrato_id  ? (State.contratos||[]).find(c=>c.id===item.contrato_id)  : null;
+  return { proposta, vistoria, contrato };
+}
+
+function renderLinkedDocBtns(linked){
+  const { proposta, contrato } = linked;
+  let h = '';
+  if(proposta){
+    h += `<button type="button" class="btn btn-secondary" id="lnkPropBtn" title="Visualizar proposta original">📄 Proposta</button>`;
+    h += `<button type="button" class="btn btn-secondary" id="lnkPropDlBtn" title="Download PDF da proposta">⬇️ PDF Proposta</button>`;
+  }
+  if(contrato){
+    h += `<button type="button" class="btn btn-secondary" id="lnkContBtn" title="Visualizar contrato">📋 Contrato</button>`;
+    h += `<button type="button" class="btn btn-secondary" id="lnkContDlBtn" title="Download PDF do contrato">⬇️ PDF Contrato</button>`;
+  }
+  return h;
+}
+
+function attachLinkedDocListeners(linked){
+  const { proposta, contrato } = linked;
+  if(proposta){
+    $('#lnkPropBtn')?.addEventListener('click',   ()=> abrirPropostaJanela(proposta, false));
+    $('#lnkPropDlBtn')?.addEventListener('click', ()=> abrirPropostaJanela(proposta, true));
+  }
+  if(contrato){
+    $('#lnkContBtn')?.addEventListener('click',   ()=> abrirContratoJanela(contrato, false));
+    $('#lnkContDlBtn')?.addEventListener('click', ()=> abrirContratoJanela(contrato, true));
+  }
 }
 
 function openStageModal(stage,id){
@@ -1283,6 +1324,7 @@ function attachFileUploads(rootEl, fileStore){
 function openVistoriaModal(item=null){
   const isNew = !item;
   item = item || {};
+  const linked = getLinkedDocs(item);
   const resOpts = [['','— selecione —'],['aprovada','Aprovada'],['reprovada','Reprovada'],['aprovada_com_obra','Aprovada c/ obra'],['aprovada_com_sombreamento','Aprovada c/ sombreamento'],['aprovada_com_obra_e_sombreamento','Aprovada c/ obra e sombreamento']];
   const statusOpts = [['agendada','Agendada'],['realizada','Realizada'],['aprovada','Aprovada'],['reprovada','Reprovada'],['cancelada','Cancelada']];
 
@@ -1414,8 +1456,7 @@ function openVistoriaModal(item=null){
       </div>
       <div class="modal-footer">
         ${!isNew?`<button type="button" class="btn btn-danger" id="delVistBtn">Excluir</button>`:''}
-        ${!isNew && item.proposta_id?`<button type="button" class="btn btn-secondary" id="vizPropVistBtn" title="Visualizar proposta original">📄 Proposta</button>`:''}
-        ${!isNew && item.proposta_id?`<button type="button" class="btn btn-secondary" id="dlPropVistBtn" title="Baixar PDF da proposta">⬇️ PDF Proposta</button>`:''}
+        ${!isNew?renderLinkedDocBtns(linked):''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
       </div>
@@ -1425,16 +1466,7 @@ function openVistoriaModal(item=null){
   const form = $('#vistForm');
   attachCEP(form);
 
-  // Botões da proposta vinculada
-  if(!isNew && item.proposta_id){
-    const propOriginal = (State.propostas||[]).find(p=>p.id===item.proposta_id);
-    if(propOriginal){
-      $('#vizPropVistBtn')?.addEventListener('click', ()=> abrirPropostaJanela(propOriginal, false));
-      $('#dlPropVistBtn')?.addEventListener('click',  ()=> abrirPropostaJanela(propOriginal, true));
-    } else {
-      $('#vizPropVistBtn')?.addEventListener('click', ()=> toast('Proposta original não encontrada','warning'));
-    }
-  }
+  if(!isNew) attachLinkedDocListeners(linked);
   const allFiles = {};
   [...fotoKeys, ...docKeys].forEach(k=>{
     allFiles[k] = (fotos[k] || docs[k] || []).slice();
@@ -1524,6 +1556,7 @@ function pickFiles(store, keys){
 function openContratoModal(item=null){
   const isNew = !item;
   item = item || {};
+  const linked = getLinkedDocs(item);
   const statusOpts = [['pendente','Pendente'],['enviado','Enviado'],['assinado','Assinado'],['cancelado','Cancelado']];
   const faseOpts = [['','—'],['Monofásico','Monofásico'],['Bifásico','Bifásico'],['Trifásico','Trifásico']];
   const pgtoOpts = [['','—'],['À Vista','À Vista'],['Financiamento Bancário','Financiamento Bancário'],['Parcelamento Interno','Parcelamento Interno'],['Misto','Misto']];
@@ -1591,8 +1624,7 @@ function openContratoModal(item=null){
         ${!isNew?`<button type="button" class="btn btn-secondary" id="clickSignBtn">📝 ClickSign</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-secondary" id="vizContBtn">👁️ Contrato</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-secondary" id="dlContBtn">⬇️ PDF Contrato</button>`:''}
-        ${!isNew && item.proposta_id?`<button type="button" class="btn btn-secondary" id="vizPropContBtn" title="Visualizar proposta original">📄 Proposta</button>`:''}
-        ${!isNew && item.proposta_id?`<button type="button" class="btn btn-secondary" id="dlPropContBtn" title="Baixar PDF da proposta">⬇️ PDF Proposta</button>`:''}
+        ${!isNew?renderLinkedDocBtns(linked):''}
         ${!isNew?`<button type="button" class="btn btn-danger" id="delContBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
@@ -1651,16 +1683,7 @@ function openContratoModal(item=null){
   $('#vizContBtn')?.addEventListener('click', ()=> abrirContratoJanela(item, false));
   $('#dlContBtn')?.addEventListener('click',  ()=> abrirContratoJanela(item, true));
 
-  // Proposta original vinculada ao contrato
-  if(!isNew && item.proposta_id){
-    const propOriginal = (State.propostas||[]).find(p=>p.id===item.proposta_id);
-    if(propOriginal){
-      $('#vizPropContBtn')?.addEventListener('click', ()=> abrirPropostaJanela(propOriginal, false));
-      $('#dlPropContBtn')?.addEventListener('click',  ()=> abrirPropostaJanela(propOriginal, true));
-    } else {
-      $('#vizPropContBtn')?.addEventListener('click', ()=> toast('Proposta original não encontrada','warning'));
-    }
-  }
+  if(!isNew) attachLinkedDocListeners(linked);
 
   $('#delContBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir contrato?')) return;
@@ -2049,6 +2072,7 @@ ${(c.pgto_desc||c.banco)?'<p><strong>3.1. O Pagamento ocorrerá: <span style="co
    ============================================================ */
 function openLogisticaModal(item=null){
   item = item || {};
+  const linked = getLinkedDocs(item);
   const statusOpts = [['aguardando','Aguardando'],['comprado','Comprado'],['enviado','Enviado'],['entregue','Entregue']];
 
   openModal(`
@@ -2070,12 +2094,14 @@ function openLogisticaModal(item=null){
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" id="delLogBtn">Excluir</button>
+        ${renderLinkedDocBtns(linked)}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
       </div>
     </form>
   `);
   const form = $('#logForm');
+  attachLinkedDocListeners(linked);
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
@@ -2096,6 +2122,7 @@ function openLogisticaModal(item=null){
    ============================================================ */
 function openInstalacaoModal(item=null){
   item = item || {};
+  const linked = getLinkedDocs(item);
   const statusOpts = [['agendada','Agendada'],['em_andamento','Em andamento'],['concluida','Concluída'],['cancelada','Cancelada']];
   const fotos = item.fotos || {};
 
@@ -2128,12 +2155,14 @@ function openInstalacaoModal(item=null){
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" id="delInstBtn">Excluir</button>
+        ${renderLinkedDocBtns(linked)}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
       </div>
     </form>
   `);
   const form = $('#instForm');
+  attachLinkedDocListeners(linked);
   const filesStore = { geral: (fotos.geral||[]).slice() };
   attachFileUploads(form, filesStore);
   form.addEventListener('submit', async e=>{
@@ -2158,6 +2187,7 @@ function openInstalacaoModal(item=null){
    ============================================================ */
 function openHomologacaoModal(item=null){
   item = item || {};
+  const linked = getLinkedDocs(item);
   const etapaOpts = [['aguardando_docs','Aguardando docs'],['projeto','Projeto'],['trt_art_pg','TRT/ART pago'],['parecer_acesso','Parecer de acesso'],['vistoria_final','Vistoria final'],['aprovada','Aprovada'],['reprovada','Reprovada']];
   const docs = item.docs || {};
   const docKeys = ['procuracao','rg_cnh','contrato_assinado','fatura_ger','fatura_ben','arquivo_vist','datasheet_inv','datasheet_mod','analise_sombra','anexo_i','form_troca_padrao','art_trt','projeto_unifilar','memorial_tecnico','cert_inmetro','orcamento_conexao'];
@@ -2194,12 +2224,14 @@ function openHomologacaoModal(item=null){
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" id="delHomBtn">Excluir</button>
+        ${renderLinkedDocBtns(linked)}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
       </div>
     </form>
   `,'lg');
   const form = $('#homForm');
+  attachLinkedDocListeners(linked);
   const docStore = {};
   docKeys.forEach(k=> docStore[k] = (docs[k]||[]).slice());
   attachFileUploads(form, docStore);
@@ -2225,6 +2257,7 @@ function openHomologacaoModal(item=null){
    ============================================================ */
 function openPosVendaModal(item=null){
   item = item || {};
+  const linked = getLinkedDocs(item);
   const statusOpts = [['ativo','Ativo'],['inativo','Inativo'],['manutencao','Manutenção']];
   openModal(`
     <div class="modal-header"><h2>Pós Venda</h2><button class="modal-close">×</button></div>
@@ -2241,12 +2274,14 @@ function openPosVendaModal(item=null){
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" id="delPvBtn">Excluir</button>
+        ${renderLinkedDocBtns(linked)}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
       </div>
     </form>
   `);
   const form = $('#pvForm');
+  attachLinkedDocListeners(linked);
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
