@@ -2046,29 +2046,47 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
 @page{size:A4 portrait;margin:0}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  html,body{margin:0;padding:0;background:#fff;width:210mm}
+  html,body{margin:0;padding:0;background:#fff}
   .print-bar{display:none!important}
-  /* Cada .page = exatamente uma folha A4 */
+
+  /* ── Cada div.page = 1 folha A4 exata ── */
   .page{
-    margin:0 auto;
-    box-shadow:none;
-    page-break-after:always;
-    break-after:page;
     width:210mm;
     height:297mm;
     max-width:210mm;
+    margin:0;
+    box-shadow:none;
     overflow:hidden;
-    display:flex;
-    flex-direction:column
+    display:block;
+    page-break-after:always;
+    break-after:page;
+    position:relative
   }
   .page:last-child{page-break-after:auto;break-after:auto}
-  /* Capa: preenche toda a altura com o gradiente */
-  .capa{flex:1;min-height:0}
-  /* Páginas com header: header fixo, conteúdo expande */
-  .pg-header{flex-shrink:0}
-  .page-inner{flex:1;min-height:0}
-  /* Investimento e Contato: centralizar verticalmente */
-  .invest-wrap,.contact-wrap{justify-content:center}
+
+  /* ── PÁGINA 1 — Capa: gradiente preenche a folha inteira ── */
+  .capa{
+    position:absolute;
+    top:0;left:0;right:0;bottom:0;
+    width:100%;
+    height:297mm
+  }
+
+  /* ── PÁGINAS 2-7 — Header escuro fixo no topo ── */
+  .pg-header{width:100%;position:relative;z-index:1}
+
+  /* ── PÁGINA 5 (Investimento) e 7 (Contato) ── */
+  /* Preencher espaço abaixo do header e centralizar conteúdo */
+  .invest-wrap,.contact-wrap{
+    position:absolute;
+    top:64px;left:0;right:0;bottom:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:0 40px
+  }
 }
 </style></head><body>
 <div class="print-bar">
