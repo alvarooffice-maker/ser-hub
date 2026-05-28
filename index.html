@@ -557,10 +557,11 @@ function getPeriodRange(period){
 
 async function renderDashboard(){
   await loadAll();
-  const leads = filterByVendor(State.leads);
-  const props = filterByVendor(State.propostas);
-  const contratos = filterByVendor(State.contratos);
-  const instal = filterByVendor(State.instalacoes);
+  // Dashboard sempre mostra dados completos da empresa (visão geral para todos)
+  const leads = State.leads || [];
+  const props = State.propostas || [];
+  const contratos = State.contratos || [];
+  const instal = State.instalacoes || [];
   const totalKwp = instal.reduce((s,i)=>s+(Number(i.kwp)||0),0);
   const propsAbertas = props.filter(p=> !['aceita','recusada'].includes(p.status)).length;
   const contratosAssin = contratos.filter(c=>c.status==='assinado').length;
@@ -581,15 +582,15 @@ async function renderDashboard(){
 
   const fn = {
     Lead: leads.length, Proposta: props.length,
-    Vistoria: filterByVendor(State.vistorias).length, Contrato: contratos.length,
-    Logística: filterByVendor(State.logistica).length, Instalação: instal.length,
-    Homologação: filterByVendor(State.homologacoes).length, 'Pós Venda': filterByVendor(State.posvenda).length
+    Vistoria: (State.vistorias||[]).length, Contrato: contratos.length,
+    Logística: (State.logistica||[]).length, Instalação: instal.length,
+    Homologação: (State.homologacoes||[]).length, 'Pós Venda': (State.posvenda||[]).length
   };
   const maxFn = Math.max(1,...Object.values(fn));
 
   const threeDaysAgo = new Date(Date.now()-3*24*60*60*1000);
   const leadsSemContato = leads.filter(l => new Date(l.atualizado_em||l.criado_em) < threeDaysAgo && l.status==='em_contato').length;
-  const vistHoje = filterByVendor(State.vistorias).filter(v=>v.data_agendamento===td).length;
+  const vistHoje = (State.vistorias||[]).filter(v=>v.data_agendamento===td).length;
   const instHoje = instal.filter(i=>i.data_instalacao===td).length;
 
   $('#content').innerHTML = `
