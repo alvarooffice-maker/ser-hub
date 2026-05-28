@@ -1067,9 +1067,9 @@ function stageFlags(item, stage){
       flags.push(`<span class="flag ${c}" title="Aniversário: ${diff===0?'HOJE':diff+' dias'}">🎂 ${diff===0?'HOJE!':diff+'d'}</span>`);
     }
 
-    // 2. Manutenção (+300 dias da assinatura)
-    if(contrato?.data_assinatura){
-      const f = cdFlag('🛡️','Manutenção (300d)',addDays(contrato.data_assinatura,300));
+    // 2. Manutenção (+300 dias da instalação)
+    if(instalacao?.data_instalacao){
+      const f = cdFlag('🛡️','Manutenção (300d)',addDays(instalacao.data_instalacao,300));
       if(f) flags.push(f);
     }
 
@@ -3440,8 +3440,66 @@ function openPosVendaModal(item=null){
   item = item || {};
   const linked = getLinkedDocs(item);
   const statusOpts = [['ativo','Ativo'],['inativo','Inativo'],['manutencao','Manutenção']];
+
+  // Resolve dados vinculados
+  const lead      = (State.leads||[]).find(l=>String(l.id)===String(item.lead_id||linked.contrato?.lead_id));
+  const instalacao= linked.instalacao || {};
+  const contrato  = linked.contrato   || {};
+  const logistica = linked.logistica  || {};
+  const vistoria  = (State.vistorias||[]).find(v=>String(v.id)===String(contrato.vistoria_id)) || {};
+  const instDate  = instalacao.data_instalacao;
+
+  // Helpers de data
+  const todayMs = new Date(); todayMs.setHours(0,0,0,0);
+  function addD(dateStr,n){ if(!dateStr)return null; const d=new Date(dateStr+'T12:00:00'); d.setDate(d.getDate()+n); return d; }
+  function diff(d){ if(!d)return null; const t=new Date(d); t.setHours(0,0,0,0); return Math.round((t-todayMs)/86400000); }
+  function fmtD(d){ return d?new Date(d).toLocaleDateString('pt-BR'):'—'; }
+  function diffBadge(d, done){
+    const dv=diff(d);
+    if(done||dv<0) return `<span class="flag countdown done">✓ Feito</span>`;
+    if(dv===0)     return `<span class="flag countdown urgent">HOJE!</span>`;
+    if(dv<=7)      return `<span class="flag countdown urgent">${dv}d</span>`;
+    return `<span class="flag countdown">${dv}d</span>`;
+  }
+  function pvRow(icon,label,sub,targetDate,checkName,checked){
+    const dv=diff(targetDate);
+    const done=checked||(dv!==null&&dv<0);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f8f6fc;border-radius:8px;border:1px solid #e2daea;margin-bottom:6px">
+      <span style="font-size:20px">${icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600">${label}</div>
+        <div style="font-size:11px;color:var(--text-light)">${sub}</div>
+      </div>
+      ${targetDate?diffBadge(targetDate,done):'<span style="font-size:11px;color:#aaa">sem data</span>'}
+      ${checkName?`<input type="checkbox" name="${checkName}" ${checked?'checked':''} style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer;flex-shrink:0" title="Marcar como feito">`:''}
+    </div>`;
+  }
+  function statusRow(icon,label,s){
+    if(!s)return '';
+    const bg=/aprovada|assinado|conclu|comprado|ativo|realiz|entregue|pago/.test(s)?'#d1e7dd':/reprova|perdido|recusad|cancel/.test(s)?'#f8d7da':'#fff3cd';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:${bg};border-radius:6px;font-size:12px;font-weight:500;margin-bottom:4px">${icon} ${label}: <strong style="margin-left:4px">${s}</strong></div>`;
+  }
+
+  // Aniversário
+  let bdayHtml='';
+  if(lead?.nascimento){
+    const bday=new Date(lead.nascimento+'T12:00:00');
+    const next=new Date(todayMs.getFullYear(),bday.getMonth(),bday.getDate());
+    if(next<todayMs) next.setFullYear(todayMs.getFullYear()+1);
+    const dv=Math.round((next-todayMs)/86400000);
+    const fc=dv<=30?'flag countdown urgent':'flag countdown';
+    bdayHtml=`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f8f6fc;border-radius:8px;border:1px solid #e2daea;margin-bottom:6px">
+      <span style="font-size:20px">🎂</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600">Aniversário</div>
+        <div style="font-size:11px;color:var(--text-light)">Nascimento: ${fmtD(lead.nascimento)} → Próximo: ${next.toLocaleDateString('pt-BR')}</div>
+      </div>
+      <span class="${fc}">${dv===0?'HOJE!':dv+'d'}</span>
+    </div>`;
+  }
+
   openModal(`
-    <div class="modal-header"><h2>Pós Venda</h2><button class="modal-close">×</button></div>
+    <div class="modal-header"><h2>Pós Venda — ${esc(item.nome||'')}</h2><button class="modal-close">×</button></div>
     <form id="pvForm">
       <div class="modal-body">
         <div class="form-grid">
@@ -3452,10 +3510,42 @@ function openPosVendaModal(item=null){
           ${formField({label:'Data Ativação',name:'data_ativacao',type:'date',value:item.data_ativacao})}
           ${formField({label:'Observações',name:'obs',type:'textarea',value:item.obs,full:true})}
         </div>
+
+        <!-- Histórico do funil -->
+        <div class="section collapsed" style="margin-top:12px">
+          <div class="section-header"><h4>📋 Histórico do Funil</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body" style="padding:10px 0 4px">
+            ${statusRow('🔍','Vistoria',vistoria.resultado||vistoria.status)}
+            ${statusRow('✍️','Contrato',contrato.status)}
+            ${statusRow('📦','Logística',logistica.status)}
+            ${statusRow('🔧','Instalação',instalacao.status)}
+          </div>
+        </div>
+
+        <!-- Acompanhamento pós-venda -->
+        <div class="section" style="margin-top:12px">
+          <div class="section-header"><h4>⏰ Acompanhamento</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body" style="padding:10px 0 4px">
+            ${bdayHtml}
+            ${pvRow('🛡️','Manutenção preventiva (300 dias)',
+              instDate?`Instalação: ${fmtD(instDate)} → Vence: ${fmtD(addD(instDate,300))}`:'Data de instalação não registrada',
+              addD(instDate,300),null,false)}
+            ${pvRow('🤝','Acolhimento (5 dias)',
+              instDate?`Instalação: ${fmtD(instDate)} → Contato: ${fmtD(addD(instDate,5))}`:'Data de instalação não registrada',
+              addD(instDate,5),'check_5d',!!item.check_5d)}
+            ${pvRow('💛','Gratidão (30 dias)',
+              instDate?`Instalação: ${fmtD(instDate)} → Contato: ${fmtD(addD(instDate,30))}`:'Data de instalação não registrada',
+              addD(instDate,30),'check_30d',!!item.check_30d)}
+            ${pvRow('🌟','Embaixador (90 dias)',
+              instDate?`Instalação: ${fmtD(instDate)} → Contato: ${fmtD(addD(instDate,90))}`:'Data de instalação não registrada',
+              addD(instDate,90),'check_90d',!!item.check_90d)}
+          </div>
+        </div>
+
         ${renderLinkedDocBtns(linked)}
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-danger" id="delPvBtn">Excluir</button>
+        ${isAdmin()?`<button type="button" class="btn btn-danger" id="delPvBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
       </div>

@@ -249,7 +249,10 @@ ALTER TABLE homologacoes
 
 ALTER TABLE posvenda
   ADD COLUMN IF NOT EXISTS data_ativacao   date,
-  ADD COLUMN IF NOT EXISTS obs             text;
+  ADD COLUMN IF NOT EXISTS obs             text,
+  ADD COLUMN IF NOT EXISTS check_5d        boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS check_30d       boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS check_90d       boolean DEFAULT false;
 
 -- ════════════════════════════════════════════════════════════
 -- BLOCO 11 — TÉCNICO EM VISTORIAS E INSTALAÇÕES
