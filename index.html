@@ -1575,13 +1575,32 @@ function openPropostaModal(item=null){
 
   const form = $('#propForm');
   attachCEP(form);
+  // Validade automática (+7 dias) para novas propostas
+  if(isNew && form.validade && !form.validade.value){
+    const d = new Date(); d.setDate(d.getDate()+7);
+    form.validade.value = d.toISOString().slice(0,10);
+  }
+
   function recalc(){
     const qm = parseBR(form.qtd_modulos.value)||0;
     const pm = parseBR(form.pot_modulo.value)||0;
     const kwp = qm*pm/1000;
     form.kwp.value = kwp ? fmtInputNum(parseFloat(kwp.toFixed(4))) : '';
-    // Área mínima: ~8 m² por kWp (inclinação padrão 15°, orientação norte)
-    form.area_minima.value = kwp ? fmtInputNum(parseFloat((kwp*8).toFixed(1))) : '';
+    // Área mínima: qtd_módulos × 3,5 m²
+    form.area_minima.value = qm ? fmtInputNum(parseFloat((qm*3.5).toFixed(1))) : '';
+  }
+  function recalcSemSolar(){
+    const kwh = parseBR(form.kwh.value)||0;
+    if(kwh){
+      const sem = parseFloat((kwh*1.29).toFixed(2));
+      form.conta_sem_solar.value = fmtInputNum(sem);
+      form.conta_com_solar.value = fmtInputNum(parseFloat((sem*0.15).toFixed(2)));
+    }
+    recalcEco();
+  }
+  function recalcComSolar(){
+    const sem = parseBR(form.conta_sem_solar.value)||0;
+    if(sem) form.conta_com_solar.value = fmtInputNum(parseFloat((sem*0.15).toFixed(2)));
     recalcEco();
   }
   function recalcEco(){
@@ -1592,7 +1611,9 @@ function openPropostaModal(item=null){
     form.economia_5anos.value  = eco ? fmtInputNum(parseFloat((eco*60).toFixed(2))) : '';
   }
   ['qtd_modulos','pot_modulo'].forEach(n=> form[n].addEventListener('input',recalc));
-  ['conta_sem_solar','conta_com_solar'].forEach(n=> form[n].addEventListener('input',recalcEco));
+  form.kwh.addEventListener('input', recalcSemSolar);
+  form.conta_sem_solar.addEventListener('input', recalcComSolar);
+  form.conta_com_solar.addEventListener('input', recalcEco);
 
   form.addEventListener('submit', async e=>{
     e.preventDefault();
