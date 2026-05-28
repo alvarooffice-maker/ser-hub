@@ -1078,16 +1078,17 @@ function checkGuard(item, fromStage, toStage){
     if(item.status !== 'aceita') return {ok:false, msg:'Proposta precisa estar "Aceita".'};
   }
   if(fromStage==='vistoria' && toStage==='contrato'){
-    if(!(item.resultado||'').includes('aprovada')) return {ok:false, msg:'Vistoria precisa estar aprovada.'};
+    const ok = ['agendada','realizada','aprovada'].includes(item.status);
+    if(!ok) return {ok:false, msg:'Vistoria precisa estar com status Agendada, Realizada ou Aprovada.'};
   }
   if(fromStage==='contrato' && toStage==='logistica'){
     if(item.status !== 'assinado' || !item.data_assinatura) return {ok:false, msg:'Contrato precisa estar assinado com data preenchida.'};
   }
   if(fromStage==='logistica' && toStage==='instalacao'){
-    if(item.status !== 'comprado') return {ok:false, msg:'Logística precisa estar "Comprado".'};
+    // Qualquer status permite avançar
   }
   if(fromStage==='instalacao' && toStage==='homologacao'){
-    if(item.status !== 'agendada' || !item.tecnico) return {ok:false, msg:'Instalação precisa estar "Agendada" e com técnico.'};
+    if(item.status === 'cancelada') return {ok:false, msg:'Instalação cancelada não pode avançar para homologação.'};
   }
   if(fromStage==='homologacao' && toStage==='posvenda'){
     if(item.etapa !== 'aprovada') return {ok:false, msg:'Homologação precisa estar "Aprovada".'};
