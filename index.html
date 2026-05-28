@@ -1565,7 +1565,7 @@ function openPropostaModal(item=null){
         <div class="section"><div class="section-header"><h4>Comercial</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
             ${formField({label:'Valor',name:'valor',type:'number',value:item.valor,required:true})}
-            ${formField({label:'Validade',name:'validade',type:'date',value:item.validade})}
+            ${formField({label:'Validade',name:'validade',type:'date',value:item.validade,readonly:true})}
             ${formField({label:'Status',name:'status',type:'select',value:item.status||'em_aberto',options:statusOpts})}
             ${formField({label:'Vendedor',name:'vendedor',value:item.vendedor || (isVend()?State.profile.nome:'')})}
             ${formField({label:'Tel. Vendedor',name:'vend_telefone',value:item.vend_telefone})}
