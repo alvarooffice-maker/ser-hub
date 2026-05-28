@@ -173,6 +173,13 @@ tbody tr:hover{background:#fafaf6}
 .kanban-card .name{font-weight:600;font-size:13px;margin-bottom:4px;display:flex;align-items:center;gap:6px}
 .kanban-card .meta{font-size:11.5px;color:var(--text-light);margin-bottom:3px}
 .kanban-card .footer{display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:4px;position:sticky;bottom:0;background:#fff;border-top:1px solid rgba(226,218,234,.35)}
+/* KANBAN COLUMN SEARCH */
+.col-search-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;opacity:.6;transition:opacity .15s,background .15s;border-radius:5px;line-height:1}
+.col-search-btn:hover{opacity:1;background:rgba(0,0,0,.1)}
+.col-search-btn.active{opacity:1;background:rgba(59,109,17,.18)}
+.col-search-bar{padding:6px 8px 4px;background:#d4d3be;border-bottom:1px solid rgba(0,0,0,.07)}
+.col-search-input{width:100%;box-sizing:border-box;padding:5px 10px;border-radius:7px;border:1.5px solid var(--primary);font-size:12px;outline:none;background:#fff;color:var(--text)}
+.col-search-input:focus{border-color:#2d6b10;box-shadow:0 0 0 2px rgba(59,109,17,.14)}
 .card-flags{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;margin-bottom:2px}
 /* Meta clock */
 .meta-clock-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
@@ -860,6 +867,7 @@ async function renderPipeline(){
 
   $('#content').innerHTML = `<div class="kanban" id="kanban">${stages.map(s=>renderStageCol(s)).join('')}</div>`;
   attachKanbanDnD();
+  attachKanbanSearch();
 }
 
 function renderStageCol(stage){
@@ -918,7 +926,13 @@ function renderStageCol(stage){
     <div class="kanban-col" data-stage="${stage.id}">
       <div class="kanban-col-header">
         <span>${stage.icon} ${stage.label}</span>
-        <span class="count">${items.length}</span>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span class="count" id="col-count-${stage.id}">${items.length}</span>
+          <button class="col-search-btn" data-stage="${stage.id}" title="Pesquisar nesta coluna">🔍</button>
+        </div>
+      </div>
+      <div class="col-search-bar" id="col-search-bar-${stage.id}" style="display:none">
+        <input class="col-search-input" id="col-search-${stage.id}" placeholder="Buscar cliente, vendedor..." autocomplete="off">
       </div>
       <div class="kanban-col-body" data-drop="${stage.id}">
         ${items.map(it=>renderCard(it,stage)).join('') || '<div class="empty" style="padding:20px;font-size:12px">Sem itens</div>'}
@@ -932,7 +946,7 @@ function renderCard(item,stage){
   const kwp = item.kwp ? `${fmtNum(item.kwp,2)} kWp` : '';
   const flags = stageFlags(item,stage);
   return `
-    <div class="kanban-card" draggable="true" data-id="${item.id}" data-stage="${stage.id}">
+    <div class="kanban-card" draggable="true" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.vendedor||'')).toLowerCase()}">
       <div class="kanban-card-inner">
         <div class="name">${stage.icon} ${esc(item.nome||'—')}</div>
         <div class="meta">${kwp || kwh || ''}</div>
@@ -1089,6 +1103,56 @@ function stageFlags(item, stage){
 
   if(!flags.length) return '';
   return `<div class="card-flags">${flags.join('')}</div>`;
+}
+
+function filterColCards(stageId, term){
+  const t = (term||'').toLowerCase().trim();
+  const col = document.querySelector(`.kanban-col[data-stage="${stageId}"]`);
+  if(!col) return;
+  const cards = col.querySelectorAll('.kanban-card');
+  let visible = 0;
+  cards.forEach(card=>{
+    const hay = card.dataset.search || '';
+    const show = !t || hay.includes(t);
+    card.style.display = show ? '' : 'none';
+    if(show) visible++;
+  });
+  const countEl = document.getElementById(`col-count-${stageId}`);
+  if(countEl) countEl.textContent = t ? `${visible}/${cards.length}` : String(cards.length);
+}
+
+function attachKanbanSearch(){
+  $$('.col-search-btn').forEach(btn=>{
+    const sid = btn.dataset.stage;
+    const bar = document.getElementById(`col-search-bar-${sid}`);
+    const inp = document.getElementById(`col-search-${sid}`);
+    if(!bar || !inp) return;
+
+    btn.addEventListener('click', ()=>{
+      const isOpen = bar.style.display !== 'none';
+      if(isOpen){
+        bar.style.display = 'none';
+        inp.value = '';
+        btn.classList.remove('active');
+        filterColCards(sid, '');
+      } else {
+        bar.style.display = '';
+        btn.classList.add('active');
+        inp.focus();
+      }
+    });
+
+    inp.addEventListener('input', ()=> filterColCards(sid, inp.value));
+
+    inp.addEventListener('keydown', e=>{
+      if(e.key === 'Escape'){
+        bar.style.display = 'none';
+        inp.value = '';
+        btn.classList.remove('active');
+        filterColCards(sid, '');
+      }
+    });
+  });
 }
 
 function attachKanbanDnD(){
