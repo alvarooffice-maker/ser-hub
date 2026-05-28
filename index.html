@@ -328,7 +328,9 @@ tbody tr:hover{background:#fafaf6}
 
 const SURL = 'https://aickvgjrieeirybtqemh.supabase.co';
 const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpY2t2Z2pyaWVlaXJ5YnRxZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NDQ1NjUsImV4cCI6MjA5MzIyMDU2NX0.FS1K-oI3iAYgmqjH9LH3DKFVdEOiIPfUD1KnbU78uuE';
+const SSERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpY2t2Z2pyaWVlaXJ5YnRxZW1oIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzY0NDU2NSwiZXhwIjoyMDkzMjIwNTY1fQ.AQWmWXAQ39e6d5snO2qh4uV0sg_nfmHFp-zmKVZYDjU';
 const supa = supabase.createClient(SURL, SKEY, { auth:{ persistSession:true, autoRefreshToken:true } });
+const supaAdmin = supabase.createClient(SURL, SSERVICE, { auth:{ persistSession:false, autoRefreshToken:false } });
 
 const State = {
   user:null, profile:null, route:'dashboard',
@@ -3954,10 +3956,12 @@ function openUserModal(item=null){
     const data = readForm(form);
     if(isNew){
       try{
-        const { data:auth, error } = await supa.auth.signUp({ email:data.email, password:data.password });
+        const { data:auth, error } = await supaAdmin.auth.admin.createUser({
+          email: data.email, password: data.password, email_confirm: true
+        });
         if(error) throw error;
         const profile = { id:auth.user?.id, nome:data.nome, email:data.email, perfil:data.perfil, ativo:data.ativo };
-        const { error:e2 } = await supa.from('perfis').insert(profile);
+        const { error:e2 } = await supaAdmin.from('perfis').insert(profile);
         if(e2) throw e2;
         toast('Usuário criado','success');
       }catch(err){ return toast(err.message,'error'); }
