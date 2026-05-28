@@ -1462,19 +1462,36 @@ function formField({label,name,type='text',value='',options=null,required=false,
     // Usa text+inputmode para aceitar vírgula decimal (padrão BR)
     inp = `<input type="text" inputmode="decimal" name="${name}" value="${esc(fmtInputNum(v))}" placeholder="${esc(placeholder||'0')}" data-numtype="1" ${datalist?`list="${dlId}"`:''}  ${required?'required':''} ${readonly?'readonly':''}/>`;
   } else {
-    inp = `<input type="${type}" name="${name}" value="${esc(v)}" placeholder="${esc(placeholder)}" ${datalist?`list="${dlId}"`:''}  ${required?'required':''} ${readonly?'readonly':''}/>`;
+    const dateAttrs = type==='date' ? 'min="1900-01-01" max="2100-12-31"' : '';
+    inp = `<input type="${type}" name="${name}" value="${esc(v)}" placeholder="${esc(placeholder)}" ${dateAttrs} ${datalist?`list="${dlId}"`:''}  ${required?'required':''} ${readonly?'readonly':''}/>`;
   }
   return `<div class="form-group ${full?'full':''}"><label>${esc(label)}${required?' *':''}</label>${inp}${dlHtml}</div>`;
 }
 
 function readForm(formEl){
   const data = {};
+  const badDates = [];
   $$('input,select,textarea',formEl).forEach(el=>{
     if(!el.name) return;
-    if(el.type==='checkbox')   data[el.name] = el.checked;
-    else if(el.dataset.numtype) data[el.name] = parseBR(el.value); // converte "1.500,50" → 1500.5
-    else                        data[el.name] = el.value === '' ? null : el.value;
+    if(el.type==='checkbox'){
+      data[el.name] = el.checked;
+    } else if(el.dataset.numtype){
+      data[el.name] = parseBR(el.value); // converte "1.500,50" → 1500.5
+    } else if(el.type==='date'){
+      if(!el.value){ data[el.name] = null; return; }
+      const m = el.value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const yr = m ? +m[1] : 0;
+      if(!m || yr < 1900 || yr > 2100){
+        badDates.push(el.labels?.[0]?.textContent || el.name);
+        data[el.name] = null;
+      } else {
+        data[el.name] = el.value;
+      }
+    } else {
+      data[el.name] = el.value === '' ? null : el.value;
+    }
   });
+  if(badDates.length) toast(`Data inválida em: ${badDates.join(', ')} — verifique o ano digitado.`,'error', 5000);
   return data;
 }
 
