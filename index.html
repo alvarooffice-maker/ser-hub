@@ -3656,14 +3656,14 @@ function openRemarketingModal(item){
    COMISSOES
    ============================================================ */
 async function renderComissoes(){
-  await loadTable('comissoes');
+  await Promise.all([loadTable('comissoes'), loadTable('contratos')]);
   let items = State.comissoes;
   if(isVend()) items = items.filter(c => (c.vend_nome||'').toLowerCase() === (State.profile.nome||'').toLowerCase());
   $('#pageActions').innerHTML = `<button class="btn btn-primary" id="newCom">+ Nova Comissão</button>`;
   $('#newCom').addEventListener('click', ()=> openComissaoModal());
   $('#content').innerHTML = `
     <div class="card"><div class="table-wrap"><table>
-      <thead><tr><th>Cliente</th><th>Valor Contrato</th><th>Vendedor</th><th>Comissão Vend.</th><th>Lucro Líquido</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Cliente</th><th>Valor Referência</th><th>Vendedor</th><th>Comissão Vend.</th><th>Lucro Líquido</th><th>Status</th><th></th></tr></thead>
       <tbody>
         ${items.length?items.map(c=>`
           <tr>
@@ -3691,8 +3691,8 @@ function openComissaoModal(item=null){
     <form id="comForm">
       <div class="modal-body">
         <div class="form-grid">
-          ${formField({label:'Cliente',name:'nome',value:item.nome,required:true})}
-          ${formField({label:'Valor Contrato',name:'valor_contrato',type:'number',value:item.valor_contrato,required:true})}
+          ${formField({label:'Cliente',name:'nome',value:item.nome,required:true,datalist:[...new Set((State.contratos||[]).filter(c=>c.status==='assinado').map(c=>c.nome).filter(Boolean))]})}
+          ${formField({label:'Valor Referência',name:'valor_contrato',type:'number',value:item.valor_contrato,required:true})}
           ${formField({label:'Valor Vendido',name:'valor_vendido',type:'number',value:item.valor_vendido})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
         </div>
