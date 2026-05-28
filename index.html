@@ -1555,8 +1555,8 @@ function openPropostaModal(item=null){
         </div>
         <div class="section"><div class="section-header"><h4>Simulação Financeira</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
-            ${formField({label:'Conta sem solar (R$)',name:'conta_sem_solar',type:'number',value:item.conta_sem_solar})}
-            ${formField({label:'Conta com solar (R$)',name:'conta_com_solar',type:'number',value:item.conta_com_solar})}
+            ${formField({label:'Conta sem solar (R$)',name:'conta_sem_solar',type:'number',value:item.conta_sem_solar,readonly:true})}
+            ${formField({label:'Conta com solar (R$)',name:'conta_com_solar',type:'number',value:item.conta_com_solar,readonly:true})}
             ${formField({label:'Economia mensal (R$)',name:'economia_mensal',type:'number',value:item.economia_mensal,readonly:true})}
             ${formField({label:'Economia em 5 anos (R$)',name:'economia_5anos',type:'number',value:item.economia_5anos,readonly:true})}
             ${formField({label:'Área mínima (m²)',name:'area_minima',type:'number',value:item.area_minima,readonly:true})}
