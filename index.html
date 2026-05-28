@@ -776,7 +776,8 @@ async function renderPipeline(){
   else if(role === 'tec_instalacao') stages = STAGES.filter(s=>s.id==='instalacao');
   else if(role === 'tec_homologacao') stages = STAGES.filter(s=>s.id==='homologacao');
 
-  $('#pageActions').innerHTML = `<button class="btn btn-primary" id="newLeadBtn">+ Novo Lead</button>`;
+  const isTec = ['tec_vistoria','tec_instalacao','tec_homologacao'].includes(role);
+  $('#pageActions').innerHTML = isTec ? '' : `<button class="btn btn-primary" id="newLeadBtn">+ Novo Lead</button>`;
   $('#newLeadBtn')?.addEventListener('click', ()=> openLeadModal());
 
   $('#content').innerHTML = `<div class="kanban" id="kanban">${stages.map(s=>renderStageCol(s)).join('')}</div>`;
@@ -1169,12 +1170,14 @@ function getLinkedDocs(item){
    Cada doc: [✏️ Editar X]  +  [🖨️ PDF] (quando disponível). */
 function renderLinkedDocBtns(linked){
   const { proposta, vistoria, contrato, logistica, instalacao } = linked;
-  const items = [];
-  if(proposta)  items.push({icon:'📄', label:'Proposta',   editId:'lnkPropEditBtn',  pdfId:'lnkPropDlBtn'});
-  if(vistoria)  items.push({icon:'🔍', label:'Vistoria',   editId:'lnkVistEditBtn',  pdfId:'lnkVistDlBtn'});
-  if(contrato)  items.push({icon:'✍️', label:'Contrato',   editId:'lnkContEditBtn',  pdfId:'lnkContDlBtn'});
-  if(logistica) items.push({icon:'📦', label:'Logística',  editId:'lnkLogEditBtn',   pdfId:null});
-  if(instalacao)items.push({icon:'🔧', label:'Instalação', editId:'lnkInstEditBtn',  pdfId:null});
+  const role = userRole();
+  const all = [];
+  if(proposta)  all.push({icon:'📄', label:'Proposta',   editId:'lnkPropEditBtn',  pdfId:'lnkPropDlBtn',  allowed:['admin','supervisor','vendedor','financeiro']});
+  if(vistoria)  all.push({icon:'🔍', label:'Vistoria',   editId:'lnkVistEditBtn',  pdfId:'lnkVistDlBtn',  allowed:['admin','supervisor','vendedor','financeiro','tec_vistoria']});
+  if(contrato)  all.push({icon:'✍️', label:'Contrato',   editId:'lnkContEditBtn',  pdfId:'lnkContDlBtn',  allowed:['admin','supervisor','vendedor','financeiro']});
+  if(logistica) all.push({icon:'📦', label:'Logística',  editId:'lnkLogEditBtn',   pdfId:null,            allowed:['admin','supervisor','vendedor','financeiro','tec_instalacao']});
+  if(instalacao)all.push({icon:'🔧', label:'Instalação', editId:'lnkInstEditBtn',  pdfId:null,            allowed:['admin','supervisor','vendedor','financeiro','tec_instalacao','tec_homologacao']});
+  const items = all.filter(it => !it.allowed || it.allowed.includes(role));
   if(!items.length) return '';
   return `
     <div class="linked-docs-bar">
@@ -1876,7 +1879,7 @@ function openVistoriaModal(item=null){
         ${!isNew?renderLinkedDocBtns(linked):''}
       </div>
       <div class="modal-footer">
-        ${!isNew?`<button type="button" class="btn btn-danger" id="delVistBtn">Excluir</button>`:''}
+        ${!isNew && isAdmin()?`<button type="button" class="btn btn-danger" id="delVistBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
       </div>
