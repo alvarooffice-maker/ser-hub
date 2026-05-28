@@ -475,6 +475,7 @@ function visibleRoutes(){
   return ROUTES.filter(r=>{
     if(r.adminOnly && !['admin','supervisor'].includes(role)) return false;
     if(role==='financeiro') return ['dashboard','comissoes','financeiro'].includes(r.id);
+    if(role==='vendedor') return ['dashboard','pipeline','remarketing'].includes(r.id);
     if(['tec_vistoria','tec_instalacao','tec_homologacao'].includes(role)) return ['dashboard','pipeline'].includes(r.id);
     return true;
   });
