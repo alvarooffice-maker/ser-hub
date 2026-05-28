@@ -2011,7 +2011,7 @@ function openContratoModal(item=null){
         </div>
         <div class="section collapsed"><div class="section-header"><h4>Kit / Técnico</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
-            ${formField({label:'Concessionária',name:'concessionaria',value:item.concessionaria})}
+            ${formField({label:'Concessionária',name:'concessionaria',value:item.concessionaria||linked.vistoria?.concessionaria||''})}
             ${formField({label:'kWp',name:'kwp',type:'number',value:item.kwp})}
             ${formField({label:'Qtd Módulos',name:'qtd_modulos',type:'number',value:item.qtd_modulos})}
             ${formField({label:'Marca Módulo',name:'marca_modulo',value:item.marca_modulo,datalist:DL_MARCA_MODULO})}
@@ -3266,7 +3266,7 @@ function openHomologacaoModal(item=null){
         <div class="form-grid">
           ${formField({label:'Cliente',name:'_nome',value:item.nome,readonly:true})}
           ${formField({label:'kWp',name:'_kwp',value:item.kwp,readonly:true})}
-          ${formField({label:'Concessionária',name:'concessionaria',value:item.concessionaria})}
+          ${formField({label:'Concessionária',name:'concessionaria',value:item.concessionaria||linked.vistoria?.concessionaria||linked.contrato?.concessionaria||''})}
           ${formField({label:'Vendedor',name:'_vendedor',value:item.vendedor,readonly:true})}
           ${formField({label:'Etapa',name:'etapa',type:'select',value:item.etapa||'aguardando_docs',options:etapaOpts})}
           ${formField({label:'Técnico',name:'tecnico',value:item.tecnico,datalist:DL_TECNICO})}
