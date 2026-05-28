@@ -814,12 +814,19 @@ function renderStageCol(stage){
     items = items.filter(h => !promovidos.has(h.id));
   }
 
-  // Deduplicação por lead_id (cliente) — garante 1 card por pessoa por coluna
-  // Funciona mesmo quando há 2 contratos/logísticas para o mesmo lead
-  if(['contrato','logistica','instalacao','homologacao','posvenda'].includes(stage.id)){
+  // Deduplicação por cliente — garante 1 card por pessoa em TODAS as colunas
+  {
     const seen = new Map();
     items.forEach(it => {
-      const key = it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim());
+      let key;
+      if(stage.id === 'lead')
+        key = 'n:' + (it.nome||'').toLowerCase().trim();
+      else if(stage.id === 'proposta')
+        key = it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim());
+      else if(stage.id === 'vistoria')
+        key = it.proposta_id || it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim());
+      else
+        key = it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim());
       const prev = seen.get(key);
       if(!prev || (it.criado_em||'') > (prev.criado_em||'')) seen.set(key, it);
     });
