@@ -567,12 +567,14 @@ async function renderDashboard(){
   const td = today();
   const mesAtual = td.slice(0,7); // YYYY-MM
 
-  // Meta do mês
+  // Meta do mês — sempre usa todos os contratos da empresa (ignorar filtro de vendedor)
   const metaRec = (State.metas||[]).find(m=>m.mes===mesAtual);
   const metaValor = Number(metaRec?.valor||0);
   const [mesStart] = getPeriodRange('mes');
-  const valorMes = contratos.filter(c=>c.status==='assinado'&&c.data_assinatura>=mesStart&&c.data_assinatura<=td)
-    .reduce((s,c)=>s+(Number(c.valor)||0),0);
+  const valorMes = (State.contratos||[]).filter(c=>
+    c.status==='assinado' &&
+    (c.data_assinatura>=mesStart && c.data_assinatura<=td)
+  ).reduce((s,c)=>s+(Number(c.valor)||0),0);
   const pctMeta = metaValor > 0 ? Math.min(1, valorMes/metaValor) : 0;
   const circum = 339.3; // 2*π*54
   const dashOffset = circum * (1 - pctMeta);
