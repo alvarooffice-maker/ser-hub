@@ -4131,14 +4131,49 @@ function openCadastroModal(item=null){
 /* ============================================================
    USUARIOS (admin/supervisor)
    ============================================================ */
+async function downloadBackup(){
+  if(!isAdmin()) return toast('Apenas admins podem gerar backup.','error');
+  toast('Gerando backup — aguarde...','info',6000);
+  const tables=['leads','propostas','vistorias','contratos','logistica','instalacoes',
+    'homologacoes','posvenda','remarketing','comissoes','financeiro_receitas',
+    'financeiro_despesas','cadastros','perfis','tentativas_contato','metas'];
+  const backup={
+    gerado_em: new Date().toISOString(),
+    gerado_por: State.profile?.email||'?',
+    versao:'1.0',
+    tabelas:{}
+  };
+  let allOk=true;
+  await Promise.all(tables.map(async t=>{
+    try{
+      const {data,error}=await supaAdmin.from(t).select('*').order('criado_em',{ascending:true});
+      if(error){console.warn('backup',t,error.message);allOk=false;}
+      backup.tabelas[t]=data||[];
+    }catch(e){backup.tabelas[t]=[];allOk=false;}
+  }));
+  backup.total_registros=Object.values(backup.tabelas).reduce((s,r)=>s+r.length,0);
+  const json=JSON.stringify(backup,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const dt=new Date().toISOString().slice(0,19).replace('T','_').replace(/:/g,'-');
+  a.href=url; a.download=`ser-backup-${dt}.json`; a.click();
+  URL.revokeObjectURL(url);
+  toast(`Backup concluído${allOk?'':' com alertas'}! ${backup.total_registros} registros exportados.`,allOk?'success':'info');
+}
+
 async function renderUsuarios(){
   if(!['admin','supervisor'].includes(userRole())){
     $('#content').innerHTML = '<div class="empty">Sem permissão.</div>'; return;
   }
   await loadTable('perfis');
   const items = State.perfis;
-  $('#pageActions').innerHTML = isAdmin() ? `<button class="btn btn-primary" id="newUserBtn">+ Novo Usuário</button>` : '';
+  $('#pageActions').innerHTML = isAdmin()
+    ? `<button class="btn btn-secondary" id="backupBtn">⬇️ Backup Manual</button>
+       <button class="btn btn-primary" id="newUserBtn">+ Novo Usuário</button>`
+    : '';
   $('#newUserBtn')?.addEventListener('click', ()=> openUserModal());
+  $('#backupBtn')?.addEventListener('click', downloadBackup);
   const tbody = items.length ? items.map((u,i)=>`
     <tr>
       <td>${esc(u.nome||'')}</td>
