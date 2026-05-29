@@ -3553,7 +3553,8 @@ function openPosVendaModal(item=null){
         <div style="font-size:11px;color:var(--text-light)">${sub}</div>
       </div>
       ${targetDate?diffBadge(targetDate,done):'<span style="font-size:11px;color:#aaa">sem data</span>'}
-      ${checkName?`<input type="checkbox" name="${checkName}" ${checked?'checked':''} style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer;flex-shrink:0" title="Marcar como feito">`:''}
+      ${checkName && !done?`<input type="checkbox" name="${checkName}" style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer;flex-shrink:0" title="Marcar como feito">`:''}
+      ${checkName && done?`<input type="checkbox" name="${checkName}" checked style="display:none">`:''}
     </div>`;
   }
   function statusRow(icon,label,s){
