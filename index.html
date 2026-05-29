@@ -358,7 +358,7 @@ const parseBR = v => { if(v==null||v==='') return null; const s=String(v).replac
 const fmtInputNum = v => { if(v==null||v===''||v===undefined) return ''; const n=parseFloat(v); if(isNaN(n)||n===0) return ''; return String(n).replace('.',','); };
 const fmtDate = d => d ? new Date(d+ (String(d).length===10?'T00:00:00':'')).toLocaleDateString('pt-BR') : '';
 const fmtDateTime = d => d ? new Date(d).toLocaleString('pt-BR') : '';
-const today = ()=> new Date().toISOString().slice(0,10);
+const today = ()=>{ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 
 /* ── Listas pré-estabelecidas para evitar erros de digitação ── */
 const DL_MARCA_MODULO  = ['Canadian Solar','JA Solar','LONGi','BYD','DAH Solar','Risen Energy','Jinko Solar','Trina Solar','Astronergy','Tongwei Solar','Leapton','Pulling Energy','Osda','Ronma','Hanersun','Maxeon','Renepv','Aiko','Gokin','Dmegc','Era Solar'];
