@@ -3563,22 +3563,15 @@ function openPosVendaModal(item=null){
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:${bg};border-radius:6px;font-size:12px;font-weight:500;margin-bottom:4px">${icon} ${label}: <strong style="margin-left:4px">${s}</strong></div>`;
   }
 
-  // Aniversário
-  let bdayHtml='';
+  // Aniversário — sempre renderiza (com ou sem data de nascimento)
+  let nextBday = null;
+  let bdaySub  = 'Data de nascimento não registrada';
   if(lead?.nascimento){
-    const bday=new Date(lead.nascimento+'T12:00:00');
-    const next=new Date(todayMs.getFullYear(),bday.getMonth(),bday.getDate());
-    if(next<todayMs) next.setFullYear(todayMs.getFullYear()+1);
-    const dv=Math.round((next-todayMs)/86400000);
-    const fc=dv<=30?'flag countdown urgent':'flag countdown';
-    bdayHtml=`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f8f6fc;border-radius:8px;border:1px solid #e2daea;margin-bottom:6px">
-      <span style="font-size:20px">🎂</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600">Aniversário</div>
-        <div style="font-size:11px;color:var(--text-light)">Nascimento: ${fmtD(lead.nascimento)} → Próximo: ${next.toLocaleDateString('pt-BR')}</div>
-      </div>
-      <span class="${fc}">${dv===0?'HOJE!':dv+'d'}</span>
-    </div>`;
+    const bday = new Date(lead.nascimento+'T12:00:00');
+    const next = new Date(todayMs.getFullYear(), bday.getMonth(), bday.getDate());
+    if(next < todayMs) next.setFullYear(todayMs.getFullYear()+1);
+    nextBday = next;
+    bdaySub  = `Nascimento: ${fmtD(lead.nascimento)} → Próximo: ${next.toLocaleDateString('pt-BR')}`;
   }
 
   openModal(`
@@ -3609,7 +3602,7 @@ function openPosVendaModal(item=null){
         <div class="section" style="margin-top:12px">
           <div class="section-header"><h4>⏰ Acompanhamento</h4><span class="section-toggle">▼</span></div>
           <div class="section-body" style="padding:10px 0 4px">
-            ${bdayHtml}
+            ${pvRow('🎂','Aniversário',bdaySub,nextBday,null,false)}
             ${pvRow('🛡️','Manutenção preventiva (300 dias)',
               instDate?`Instalação: ${fmtD(instDate)} → Vence: ${fmtD(addD(instDate,300))}`:'Data de instalação não registrada',
               addD(instDate,300),null,false)}
