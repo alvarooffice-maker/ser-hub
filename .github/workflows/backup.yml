@@ -1,0 +1,64 @@
+name: Backup Automático SER
+
+on:
+  schedule:
+    # 3h horário de Belém (UTC-3) = 6h UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    # Permite disparo manual pela interface do GitHub (Actions → Run workflow)
+
+jobs:
+  backup:
+    name: Backup diário do Supabase
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout branch de backups
+        uses: actions/checkout@v4
+        with:
+          ref: backups
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copiar script de backup
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          sparse-checkout: scripts/backup.py
+          sparse-checkout-cone-mode: false
+          path: _main_src
+
+      - name: Mover script
+        run: |
+          mkdir -p scripts
+          cp _main_src/scripts/backup.py scripts/backup.py
+          rm -rf _main_src
+
+      - name: Executar backup
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python3 scripts/backup.py
+
+      - name: Remover backups com mais de 30 dias
+        run: |
+          find backups/ -name "ser-backup-*.json" -mtime +30 -delete 2>/dev/null || true
+          echo "Backups mantidos:"
+          ls -1 backups/ | sort
+
+      - name: Commit e push do backup
+        run: |
+          git config user.name "SER Backup Bot"
+          git config user.email "backup@serenergiarenovavel.com.br"
+          git add backups/
+          git diff --staged --quiet && echo "Nenhuma alteração." || \
+            git commit -m "Backup automático $(date +'%Y-%m-%d') — $(python3 -c "import json; d=json.load(open('backups/ser-backup-$(date +%Y-%m-%d).json')); print(str(d['total_registros'])+' registros')" 2>/dev/null || echo '?')" && \
+            git push origin backups
+
+      - name: Resumo
+        if: always()
+        run: |
+          echo "=== Backups disponíveis ==="
+          ls -lh backups/ 2>/dev/null || echo "(nenhum)"
