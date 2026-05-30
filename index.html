@@ -3422,30 +3422,148 @@ function openHomologacaoModal(item=null){
   const docs = item.docs || {};
   const docKeys = ['procuracao','rg_cnh','contrato_assinado','fatura_ger','fatura_ben','arquivo_vist','datasheet_inv','datasheet_mod','analise_sombra','anexo_i','form_troca_padrao','art_trt','projeto_unifilar','memorial_tecnico','cert_inmetro','orcamento_conexao'];
 
+  // ── Etapa tracker ──
+  const etapaSeq = ['aguardando_docs','projeto','trt_art_pg','parecer_acesso','vistoria_final','aprovada'];
+  const etapaInfo = {
+    aguardando_docs: {icon:'📋', label:'Aguardando Documentos'},
+    projeto:         {icon:'📐', label:'Projeto'},
+    trt_art_pg:      {icon:'💰', label:'TRT/ART Pago'},
+    parecer_acesso:  {icon:'✅', label:'Parecer de Acesso'},
+    vistoria_final:  {icon:'🔍', label:'Vistoria Final'},
+    aprovada:        {icon:'⚡', label:'Aprovada'},
+  };
+  function buildEtapaTrackerHTML(etapa){
+    const isReprovada = etapa === 'reprovada';
+    const idx = etapaSeq.indexOf(etapa);
+    let html = '';
+    etapaSeq.forEach((key, i)=>{
+      const isDone    = !isReprovada && idx > i;
+      const isCurrent = !isReprovada && idx === i;
+      const info = etapaInfo[key];
+      let bg, border, textColor, badgeStyle, badgeText;
+      if(isDone){
+        bg='#d1e7dd'; border='#a3cfbb'; textColor='#0a3622';
+        badgeStyle='background:#198754;color:#fff'; badgeText='✓ Concluído';
+      } else if(isCurrent){
+        bg='#e3f0ff'; border='var(--primary)'; textColor='var(--primary)';
+        badgeStyle='background:var(--primary);color:#fff'; badgeText='👈 Etapa atual';
+      } else {
+        bg='#f8f9fa'; border='#dee2e6'; textColor='#adb5bd';
+        badgeStyle='background:#dee2e6;color:#6c757d'; badgeText='Pendente';
+      }
+      html += `<div class="hom-etapa-row" data-etapa="${key}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${bg};border:1.5px solid ${border};border-radius:8px;margin-bottom:6px;cursor:pointer;transition:filter .15s" title="Clique para selecionar esta etapa">
+        <span style="font-size:18px;flex-shrink:0">${info.icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:${textColor}">${i+1}. ${info.label}</div>
+        </div>
+        <span style="${badgeStyle};border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;white-space:nowrap">${badgeText}</span>
+      </div>`;
+    });
+    // Reprovada — row especial (fora da sequência)
+    const repBg     = isReprovada ? 'background:#f8d7da;border:1.5px solid #842029' : 'background:#fff5f5;border:1.5px dashed #e57373';
+    const repTxt    = isReprovada ? 'color:#842029;font-weight:700' : 'color:#e57373';
+    const repBadge  = isReprovada
+      ? `<span style="background:#842029;color:#fff;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;white-space:nowrap">❌ Reprovada</span>`
+      : `<span style="background:#fce4ec;color:#c62828;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;white-space:nowrap">Marcar reprovada</span>`;
+    html += `<div class="hom-etapa-row" data-etapa="reprovada" style="display:flex;align-items:center;gap:12px;padding:10px 14px;${repBg};border-radius:8px;margin-top:4px;cursor:pointer" title="Marcar como reprovada">
+      <span style="font-size:18px;flex-shrink:0">❌</span>
+      <div style="flex:1;min-width:0"><div style="font-size:12px;${repTxt}">Reprovada</div></div>
+      ${repBadge}
+    </div>`;
+    return html;
+  }
+
+  // ── Equipamentos (herda do contrato / vistoria) ──
+  const _c = linked.contrato || {};
+  const _v = linked.vistoria  || {};
+  const kwp      = item.kwp           || _c.kwp           || _v.kwp           || '';
+  const qtdMod   = item.qtd_modulos   || _c.qtd_modulos   || '';
+  const marcaMod  = item.marca_modulo  || _c.marca_modulo   || '';
+  const potMod   = item.pot_modulo    || _c.pot_modulo    || '';
+  const qtdInv   = item.qtd_inversores|| _c.qtd_inversores|| '';
+  const marcaInv  = item.marca_inversor|| _c.marca_inversor || '';
+  const potInv   = item.pot_inversor  || _c.pot_inversor  || '';
+
+  // ── Google Maps ──
+  const gmap = _c.gmap || _v.gmap || '';
+
   openModal(`
-    <div class="modal-header"><h2>Homologação</h2><button class="modal-close">×</button></div>
+    <div class="modal-header"><h2>⚡ Homologação — ${esc(item.nome||'')}</h2><button class="modal-close">×</button></div>
     <form id="homForm">
       <div class="modal-body">
-        <div class="form-grid">
+
+        ${gmap ? `<a href="${esc(gmap)}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#e8f5e9;border:2px solid #4caf50;border-radius:10px;text-decoration:none;color:#1b5e20;font-weight:700;font-size:14px;margin-bottom:14px">
+          <span style="font-size:22px">📍</span>
+          <span style="flex:1">Ver localização no Google Maps</span>
+          <span style="font-size:12px;color:#388e3c;opacity:.8">↗ Abrir</span>
+        </a>` : ''}
+
+        <!-- Equipamentos do sistema -->
+        <div style="background:#fff8e1;border:1.5px solid #ffc107;border-radius:10px;padding:12px 16px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:#795548;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">⚙️ Equipamentos do Sistema</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="background:#fff;border-radius:7px;padding:10px 12px;border:1px solid #ffe082">
+              <div style="font-size:10px;font-weight:700;color:#f57f17;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">☀️ Módulos</div>
+              <div style="font-size:16px;font-weight:700;color:#333">${qtdMod?`${qtdMod}×`:'—'}</div>
+              <div style="font-size:12px;color:#555">${esc(marcaMod||'Marca não informada')}</div>
+              ${potMod?`<div style="font-size:11px;color:#888">${potMod} W/unid.</div>`:''}
+            </div>
+            <div style="background:#fff;border-radius:7px;padding:10px 12px;border:1px solid #ffe082">
+              <div style="font-size:10px;font-weight:700;color:#1565c0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🔌 Inversores</div>
+              <div style="font-size:16px;font-weight:700;color:#333">${qtdInv?`${qtdInv}×`:'—'}</div>
+              <div style="font-size:12px;color:#555">${esc(marcaInv||'Marca não informada')}</div>
+              ${potInv?`<div style="font-size:11px;color:#888">${potInv} kW/unid.</div>`:''}
+            </div>
+          </div>
+          ${kwp?`<div style="margin-top:8px;text-align:center;font-size:15px;font-weight:700;color:var(--primary);background:#f1f8e9;border-radius:6px;padding:6px 12px">⚡ ${kwp} kWp total instalado</div>`:''}
+        </div>
+
+        <!-- Acompanhamento de etapas -->
+        <div class="section" style="margin-bottom:14px">
+          <div class="section-header"><h4>📊 Acompanhamento de Etapas</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body" style="padding:10px 0 4px">
+            <div id="homEtapaTracker"></div>
+            <select name="etapa" id="homEtapaSelect" style="display:none">
+              ${etapaOpts.map(([v,l])=>`<option value="${v}"${v===(item.etapa||'aguardando_docs')?'selected':''}>${l}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+
+        <!-- Técnico & Custos -->
+        <div class="section collapsed" style="margin-bottom:14px">
+          <div class="section-header"><h4>🔧 Técnico & Custos</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body"><div class="form-grid">
+            ${formField({label:'Técnico',name:'tecnico',value:item.tecnico,datalist:DL_TECNICO})}
+            ${formField({label:'Concessionária',name:'concessionaria',value:item.concessionaria||_v.concessionaria||_c.concessionaria||''})}
+            ${formField({label:'Valor TRT',name:'trt_val',type:'number',value:item.trt_val})}
+            ${formField({label:'Valor ART',name:'art_val',type:'number',value:item.art_val})}
+            ${formField({label:'Valor Técnico',name:'tecnico_val',type:'number',value:item.tecnico_val})}
+            ${formField({label:'Estimado',name:'estimado',type:'number',value:item.estimado})}
+            ${formField({label:'Pago',name:'pago',type:'number',value:item.pago})}
+            ${formField({label:'Data Assinatura',name:'data_assinatura',type:'date',value:item.data_assinatura})}
+          </div></div>
+        </div>
+
+        <!-- Dados do Homologador -->
+        <div class="section collapsed" style="margin-bottom:14px">
+          <div class="section-header"><h4>👤 Dados do Homologador</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body"><div class="form-grid">
+            ${formField({label:'Mesmo cliente?',name:'mesmo_cliente',type:'toggle',value:item.mesmo_cliente})}
+            ${formField({label:'Nome Homologação',name:'hom_nome',value:item.hom_nome})}
+            ${formField({label:'CPF Homologação',name:'hom_cpf',value:item.hom_cpf})}
+            ${formField({label:'RG Homologação',name:'hom_rg',value:item.hom_rg})}
+            ${formField({label:'Nascimento Hom.',name:'hom_nasc',type:'date',value:item.hom_nasc})}
+          </div></div>
+        </div>
+
+        <!-- Dados gerais (leitura) + obs -->
+        <div class="form-grid" style="margin-bottom:10px">
           ${formField({label:'Cliente',name:'_nome',value:item.nome,readonly:true})}
           ${formField({label:'kWp',name:'_kwp',value:item.kwp,readonly:true})}
-          ${formField({label:'Concessionária',name:'concessionaria',value:item.concessionaria||linked.vistoria?.concessionaria||linked.contrato?.concessionaria||''})}
           ${formField({label:'Vendedor',name:'_vendedor',value:item.vendedor,readonly:true})}
-          ${formField({label:'Etapa',name:'etapa',type:'select',value:item.etapa||'aguardando_docs',options:etapaOpts})}
-          ${formField({label:'Técnico',name:'tecnico',value:item.tecnico,datalist:DL_TECNICO})}
-          ${formField({label:'Mesmo cliente?',name:'mesmo_cliente',type:'toggle',value:item.mesmo_cliente})}
-          ${formField({label:'Nome Homologação',name:'hom_nome',value:item.hom_nome})}
-          ${formField({label:'CPF Homologação',name:'hom_cpf',value:item.hom_cpf})}
-          ${formField({label:'RG Homologação',name:'hom_rg',value:item.hom_rg})}
-          ${formField({label:'Nascimento Hom.',name:'hom_nasc',type:'date',value:item.hom_nasc})}
-          ${formField({label:'Valor TRT',name:'trt_val',type:'number',value:item.trt_val})}
-          ${formField({label:'Valor ART',name:'art_val',type:'number',value:item.art_val})}
-          ${formField({label:'Valor Técnico',name:'tecnico_val',type:'number',value:item.tecnico_val})}
-          ${formField({label:'Estimado',name:'estimado',type:'number',value:item.estimado})}
-          ${formField({label:'Pago',name:'pago',type:'number',value:item.pago})}
-          ${formField({label:'Data Assinatura',name:'data_assinatura',type:'date',value:item.data_assinatura})}
           ${formField({label:'Observações',name:'obs',type:'textarea',value:item.obs,full:true})}
         </div>
+
         <div class="section" style="margin-top:14px"><div class="section-header"><h4>📑 Documentos</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
             ${docKeys.map(k=>fileUploadBlock(k.replace(/_/g,' '), k, 'homologacoes', docs[k]||[], false)).join('')}
@@ -3461,6 +3579,23 @@ function openHomologacaoModal(item=null){
     </form>
   `,'lg');
   const form = $('#homForm');
+
+  // ── Etapa tracker — interação ──
+  const trackerEl    = document.getElementById('homEtapaTracker');
+  const etapaSelectEl = document.getElementById('homEtapaSelect');
+  let activeEtapa = item.etapa || 'aguardando_docs';
+
+  function refreshTracker(){
+    trackerEl.innerHTML = buildEtapaTrackerHTML(activeEtapa);
+    trackerEl.querySelectorAll('.hom-etapa-row').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        activeEtapa = row.dataset.etapa;
+        if(etapaSelectEl) etapaSelectEl.value = activeEtapa;
+        refreshTracker();
+      });
+    });
+  }
+  refreshTracker();
 
   // ── Mesmo cliente: replica dados do contrato nos campos do homologador ──
   const _contrato = linked.contrato || {};
