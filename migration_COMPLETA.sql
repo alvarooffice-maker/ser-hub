@@ -3,7 +3,7 @@
 -- Consolida: auditoria + flags + dedup + backfill + homologação + pós venda + técnicos + instalação
 -- Execute TODO de uma vez no SQL Editor do Supabase
 -- 100% idempotente: seguro rodar mesmo que partes já existam
--- Atualizado em: maio 2026 (Blocos 1–12)
+-- Atualizado em: maio 2026 (Blocos 1–13)
 -- ============================================================
 
 -- ════════════════════════════════════════════════════════════
@@ -283,6 +283,31 @@ ALTER TABLE instalacoes
   ADD COLUMN IF NOT EXISTS val_troca_padrao  numeric  DEFAULT 0,
   ADD COLUMN IF NOT EXISTS estimado          numeric  DEFAULT 0,
   ADD COLUMN IF NOT EXISTS pago              numeric  DEFAULT 0;
+
+-- ════════════════════════════════════════════════════════════
+-- BLOCO 13 — BACKFILL contrato_id EM HOMOLOGAÇÕES E PÓS VENDA
+-- Registros criados antes do campo contrato_id ser propagado
+-- na transição instalação→homologação→pós venda.
+-- Necessário para que o modal de homologação encontre gmap e
+-- equipamentos do contrato vinculado.
+-- ════════════════════════════════════════════════════════════
+
+-- Homologações: popula contrato_id via instalação→logística→contrato
+UPDATE homologacoes h
+SET contrato_id = l.contrato_id
+FROM instalacoes i
+JOIN logistica l ON l.id = i.logistica_id
+WHERE h.instalacao_id = i.id
+  AND h.contrato_id IS NULL
+  AND l.contrato_id IS NOT NULL;
+
+-- Pós venda: popula contrato_id a partir da homologação já corrigida
+UPDATE posvenda p
+SET contrato_id = h.contrato_id
+FROM homologacoes h
+WHERE p.homologacao_id = h.id
+  AND p.contrato_id IS NULL
+  AND h.contrato_id IS NOT NULL;
 
 -- ════════════════════════════════════════════════════════════
 -- VERIFICAÇÃO — descomente e rode para confirmar

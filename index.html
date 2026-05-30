@@ -1290,21 +1290,23 @@ function buildTransitionPayload(item, fromStage, toStage){
    ============================================================ */
 function getLinkedDocs(item){
   const _f = (arr,id) => id ? (arr||[]).find(x=>String(x.id)===String(id)) : null;
-  let contrato  = _f(State.contratos,  item.contrato_id);
-  let vistoria  = _f(State.vistorias,  item.vistoria_id)
-               || (contrato ? _f(State.vistorias, contrato.vistoria_id) : null);
-  let proposta  = _f(State.propostas,  item.proposta_id)
-               || (contrato ? _f(State.propostas, contrato.proposta_id)  : null)
-               || (vistoria ? _f(State.propostas, vistoria.proposta_id)  : null);
-  // Resolve instalacao primeiro (direto ou via homologacao_id)
-  let instalacao= _f(State.instalacoes,item.instalacao_id)
-               || (() => {
-                    const hom = _f(State.homologacoes, item.homologacao_id);
-                    return hom ? _f(State.instalacoes, hom.instalacao_id) : null;
-                  })();
-  // Resolve logistica: direto, ou via instalacao (cadeia homologacao→instalacao→logistica)
-  let logistica = _f(State.logistica,  item.logistica_id)
-               || (instalacao ? _f(State.logistica, instalacao.logistica_id) : null);
+  // Resolve cadeia de baixo para cima: instalação → logística → contrato
+  // Isso garante que gmap e equipamentos sejam encontrados mesmo em registros antigos
+  const instalacao = _f(State.instalacoes, item.instalacao_id)
+                  || (() => {
+                       const hom = _f(State.homologacoes, item.homologacao_id);
+                       return hom ? _f(State.instalacoes, hom.instalacao_id) : null;
+                     })();
+  const logistica  = _f(State.logistica,  item.logistica_id)
+                  || (instalacao ? _f(State.logistica,  instalacao.logistica_id) : null);
+  // contrato_id direto (registros novos) ou via logistica (registros antigos)
+  const contrato   = _f(State.contratos,  item.contrato_id)
+                  || (logistica  ? _f(State.contratos,  logistica.contrato_id)  : null);
+  const vistoria   = _f(State.vistorias,  item.vistoria_id)
+                  || (contrato   ? _f(State.vistorias,  contrato.vistoria_id)   : null);
+  const proposta   = _f(State.propostas,  item.proposta_id)
+                  || (contrato   ? _f(State.propostas,  contrato.proposta_id)   : null)
+                  || (vistoria   ? _f(State.propostas,  vistoria.proposta_id)   : null);
   return { proposta, vistoria, contrato, logistica, instalacao };
 }
 
