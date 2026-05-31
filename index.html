@@ -3701,14 +3701,16 @@ function openPosVendaModal(item=null){
   }
 
   // Aniversário — sempre renderiza (com ou sem data de nascimento)
+  // Fallback: lead → contrato (caso nascimento só esteja preenchido no contrato)
+  const nascimento = lead?.nascimento || contrato?.nascimento || null;
   let nextBday = null;
   let bdaySub  = 'Data de nascimento não registrada';
-  if(lead?.nascimento){
-    const bday = new Date(lead.nascimento+'T12:00:00');
+  if(nascimento){
+    const bday = new Date(nascimento+'T12:00:00');
     const next = new Date(todayMs.getFullYear(), bday.getMonth(), bday.getDate());
     if(next < todayMs) next.setFullYear(todayMs.getFullYear()+1);
     nextBday = next;
-    bdaySub  = `Nascimento: ${fmtD(lead.nascimento)} → Próximo: ${next.toLocaleDateString('pt-BR')}`;
+    bdaySub  = `Nascimento: ${fmtD(nascimento)} → Próximo: ${next.toLocaleDateString('pt-BR')}`;
   }
 
   openModal(`
