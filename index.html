@@ -156,11 +156,11 @@ tbody tr:hover{background:#fafaf6}
 .kanban-col{flex:0 0 280px;background:#ecead9;border-radius:10px;display:flex;flex-direction:column;overflow:hidden;max-height:calc(100vh - 108px)}
 .kanban-col-header{padding:12px 14px;background:#dcdbc4;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--primary);flex-shrink:0}
 .kanban-col-header .count{background:var(--primary);color:#fff;padding:2px 9px;border-radius:11px;font-size:11px}
-.kanban-col-body{overflow-y:auto;max-height:calc(100vh - 157px);padding:10px 6px 10px 10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:rgba(107,33,168,.45) rgba(0,0,0,.06)}
-.kanban-col-body::-webkit-scrollbar{width:6px}
-.kanban-col-body::-webkit-scrollbar-track{background:rgba(0,0,0,.06);border-radius:6px;margin:4px}
-.kanban-col-body::-webkit-scrollbar-thumb{background:rgba(107,33,168,.45);border-radius:6px}
-.kanban-col-body::-webkit-scrollbar-thumb:hover{background:rgba(107,33,168,.75)}
+.kanban-col-body{overflow-y:scroll;max-height:calc(100vh - 157px);padding:10px 6px 10px 10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:rgba(107,33,168,.45) rgba(0,0,0,.06)}
+.kanban-col-body::-webkit-scrollbar{width:7px;-webkit-appearance:none}
+.kanban-col-body::-webkit-scrollbar-track{background:rgba(0,0,0,.08);border-radius:6px;margin:4px}
+.kanban-col-body::-webkit-scrollbar-thumb{background:rgba(107,33,168,.5);border-radius:6px;min-height:40px}
+.kanban-col-body::-webkit-scrollbar-thumb:hover{background:rgba(107,33,168,.8)}
 .kanban-col-body.drag-over{background:#fff5d9}
 .kanban-card{background:#fff;border-radius:8px;box-shadow:var(--shadow);cursor:grab;border-left:3px solid var(--primary);transition:transform .1s, box-shadow .15s;overflow:hidden}
 .kanban-card:hover{box-shadow:var(--shadow-lg)}
