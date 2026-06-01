@@ -152,8 +152,8 @@ tbody tr:hover{background:#fafaf6}
 .section.collapsed .section-body{display:none}
 
 /* KANBAN */
-.kanban{display:flex;gap:14px;height:calc(100vh - 110px);overflow-x:auto;padding-bottom:8px}
-.kanban-col{flex:0 0 280px;background:#ecead9;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+.kanban{display:flex;gap:14px;height:calc(100vh - 108px);overflow-x:auto;padding-bottom:8px}
+.kanban-col{flex:0 0 280px;height:100%;background:#ecead9;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
 .kanban-col-header{padding:12px 14px;background:#dcdbc4;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--primary)}
 .kanban-col-header .count{background:var(--primary);color:#fff;padding:2px 9px;border-radius:11px;font-size:11px}
 .kanban-col-body{flex:1;min-height:0;overflow-y:scroll;padding:10px 6px 10px 10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:rgba(107,33,168,.45) rgba(0,0,0,.06)}
@@ -510,6 +510,8 @@ function navigate(route){
   $('#pageTitle').textContent = r?.label || route;
   $('#pageActions').innerHTML = '';
   $('#content').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  // Pipeline: bloqueia scroll do .content para que cada coluna role individualmente
+  document.querySelector('.content').style.overflow = route === 'pipeline' ? 'hidden' : '';
   switch(route){
     case 'dashboard': renderDashboard(); break;
     case 'pipeline': renderPipeline(); break;
@@ -3420,19 +3422,20 @@ function openInstalacaoModal(item=null){
 function openHomologacaoModal(item=null){
   item = item || {};
   const linked = getLinkedDocs(item);
-  const etapaOpts = [['aguardando_docs','Aguardando docs'],['projeto','Projeto'],['trt_art_pg','TRT/ART pago'],['parecer_acesso','Parecer de acesso'],['vistoria_final','Vistoria final'],['aprovada','Aprovada'],['reprovada','Reprovada']];
+  const etapaOpts = [['aguardando_docs','Aguardando docs'],['projeto','Projeto'],['trt_art_pg','TRT/ART pago'],['parecer_acesso','Parecer de acesso'],['aumento_de_carga','Aumento de Carga'],['vistoria_final','Vistoria final'],['aprovada','Aprovada'],['reprovada','Reprovada']];
   const docs = item.docs || {};
   const docKeys = ['procuracao','rg_cnh','contrato_assinado','fatura_ger','fatura_ben','arquivo_vist','datasheet_inv','datasheet_mod','analise_sombra','anexo_i','form_troca_padrao','art_trt','projeto_unifilar','memorial_tecnico','cert_inmetro','orcamento_conexao'];
 
   // ── Etapa tracker ──
-  const etapaSeq = ['aguardando_docs','projeto','trt_art_pg','parecer_acesso','vistoria_final','aprovada'];
+  const etapaSeq = ['aguardando_docs','projeto','trt_art_pg','parecer_acesso','aumento_de_carga','vistoria_final','aprovada'];
   const etapaInfo = {
-    aguardando_docs: {icon:'📋', label:'Aguardando Documentos'},
-    projeto:         {icon:'📐', label:'Projeto'},
-    trt_art_pg:      {icon:'💰', label:'TRT/ART Pago'},
-    parecer_acesso:  {icon:'✅', label:'Parecer de Acesso'},
-    vistoria_final:  {icon:'🔍', label:'Vistoria Final'},
-    aprovada:        {icon:'⚡', label:'Aprovada'},
+    aguardando_docs:  {icon:'📋', label:'Aguardando Documentos'},
+    projeto:          {icon:'📐', label:'Projeto'},
+    trt_art_pg:       {icon:'💰', label:'TRT/ART Pago'},
+    parecer_acesso:   {icon:'✅', label:'Parecer de Acesso'},
+    aumento_de_carga: {icon:'🔌', label:'Aumento de Carga'},
+    vistoria_final:   {icon:'🔍', label:'Vistoria Final'},
+    aprovada:         {icon:'⚡', label:'Aprovada'},
   };
   function buildEtapaTrackerHTML(etapa){
     const isReprovada = etapa === 'reprovada';
