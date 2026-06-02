@@ -317,7 +317,7 @@ WHERE p.homologacao_id = h.id
 CREATE TABLE IF NOT EXISTS historico (
   id           uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
   tabela       text        NOT NULL,
-  registro_id  uuid        NOT NULL,
+  registro_id  text        NOT NULL,   -- text (não uuid) para aceitar qualquer tipo de ID
   usuario_id   uuid,
   usuario_nome text,
   acao         text        NOT NULL,  -- 'criado' | 'atualizado' | 'status' | 'etapa' | 'avancou' | 'aprovado' | 'reprovado'
@@ -325,11 +325,27 @@ CREATE TABLE IF NOT EXISTS historico (
   criado_em    timestamptz DEFAULT now()
 );
 
+-- Se a tabela já existia com registro_id uuid, converte para text
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name='historico' AND column_name='registro_id' AND data_type='uuid'
+  ) THEN
+    ALTER TABLE historico ALTER COLUMN registro_id TYPE text USING registro_id::text;
+  END IF;
+END $$;
+
 ALTER TABLE historico ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "autenticados_hist" ON historico;
 CREATE POLICY "autenticados_hist" ON historico
   FOR ALL USING (auth.role() = 'authenticated');
+
+-- Permite service_role inserir sem restrição de RLS
+DROP POLICY IF EXISTS "service_role_hist" ON historico;
+CREATE POLICY "service_role_hist" ON historico
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_historico_registro
   ON historico (tabela, registro_id, criado_em DESC);

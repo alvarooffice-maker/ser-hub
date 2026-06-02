@@ -1630,21 +1630,32 @@ async function registrarHistorico(tabela, registroId, acao, descricao){
   try{
     const perfil = (State.perfis||[]).find(p=>p.user_id===State.user?.id);
     const nomeUsuario = perfil?.nome || State.user?.email || 'Sistema';
-    await supaAdmin.from('historico').insert({
-      tabela, registro_id: String(registroId),
+    const { error } = await supaAdmin.from('historico').insert({
+      tabela,
+      registro_id: String(registroId),
       usuario_id: State.user?.id || null,
       usuario_nome: nomeUsuario,
-      acao, descricao
+      acao,
+      descricao
     });
-  }catch(e){ console.warn('Histórico:', e.message); }
+    if(error) console.error('[Histórico] Falha ao gravar:', error.message, error);
+  }catch(e){ console.error('[Histórico] Exceção:', e); }
 }
 
 // Carrega e renderiza o histórico num elemento DOM
 async function carregarHistorico(el, tabela, registroId){
   if(!el || !registroId) return;
-  const { data } = await supaAdmin.from('historico')
+  const { data, error } = await supaAdmin.from('historico')
     .select('*').eq('tabela', tabela).eq('registro_id', String(registroId))
     .order('criado_em', { ascending: false }).limit(60);
+  if(error){
+    console.error('[Histórico] Falha ao carregar:', error.message, error);
+    el.innerHTML = `<div class="hist-empty" style="color:#dc2626;font-size:11px">
+      ⚠️ Erro ao carregar histórico — verifique o console (F12).<br>
+      <small>${error.message}</small>
+    </div>`;
+    return;
+  }
   const icons = {criado:'🆕', atualizado:'✏️', status:'🔄', etapa:'🔖',
                  avancou:'➡️', aprovado:'✅', reprovado:'❌'};
   const fmtDT = ts => new Date(ts).toLocaleString('pt-BR',{
