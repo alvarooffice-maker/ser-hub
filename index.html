@@ -871,9 +871,8 @@ async function renderPipeline(){
   await loadAll();
   const role = userRole();
   let stages = STAGES;
-  // tec_vistoria vê todas as colunas (filtrado pelos seus cards em renderStageCol)
-  if(role === 'tec_instalacao') stages = STAGES.filter(s=>s.id==='instalacao');
-  else if(role === 'tec_homologacao') stages = STAGES.filter(s=>s.id==='homologacao');
+  // tec_vistoria e tec_instalacao vêem todas as colunas (filtrado pelos seus cards em renderStageCol)
+  if(role === 'tec_homologacao') stages = STAGES.filter(s=>s.id==='homologacao');
 
   const isTec = ['tec_vistoria','tec_instalacao','tec_homologacao'].includes(role);
   $('#pageActions').innerHTML = isTec ? '' : `<button class="btn btn-primary" id="newLeadBtn">+ Novo Lead</button>`;
@@ -886,6 +885,30 @@ async function renderPipeline(){
 
 function renderStageCol(stage){
   let items = filterByVendor(State[stage.dataKey]||[]);
+
+  // ── tec_instalacao: filtra por cadeia encadeada a partir das SUAS instalações ──
+  if(userRole() === 'tec_instalacao'){
+    const tecNome = (State.profile?.nome||'').toLowerCase().trim();
+    const minhasInst = (State.instalacoes||[]).filter(i=>
+      (i.tecnico||'').toLowerCase().trim() === tecNome
+    );
+    const instIds = new Set(minhasInst.map(i=>i.id));
+    // Cadeia para frente (sem pós venda)
+    const homIds  = new Set((State.homologacoes||[]).filter(h=>instIds.has(h.instalacao_id)).map(h=>h.id));
+    // Cadeia para trás
+    const logIds  = new Set(minhasInst.map(i=>i.logistica_id).filter(Boolean));
+    const contIds = new Set((State.logistica||[]).filter(l=>logIds.has(l.id)).map(l=>l.contrato_id).filter(Boolean));
+    const vistIds = new Set((State.contratos||[]).filter(c=>contIds.has(c.id)).map(c=>c.vistoria_id).filter(Boolean));
+    const propIds = new Set((State.vistorias||[]).filter(v=>vistIds.has(v.id)).map(v=>v.proposta_id).filter(Boolean));
+    const leadIds = new Set((State.propostas||[]).filter(p=>propIds.has(p.id)).map(p=>p.lead_id).filter(Boolean));
+    const filtroIds = {
+      lead: leadIds, proposta: propIds, vistoria: vistIds,
+      contrato: contIds, logistica: logIds, instalacao: instIds,
+      homologacao: homIds
+      // posvenda: excluído — instalador não precisa ver cards em Pós Venda
+    };
+    items = items.filter(i => (filtroIds[stage.id]||new Set()).has(i.id));
+  }
 
   // ── tec_vistoria: filtra por cadeia encadeada a partir das SUAS vistorias ──
   if(userRole() === 'tec_vistoria'){
@@ -999,13 +1022,17 @@ function renderCard(item,stage){
   const kwh = item.kwh ? `${fmtNum(item.kwh,0)} kWh` : '';
   const kwp = item.kwp ? `${fmtNum(item.kwp,2)} kWp` : '';
   const flags = stageFlags(item,stage);
-  const isTecVist = userRole() === 'tec_vistoria';
-  // tec_vistoria: sem drag; em colunas que não são vistoria mostra chip informativo
-  const draggable = isTecVist ? 'false' : 'true';
+  const role = userRole();
+  const isTecVist = role === 'tec_vistoria';
+  const isTecInst = role === 'tec_instalacao';
+  // tec_vistoria e tec_instalacao: sem drag
+  const draggable = (isTecVist || isTecInst) ? 'false' : 'true';
 
-  // tec_vistoria: chip informativo nos cards de outras colunas (só há 1 card por cliente)
+  // chip informativo nos cards de outras colunas
   const tecHint = (isTecVist && stage.id !== 'vistoria')
     ? `<div style="font-size:10px;color:#6B21A8;font-style:italic;margin-top:3px">🔍 Clique → editar vistoria</div>`
+    : (isTecInst && stage.id !== 'instalacao')
+    ? `<div style="font-size:10px;color:#0369a1;font-style:italic;margin-top:3px">🔍 Clique → editar instalação</div>`
     : '';
 
   return `
@@ -1426,13 +1453,22 @@ function openStageModal(stage,id){
   if(!item) return;
 
   // tec_vistoria: só pode editar o modal de vistoria.
-  // Se clicar em card de outro estágio, abre a vistoria vinculada.
   if(userRole() === 'tec_vistoria' && stage !== 'vistoria'){
     const linked = getLinkedDocs(item);
     const vistoria = linked.vistoria
       || (State.vistorias||[]).find(v=>String(v.id)===String(item.vistoria_id));
     if(vistoria) openVistoriaModal(vistoria);
     else toast('Vistoria vinculada não encontrada.','warn');
+    return;
+  }
+
+  // tec_instalacao: só pode editar o modal de instalação.
+  if(userRole() === 'tec_instalacao' && stage !== 'instalacao'){
+    const linked = getLinkedDocs(item);
+    const instalacao = linked.instalacao
+      || (State.instalacoes||[]).find(i=>String(i.id)===String(item.instalacao_id));
+    if(instalacao) openInstalacaoModal(instalacao);
+    else toast('Instalação vinculada não encontrada.','warn');
     return;
   }
 
