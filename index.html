@@ -887,59 +887,66 @@ async function renderPipeline(){
 function renderStageCol(stage){
   let items = filterByVendor(State[stage.dataKey]||[]);
 
-  // tec_vistoria: mostra apenas cards vinculados às suas próprias vistorias
   if(userRole() === 'tec_vistoria'){
+    // ── tec_vistoria: filtra por cadeia encadeada a partir das SUAS vistorias ──
+    // Independe de vistoria_id estar preenchido nos registros filhos (funciona mesmo
+    // para registros antigos sem backfill de FK).
     const tecNome = (State.profile?.nome||'').toLowerCase().trim();
-    // Conjunto dos IDs de vistoria onde ele é o técnico
-    const myVistIds = new Set(
-      (State.vistorias||[])
-        .filter(v=>(v.tecnico||'').toLowerCase().trim() === tecNome)
-        .map(v=>v.id)
+    const minhasVist = (State.vistorias||[]).filter(v=>
+      (v.tecnico||'').toLowerCase().trim() === tecNome
     );
-    if(stage.id === 'vistoria'){
-      items = items.filter(v=>(v.tecnico||'').toLowerCase().trim() === tecNome);
-    } else {
-      // Para outros estágios: verifica vistoria_id direto ou traça a cadeia
-      items = items.filter(item=>{
-        if(item.vistoria_id) return myVistIds.has(item.vistoria_id);
-        const linked = getLinkedDocs(item);
-        return linked.vistoria ? myVistIds.has(linked.vistoria.id) : false;
-      });
-    }
-  }
+    const vistIds = new Set(minhasVist.map(v=>v.id));
 
-  // Oculta itens que já avançaram para a próxima etapa (evita card duplicado)
-  if(stage.id === 'lead'){
-    const promovidos = new Set((State.propostas||[]).map(p=>p.lead_id).filter(Boolean));
-    items = items.filter(l => !promovidos.has(l.id));
-  }
-  if(stage.id === 'proposta'){
-    const promovidos = new Set((State.vistorias||[]).map(v=>v.proposta_id).filter(Boolean));
-    items = items.filter(p => !promovidos.has(p.id));
-  }
-  if(stage.id === 'vistoria'){
-    // tec_vistoria não aplica filtro de promovidos:
-    // ele deve ver TODAS as suas vistorias (incluindo clientes que já avançaram no funil)
-    if(userRole() !== 'tec_vistoria'){
+    // Cadeia para frente (vistoria → contrato → logística → instalação → homologação → pós venda)
+    const contIds = new Set((State.contratos||[]).filter(c=>vistIds.has(c.vistoria_id)).map(c=>c.id));
+    const logIds  = new Set((State.logistica||[]).filter(l=>contIds.has(l.contrato_id)).map(l=>l.id));
+    const instIds = new Set((State.instalacoes||[]).filter(i=>logIds.has(i.logistica_id)).map(i=>i.id));
+    const homIds  = new Set((State.homologacoes||[]).filter(h=>instIds.has(h.instalacao_id)).map(h=>h.id));
+    const pvIds   = new Set((State.posvenda||[]).filter(p=>homIds.has(p.homologacao_id)).map(p=>p.id));
+
+    // Cadeia para trás (vistoria → proposta → lead)
+    const propIds = new Set(minhasVist.map(v=>v.proposta_id).filter(Boolean));
+    const leadIds = new Set((State.propostas||[]).filter(p=>propIds.has(p.id)).map(p=>p.lead_id).filter(Boolean));
+
+    const filtroIds = {
+      lead: leadIds, proposta: propIds, vistoria: vistIds,
+      contrato: contIds, logistica: logIds, instalacao: instIds,
+      homologacao: homIds, posvenda: pvIds
+    };
+    items = items.filter(i => (filtroIds[stage.id]||new Set()).has(i.id));
+    // tec_vistoria NÃO aplica filtro de "promovidos":
+    // ele vê o mesmo card em TODAS as colunas em que ele aparece (vistoria + etapa atual)
+
+  } else {
+    // ── Para todos os demais perfis: oculta itens já promovidos ──
+    if(stage.id === 'lead'){
+      const promovidos = new Set((State.propostas||[]).map(p=>p.lead_id).filter(Boolean));
+      items = items.filter(l => !promovidos.has(l.id));
+    }
+    if(stage.id === 'proposta'){
+      const promovidos = new Set((State.vistorias||[]).map(v=>v.proposta_id).filter(Boolean));
+      items = items.filter(p => !promovidos.has(p.id));
+    }
+    if(stage.id === 'vistoria'){
       const promovidos = new Set((State.contratos||[]).map(c=>c.vistoria_id).filter(Boolean));
       items = items.filter(v => !promovidos.has(v.id));
     }
-  }
-  if(stage.id === 'contrato'){
-    const promovidos = new Set((State.logistica||[]).map(l=>l.contrato_id).filter(Boolean));
-    items = items.filter(c => !promovidos.has(c.id));
-  }
-  if(stage.id === 'logistica'){
-    const promovidos = new Set((State.instalacoes||[]).map(i=>i.logistica_id).filter(Boolean));
-    items = items.filter(l => !promovidos.has(l.id));
-  }
-  if(stage.id === 'instalacao'){
-    const promovidos = new Set((State.homologacoes||[]).map(h=>h.instalacao_id).filter(Boolean));
-    items = items.filter(i => !promovidos.has(i.id));
-  }
-  if(stage.id === 'homologacao'){
-    const promovidos = new Set((State.posvenda||[]).map(p=>p.homologacao_id).filter(Boolean));
-    items = items.filter(h => !promovidos.has(h.id));
+    if(stage.id === 'contrato'){
+      const promovidos = new Set((State.logistica||[]).map(l=>l.contrato_id).filter(Boolean));
+      items = items.filter(c => !promovidos.has(c.id));
+    }
+    if(stage.id === 'logistica'){
+      const promovidos = new Set((State.instalacoes||[]).map(i=>i.logistica_id).filter(Boolean));
+      items = items.filter(l => !promovidos.has(l.id));
+    }
+    if(stage.id === 'instalacao'){
+      const promovidos = new Set((State.homologacoes||[]).map(h=>h.instalacao_id).filter(Boolean));
+      items = items.filter(i => !promovidos.has(i.id));
+    }
+    if(stage.id === 'homologacao'){
+      const promovidos = new Set((State.posvenda||[]).map(p=>p.homologacao_id).filter(Boolean));
+      items = items.filter(h => !promovidos.has(h.id));
+    }
   }
 
   // Deduplicação por cliente — garante 1 card por pessoa em TODAS as colunas
