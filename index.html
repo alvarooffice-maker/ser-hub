@@ -918,8 +918,12 @@ function renderStageCol(stage){
     items = items.filter(p => !promovidos.has(p.id));
   }
   if(stage.id === 'vistoria'){
-    const promovidos = new Set((State.contratos||[]).map(c=>c.vistoria_id).filter(Boolean));
-    items = items.filter(v => !promovidos.has(v.id));
+    // tec_vistoria não aplica filtro de promovidos:
+    // ele deve ver TODAS as suas vistorias (incluindo clientes que já avançaram no funil)
+    if(userRole() !== 'tec_vistoria'){
+      const promovidos = new Set((State.contratos||[]).map(c=>c.vistoria_id).filter(Boolean));
+      items = items.filter(v => !promovidos.has(v.id));
+    }
   }
   if(stage.id === 'contrato'){
     const promovidos = new Set((State.logistica||[]).map(l=>l.contrato_id).filter(Boolean));
@@ -975,6 +979,21 @@ function renderStageCol(stage){
     </div>`;
 }
 
+// Retorna onde o cliente está no funil a partir de uma vistoria (para badge no card)
+function etapaAtualDaVistoria(v){
+  const c = (State.contratos||[]).find(x=>x.vistoria_id===v.id);
+  if(!c) return null;
+  const l = (State.logistica||[]).find(x=>x.contrato_id===c.id);
+  if(!l) return {icon:'✍️', label:'Contrato', status:c.status};
+  const i = (State.instalacoes||[]).find(x=>x.logistica_id===l.id);
+  if(!i) return {icon:'📦', label:'Logística', status:l.status};
+  const h = (State.homologacoes||[]).find(x=>x.instalacao_id===i.id);
+  if(!h) return {icon:'🔧', label:'Instalação', status:i.status};
+  const p = (State.posvenda||[]).find(x=>x.homologacao_id===h.id);
+  if(!p) return {icon:'📋', label:'Homologação', status:h.etapa};
+  return {icon:'⭐', label:'Pós Venda', status:p.status};
+}
+
 function renderCard(item,stage){
   const stat = stageStatus(item,stage);
   const kwh = item.kwh ? `${fmtNum(item.kwh,0)} kWh` : '';
@@ -983,9 +1002,20 @@ function renderCard(item,stage){
   const isTecVist = userRole() === 'tec_vistoria';
   // tec_vistoria: sem drag; em colunas que não são vistoria mostra chip informativo
   const draggable = isTecVist ? 'false' : 'true';
-  const visitaHint = (isTecVist && stage.id !== 'vistoria')
-    ? `<div style="font-size:10px;color:#6B21A8;font-style:italic;margin-top:3px">🔍 Clique → editar vistoria</div>`
-    : '';
+
+  let tecHint = '';
+  if(isTecVist){
+    if(stage.id === 'vistoria'){
+      // Mostra em qual etapa do funil o cliente está agora (se já avançou)
+      const etapa = etapaAtualDaVistoria(item);
+      if(etapa){
+        tecHint = `<div style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;margin-top:3px;display:inline-block">${etapa.icon} ${etapa.label}: ${etapa.status||'—'}</div>`;
+      }
+    } else {
+      tecHint = `<div style="font-size:10px;color:#6B21A8;font-style:italic;margin-top:3px">🔍 Clique → editar vistoria</div>`;
+    }
+  }
+
   return `
     <div class="kanban-card" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.vendedor||'')).toLowerCase()}">
       <div class="kanban-card-inner">
@@ -993,7 +1023,7 @@ function renderCard(item,stage){
         <div class="meta">${kwp || kwh || ''}</div>
         <div class="meta">${esc(item.vendedor||'')}</div>
         ${flags}
-        ${visitaHint}
+        ${tecHint}
         <div class="footer">${badge(stat)}</div>
       </div>
     </div>`;
