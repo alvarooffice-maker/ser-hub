@@ -230,7 +230,9 @@ tbody tr:hover{background:#fafaf6}
 /* FILE UPLOAD */
 .file-upload{display:flex;flex-direction:column;gap:6px;padding:9px;border:1px dashed var(--border);border-radius:7px;background:#fafaf6}
 .file-upload label{font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.3px}
-.file-upload input[type=file]{font-size:12px}
+.file-upload input[type=file]{display:none}
+.btn-add-file{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:7px 12px;border:1.5px dashed #6B21A8;border-radius:6px;background:none;color:#6B21A8;font-size:11px;font-weight:700;cursor:pointer;margin-top:2px;transition:background .15s}
+.btn-add-file:hover{background:#f5f0fc}
 .file-thumbs{display:flex;flex-wrap:wrap;gap:6px}
 .file-thumb{width:60px;height:60px;border-radius:6px;border:1px solid var(--border);position:relative;overflow:hidden;background:#fff}
 .file-thumb img{width:100%;height:100%;object-fit:cover}
@@ -1852,13 +1854,15 @@ async function uploadFile(bucket, file, prefix=''){
 
 function fileUploadBlock(label, name, bucket, currentList=[], multiple=true){
   const list = Array.isArray(currentList)?currentList:[];
+  const btnLabel = multiple ? '+ Adicionar fotos' : '+ Selecionar arquivo';
   return `
     <div class="file-upload" data-fu="${name}">
       <label>${esc(label)}</label>
-      <input type="file" data-bucket="${bucket}" data-name="${name}" ${multiple?'multiple':''} accept="image/*,application/pdf" />
       <div class="file-thumbs" data-thumbs="${name}">
         ${list.map((f,i)=>thumbHtml(f,name,i)).join('')}
       </div>
+      <button type="button" class="btn-add-file" data-trigger="${name}">${btnLabel}</button>
+      <input type="file" data-bucket="${bucket}" data-name="${name}" ${multiple?'multiple':''} accept="image/*,application/pdf" />
     </div>`;
 }
 function thumbHtml(f,name,i){
@@ -1883,6 +1887,15 @@ function attachFileUploads(rootEl, fileStore){
       });
     });
   }
+  // Botão "+ Adicionar fotos/arquivo" → dispara o input oculto
+  $$('.btn-add-file',rootEl).forEach(btn=>{
+    if(btn._bound) return; btn._bound = true;
+    btn.addEventListener('click', ()=>{
+      const inp = rootEl.querySelector(`input[type=file][data-name="${btn.dataset.trigger}"]`);
+      if(inp) inp.click();
+    });
+  });
+
   $$('input[type=file]',rootEl).forEach(inp=>{
     inp.addEventListener('change', async ()=>{
       const bucket = inp.dataset.bucket;
@@ -2030,7 +2043,7 @@ function openVistoriaModal(item=null){
 
         <div class="section collapsed"><div class="section-header"><h4>📸 Fotos</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
-            ${fotoKeys.map(k=>fileUploadBlock(k.replace(/_/g,' '), k, 'vistorias', fotos[k]||[], ['local_modulos','estrutura','telhado_aereo'].includes(k))).join('')}
+            ${fotoKeys.map(k=>fileUploadBlock(k.replace(/_/g,' '), k, 'vistorias', fotos[k]||[], true)).join('')}
           </div></div>
         </div>
 
@@ -2044,6 +2057,7 @@ function openVistoriaModal(item=null){
       <div class="modal-footer">
         ${!isNew && isAdmin()?`<button type="button" class="btn btn-danger" id="delVistBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+        ${!isNew?`<button type="button" class="btn btn-secondary" id="vistPdfBtn">🖨️ Gerar Relatório</button>`:''}
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
       </div>
     </form>
@@ -2118,6 +2132,37 @@ function openVistoriaModal(item=null){
     if(!await confirmDel('Excluir vistoria?')) return;
     await supa.from('vistorias').delete().eq('id',item.id);
     toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
+  });
+
+  // Botão "Gerar Relatório PDF" — usa dados atuais do form + fotos já enviadas
+  $('#vistPdfBtn')?.addEventListener('click', ()=>{
+    const raw = readForm(form);
+    const pdfItem = {
+      ...item,
+      nome: raw.nome, telefone: raw.telefone, email: raw.email,
+      data_agendamento: raw.data_agendamento, hora_agendamento: raw.hora_agendamento,
+      tecnico: raw.tecnico, gmap: raw.gmap,
+      cliente_presente: !!raw.cliente_presente, responsavel_ausencia: raw.responsavel_ausencia,
+      resultado: raw.resultado, status: raw.status,
+      cep: raw.cep, rua: raw.rua, numero: raw.numero, complemento: raw.complemento,
+      bairro: raw.bairro, cidade: raw.cidade, estado: raw.estado,
+      qtd_modulos: raw.qtd_modulos ? Number(raw.qtd_modulos) : null,
+      marca_modulo: raw.marca_modulo||null,
+      pot_modulo: raw.pot_modulo ? Number(raw.pot_modulo) : null,
+      qtd_inversores: raw.qtd_inversores ? Number(raw.qtd_inversores) : null,
+      marca_inversor: raw.marca_inversor||null,
+      pot_inversor: raw.pot_inversor ? Number(raw.pot_inversor) : null,
+      kwp: raw.kwp ? Number(raw.kwp) : null,
+      parecer_final: raw.parecer_final,
+      dados_padrao: extractJsonGroup(raw,'dp_'),
+      dados_eletrodutos: extractJsonGroup(raw,'dec_'),
+      dados_cabeamento: extractJsonGroup(raw,'dc_'),
+      dados_inversor: extractJsonGroup(raw,'di_'),
+      dados_estrutura: extractJsonGroup(raw,'de_'),
+      fotos: pickFiles(allFiles, fotoKeys),
+      docs: pickFiles(allFiles, docKeys)
+    };
+    abrirVistoriaJanela(pdfItem);
   });
 }
 
@@ -2337,7 +2382,12 @@ table.kit .hl{color:#4B0082;font-weight:700}
 .parecer-box{background:#f5f0fc;border-radius:6px;padding:12px 16px;font-size:12px;line-height:1.7;margin-top:8px;white-space:pre-wrap}
 /* Alert box */
 .alert{background:#fffbeb;border:1px solid #f59e0b;border-radius:6px;padding:10px 14px;margin:14px 0;font-size:11px;font-weight:600}
-@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{background:#fff;padding:0}.wrap{box-shadow:none;padding:24px 32px}.print-bar{display:none!important}}
+/* Galeria de fotos */
+.foto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.foto-item{break-inside:avoid;page-break-inside:avoid}
+.foto-item img{width:100%;height:150px;object-fit:cover;border-radius:6px;border:1px solid #ddd;display:block}
+.foto-item .foto-lbl{font-size:9px;text-align:center;color:#6b5f7a;margin-top:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{background:#fff;padding:0}.wrap{box-shadow:none;padding:24px 32px}.print-bar{display:none!important}.foto-grid{grid-template-columns:repeat(3,1fr);gap:8px}.foto-item img{height:120px}}
 </style></head><body>
 <div class="print-bar">
   <span>SER Energia — Laudo de Vistoria Técnica</span>
@@ -2439,6 +2489,22 @@ ${v.parecer_final?`<h2>📋 Parecer Final do Técnico</h2><div class="parecer-bo
 ${(v.resultado||'').includes('obra')||(v.resultado||'').includes('sombreamento')?`
 <div class="alert">⚠️ ATENÇÃO: Esta vistoria foi aprovada com ressalvas. Verifique o parecer final e a descrição de obras antes de iniciar a instalação.</div>`:''}
 ${v.resultado==='reprovada'?`<div class="alert" style="background:#fee2e2;border-color:#ef4444">❌ VISTORIA REPROVADA — Instalação não autorizada. Verifique as pendências com a equipe técnica.</div>`:''}
+
+${(()=>{
+  const fotos = v.fotos || {};
+  const entries = Object.entries(fotos).flatMap(([cat, files])=>
+    (Array.isArray(files)?files:[]).filter(f=>f&&f.url&&/\.(jpe?g|png|gif|webp|bmp)(\?|$)/i.test(f.url))
+      .map(f=>({cat: cat.replace(/_/g,' '), url: f.url, name: f.name||''}))
+  );
+  if(!entries.length) return '';
+  return `<h2>📸 Registro Fotográfico</h2>
+<div class="foto-grid">${entries.map(f=>`
+  <div class="foto-item">
+    <img src="${f.url}" alt="" />
+    <div class="foto-lbl">${f.cat}</div>
+  </div>`).join('')}
+</div>`;
+})()}
 
 <div style="text-align:center;margin-top:28px;font-size:10px;color:#888;border-top:1px solid #ddd;padding-top:12px">
   SER Energia Renovável · CNPJ 58.656.750/0001-04 · Laudo gerado em ${new Date().toLocaleDateString('pt-BR')}
