@@ -310,6 +310,31 @@ WHERE p.homologacao_id = h.id
   AND h.contrato_id IS NOT NULL;
 
 -- ════════════════════════════════════════════════════════════
+-- BLOCO 14 — TABELA HISTÓRICO DE ALTERAÇÕES
+-- Registra toda mudança feita em cada card, com usuário e timestamp
+-- ════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS historico (
+  id           uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  tabela       text        NOT NULL,
+  registro_id  uuid        NOT NULL,
+  usuario_id   uuid,
+  usuario_nome text,
+  acao         text        NOT NULL,  -- 'criado' | 'atualizado' | 'status' | 'etapa' | 'avancou' | 'aprovado' | 'reprovado'
+  descricao    text        NOT NULL,
+  criado_em    timestamptz DEFAULT now()
+);
+
+ALTER TABLE historico ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "autenticados_hist" ON historico;
+CREATE POLICY "autenticados_hist" ON historico
+  FOR ALL USING (auth.role() = 'authenticated');
+
+CREATE INDEX IF NOT EXISTS idx_historico_registro
+  ON historico (tabela, registro_id, criado_em DESC);
+
+-- ════════════════════════════════════════════════════════════
 -- VERIFICAÇÃO — descomente e rode para confirmar
 -- ════════════════════════════════════════════════════════════
 /*

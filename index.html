@@ -230,6 +230,16 @@ tbody tr:hover{background:#fafaf6}
 /* FILE UPLOAD */
 .file-upload{display:flex;flex-direction:column;gap:6px;padding:9px;border:1px dashed var(--border);border-radius:7px;background:#fafaf6}
 .file-upload label{font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.3px}
+/* HISTÓRICO */
+.hist-list{display:flex;flex-direction:column}
+.hist-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px}
+.hist-item:last-child{border-bottom:none}
+.hist-icon{font-size:15px;width:22px;text-align:center;flex-shrink:0;margin-top:1px}
+.hist-body{flex:1;min-width:0}
+.hist-desc{color:#1a0a2e;line-height:1.4;word-break:break-word}
+.hist-meta{font-size:11px;color:#888;margin-top:2px}
+.hist-empty{text-align:center;padding:16px 8px;color:#aaa;font-size:12px}
+/* FILE UPLOAD */
 .file-upload input[type=file]{display:none}
 .btn-add-file{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:7px 12px;border:1.5px dashed #6B21A8;border-radius:6px;background:none;color:#6B21A8;font-size:11px;font-weight:700;cursor:pointer;margin-top:2px;transition:background .15s}
 .btn-add-file:hover{background:#f5f0fc}
@@ -1502,6 +1512,70 @@ function readForm(formEl){
 }
 
 /* ============================================================
+   HISTÓRICO DE ALTERAÇÕES
+   ============================================================ */
+
+// Detecta campos que mudaram entre o objeto antigo e o novo
+function detectMudancas(antes, depois, campos){
+  return campos.map(([key, label, mapFn])=>{
+    const va = String(antes[key]??'');
+    const vd = String(depois[key]??'');
+    if(va === vd) return null;
+    const fmt = v => mapFn ? (mapFn(v)||v||'—') : (v||'—');
+    return `${label}: ${fmt(antes[key])} → ${fmt(depois[key])}`;
+  }).filter(Boolean);
+}
+
+// Grava um evento no histórico (usa supaAdmin para ignorar RLS de escrita)
+async function registrarHistorico(tabela, registroId, acao, descricao){
+  if(!registroId) return;
+  try{
+    const perfil = (State.perfis||[]).find(p=>p.user_id===State.user?.id);
+    const nomeUsuario = perfil?.nome || State.user?.email || 'Sistema';
+    await supaAdmin.from('historico').insert({
+      tabela, registro_id: String(registroId),
+      usuario_id: State.user?.id || null,
+      usuario_nome: nomeUsuario,
+      acao, descricao
+    });
+  }catch(e){ console.warn('Histórico:', e.message); }
+}
+
+// Carrega e renderiza o histórico num elemento DOM
+async function carregarHistorico(el, tabela, registroId){
+  if(!el || !registroId) return;
+  const { data } = await supaAdmin.from('historico')
+    .select('*').eq('tabela', tabela).eq('registro_id', String(registroId))
+    .order('criado_em', { ascending: false }).limit(60);
+  const icons = {criado:'🆕', atualizado:'✏️', status:'🔄', etapa:'🔖',
+                 avancou:'➡️', aprovado:'✅', reprovado:'❌'};
+  const fmtDT = ts => new Date(ts).toLocaleString('pt-BR',{
+    day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+  if(!data?.length){
+    el.innerHTML = '<div class="hist-empty">Nenhuma alteração registrada ainda.</div>';
+    return;
+  }
+  el.innerHTML = data.map(h=>`
+    <div class="hist-item">
+      <div class="hist-icon">${icons[h.acao]||'📝'}</div>
+      <div class="hist-body">
+        <div class="hist-desc">${esc(h.descricao)}</div>
+        <div class="hist-meta"><strong>${esc(h.usuario_nome||'Sistema')}</strong> · ${fmtDT(h.criado_em)}</div>
+      </div>
+    </div>`).join('');
+}
+
+// Retorna o HTML da seção de histórico (para incluir no modal)
+function histSection(){
+  return `<div class="section collapsed" id="histSection">
+    <div class="section-header"><h4>📋 Histórico de Alterações</h4><span class="section-toggle">▼</span></div>
+    <div class="section-body"><div class="hist-list" id="histList">
+      <div class="hist-empty">Carregando…</div>
+    </div></div>
+  </div>`;
+}
+
+/* ============================================================
    LEAD MODAL
    ============================================================ */
 function openLeadModal(item=null){
@@ -1537,6 +1611,7 @@ function openLeadModal(item=null){
           ${formField({label:'Observações',name:'obs',type:'textarea',value:item.obs,full:true})}
         </div>
         ${!isNew ? renderContactLog(item.id,'lead') : ''}
+        ${!isNew ? histSection() : ''}
       </div>
       <div class="modal-footer">
         ${!isNew?`<button type="button" class="btn btn-danger" id="delLeadBtn">Excluir</button>`:''}
@@ -1553,29 +1628,36 @@ function openLeadModal(item=null){
     $('#reatWrap').style.display = show?'block':'none';
   });
 
+  if(!isNew) carregarHistorico($('#histList'), 'leads', item.id);
+
+  const statusLeadMap = {em_contato:'Em contato', proposta:'Proposta', perdido:'Perdido'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
     data.kwh = data.kwh!=null ? Number(data.kwh) : null;
     if(isNew){
       data.criado_por = State.user?.id;
-      const { error } = await supa.from('leads').insert(data);
+      const { data: leadCriado, error } = await supa.from('leads').insert(data).select('id').single();
       if(error) return toast(error.message,'error');
+      await registrarHistorico('leads', leadCriado.id, 'criado', `Lead criado: ${data.nome}`);
       // Lead criado já como "proposta" → cria proposta automaticamente
       if(data.status === 'proposta'){
-        const { data: leadCriado } = await supa.from('leads').select('id').eq('nome',data.nome).order('criado_em',{ascending:false}).limit(1).maybeSingle();
-        if(leadCriado){
-          const pPayload = buildTransitionPayload({...data, id:leadCriado.id}, 'lead', 'proposta');
-          pPayload.criado_por = State.user?.id;
-          await supa.from('propostas').insert(pPayload);
-          toast('Lead criado → Proposta criada automaticamente! ✓','success');
-        } else { toast('Lead criado!','success'); }
+        const pPayload = buildTransitionPayload({...data, id:leadCriado.id}, 'lead', 'proposta');
+        pPayload.criado_por = State.user?.id;
+        await supa.from('propostas').insert(pPayload);
+        toast('Lead criado → Proposta criada automaticamente! ✓','success');
       } else { toast('Lead criado!','success'); }
     } else {
       const prevStatus = item.status;
       data.atualizado_em = new Date().toISOString();
       const { error } = await supa.from('leads').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
+      const mud = detectMudancas(item, data, [
+        ['status','Status', v=>statusLeadMap[v]||v],
+        ['vendedor','Vendedor',null], ['canal','Canal',null],
+      ]);
+      const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
+      await registrarHistorico('leads', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
       if(data.status==='perdido' && prevStatus!=='perdido'){
         await supa.from('remarketing').insert({
           lead_id:item.id, nome:data.nome, telefone:data.telefone,
@@ -1741,6 +1823,7 @@ function openPropostaModal(item=null){
             ${formField({label:'Email Vendedor',name:'vend_email',value:item.vend_email})}
           </div></div>
         </div>
+        ${!isNew ? histSection() : ''}
       </div>
       <div class="modal-footer">
         ${!isNew?`<div class="btn-group"><button type="button" class="btn btn-secondary" id="vizPropBtn">👁️ Visualizar</button><button type="button" class="btn btn-secondary" id="dlPropBtn" title="Imprimir / PDF">🖨️ PDF</button></div>`:''}
@@ -1793,6 +1876,9 @@ function openPropostaModal(item=null){
   form.conta_sem_solar.addEventListener('input', recalcComSolar);
   form.conta_com_solar.addEventListener('input', recalcEco);
 
+  if(!isNew) carregarHistorico($('#histList'), 'propostas', item.id);
+
+  const statusPropMap = {em_aberto:'Em aberto', enviada:'Enviada', aceita:'Aceita', perdida:'Perdida'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
@@ -1800,13 +1886,20 @@ function openPropostaModal(item=null){
      'conta_sem_solar','conta_com_solar','economia_mensal','economia_5anos','area_minima'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     if(isNew){
       data.criado_por = State.user?.id;
-      const { error } = await supa.from('propostas').insert(data);
+      const { data: propCriada, error } = await supa.from('propostas').insert(data).select('id').single();
       if(error) return toast(error.message,'error');
+      await registrarHistorico('propostas', propCriada.id, 'criado', `Proposta criada: ${data.nome||''}`);
       toast('Proposta criada','success');
     } else {
       const prevStatus = item.status;
       const { error } = await supa.from('propostas').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
+      const mud = detectMudancas(item, data, [
+        ['status','Status', v=>statusPropMap[v]||v],
+        ['vendedor','Vendedor',null], ['valor','Valor',null],
+      ]);
+      const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
+      await registrarHistorico('propostas', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
 
       // Proposta aceita → cria Vistoria automaticamente (se ainda não existir)
       if(data.status === 'aceita' && prevStatus !== 'aceita'){
@@ -2053,6 +2146,7 @@ function openVistoriaModal(item=null){
           </div></div>
         </div>
         ${!isNew?renderLinkedDocBtns(linked):''}
+        ${!isNew ? histSection() : ''}
       </div>
       <div class="modal-footer">
         ${!isNew && isAdmin()?`<button type="button" class="btn btn-danger" id="delVistBtn">Excluir</button>`:''}
@@ -2066,7 +2160,7 @@ function openVistoriaModal(item=null){
   const form = $('#vistForm');
   attachCEP(form);
 
-  if(!isNew) attachLinkedDocListeners(linked);
+  if(!isNew){ attachLinkedDocListeners(linked); carregarHistorico($('#histList'), 'vistorias', item.id); }
   const allFiles = {};
   [...fotoKeys, ...docKeys].forEach(k=>{
     allFiles[k] = (fotos[k] || docs[k] || []).slice();
@@ -2094,15 +2188,23 @@ function openVistoriaModal(item=null){
       fotos: pickFiles(allFiles, fotoKeys),
       docs: pickFiles(allFiles, docKeys)
     };
+    const resVistMap = {aprovada:'Aprovada',reprovada:'Reprovada',aprovada_com_obra:'Aprovada c/ Obra',aprovada_com_sombreamento:'Aprovada c/ Sombreamento',aprovada_com_obra_e_sombreamento:'Aprovada c/ Obra e Sombreamento'};
     if(isNew){
       data.criado_por = State.user?.id;
-      const { error } = await supa.from('vistorias').insert(data);
+      const { data: vistCriada, error } = await supa.from('vistorias').insert(data).select('id').single();
       if(error) return toast(error.message,'error');
+      await registrarHistorico('vistorias', vistCriada.id, 'criado', `Vistoria criada: ${data.nome||''}`);
       toast('Vistoria salva','success');
     } else {
       const prevResultado = item.resultado || '';
       const { error } = await supa.from('vistorias').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
+      const mud = detectMudancas(item, data, [
+        ['resultado','Resultado', v=>resVistMap[v]||v],
+        ['status','Status',null], ['tecnico','Técnico',null],
+      ]);
+      const acao = mud.some(m=>m.startsWith('Resultado')) ? 'status' : 'atualizado';
+      await registrarHistorico('vistorias', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
 
       // Vistoria aprovada → cria Contrato automaticamente (se ainda não existir)
       const agoraAprovada = (data.resultado||'').includes('aprovada');
@@ -2251,6 +2353,7 @@ function openContratoModal(item=null){
         </div>
         ${!isNew && item.clicksign_url ? `<div class="card" style="background:#e6f7ed">📝 ClickSign: <a href="${esc(item.clicksign_url)}" target="_blank">${esc(item.clicksign_url)}</a></div>` : ''}
         ${!isNew?renderLinkedDocBtns(linked):''}
+        ${!isNew ? histSection() : ''}
       </div>
       <div class="modal-footer">
         ${!isNew?`<button type="button" class="btn btn-secondary" id="clickSignBtn">📝 ClickSign</button>`:''}
@@ -2266,17 +2369,26 @@ function openContratoModal(item=null){
   const form = $('#contForm');
   attachCEP(form);
   attachCPF(form);
+  if(!isNew) carregarHistorico($('#histList'), 'contratos', item.id);
+  const statusContMap = {pendente:'Pendente', enviado:'Enviado', assinado:'Assinado', cancelado:'Cancelado'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
     ['kwp','qtd_modulos','pot_modulo','qtd_inversores','pot_inversor','qtd_baterias','pot_bateria','valor'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     if(isNew){
       data.criado_por = State.user?.id;
-      const { error } = await supa.from('contratos').insert(data);
+      const { data: contCriado, error } = await supa.from('contratos').insert(data).select('id').single();
       if(error) return toast(error.message,'error');
+      await registrarHistorico('contratos', contCriado.id, 'criado', `Contrato criado: ${data.nome||''}`);
     } else {
       const { error } = await supa.from('contratos').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
+      const mud = detectMudancas(item, data, [
+        ['status','Status', v=>statusContMap[v]||v],
+        ['vendedor','Vendedor',null], ['valor','Valor',null],
+      ]);
+      const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
+      await registrarHistorico('contratos', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
       // Auto-avançar para Logística quando assinado
       if(data.status === 'assinado'){
         // Verifica no banco (não no State) para evitar duplicata por race condition
@@ -3357,6 +3469,7 @@ function openLogisticaModal(item=null){
           💡 Ao marcar como <strong>Comprado</strong> e salvar, o card será automaticamente movido para <strong>Instalação</strong>.
         </div>
         ${renderLinkedDocBtns(linked)}
+        ${histSection()}
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" id="delLogBtn">Excluir</button>
@@ -3367,6 +3480,8 @@ function openLogisticaModal(item=null){
   `);
   const form = $('#logForm');
   attachLinkedDocListeners(linked);
+  carregarHistorico($('#histList'), 'logistica', item.id);
+  const statusLogMap = {aguardando:'Aguardando', comprado:'Comprado', enviado:'Enviado', entregue:'Entregue'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
@@ -3375,6 +3490,12 @@ function openLogisticaModal(item=null){
     if(data.valor !== null) data.valor = Number(data.valor)||null;
     const { error } = await supa.from('logistica').update(data).eq('id',item.id);
     if(error) return toast('Erro ao salvar: '+error.message,'error');
+    const mud = detectMudancas(item, data, [
+      ['status','Status', v=>statusLogMap[v]||v],
+      ['distribuidora','Distribuidora',null], ['num_pedido','Nº Pedido',null],
+    ]);
+    const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
+    await registrarHistorico('logistica', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
 
     // Auto-avanço para Instalação quando marcado como comprado
     if(data.status === 'comprado'){
@@ -3453,6 +3574,7 @@ function openInstalacaoModal(item=null){
           </div>
         </div>
         ${renderLinkedDocBtns(linked)}
+        ${histSection()}
       </div>
       <div class="modal-footer">
         ${isAdmin()?`<button type="button" class="btn btn-danger" id="delInstBtn">Excluir</button>`:''}
@@ -3463,8 +3585,10 @@ function openInstalacaoModal(item=null){
   `,'lg');
   const form = $('#instForm');
   attachLinkedDocListeners(linked);
+  carregarHistorico($('#histList'), 'instalacoes', item.id);
   const filesStore = { geral: (fotos.geral||[]).slice() };
   attachFileUploads(form, filesStore);
+  const statusInstMap = {agendada:'Agendada', em_andamento:'Em andamento', concluida:'Concluída', cancelada:'Cancelada'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
@@ -3473,6 +3597,12 @@ function openInstalacaoModal(item=null){
     data.fotos = filesStore;
     const { error } = await supa.from('instalacoes').update(data).eq('id',item.id);
     if(error) return toast('Erro ao salvar: '+error.message,'error');
+    const mud = detectMudancas(item, data, [
+      ['status','Status', v=>statusInstMap[v]||v],
+      ['tecnico','Técnico',null], ['data_instalacao','Data Instalação',null],
+    ]);
+    const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
+    await registrarHistorico('instalacoes', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
     toast('Salvo','success'); await loadAll(); closeModal(); renderPipeline();
   });
   $('#delInstBtn')?.addEventListener('click', async ()=>{
@@ -3641,6 +3771,7 @@ function openHomologacaoModal(item=null){
           </div></div>
         </div>
         ${renderLinkedDocBtns(linked)}
+        ${histSection()}
       </div>
       <div class="modal-footer">
         ${isAdmin()?`<button type="button" class="btn btn-danger" id="delHomBtn">Excluir</button>`:''}
@@ -3650,6 +3781,7 @@ function openHomologacaoModal(item=null){
     </form>
   `,'lg');
   const form = $('#homForm');
+  carregarHistorico($('#histList'), 'homologacoes', item.id);
 
   // ── Etapa tracker — interação ──
   const trackerEl    = document.getElementById('homEtapaTracker');
@@ -3704,6 +3836,9 @@ function openHomologacaoModal(item=null){
   const docStore = {};
   docKeys.forEach(k=> docStore[k] = (docs[k]||[]).slice());
   attachFileUploads(form, docStore);
+  const etapaHomMap = {aguardando_docs:'Aguardando docs', projeto:'Projeto', trt_art_pg:'TRT/ART pago',
+    parecer_acesso:'Parecer de acesso', aumento_de_carga:'Aumento de carga',
+    vistoria_final:'Vistoria final', aprovada:'Aprovada', reprovada:'Reprovada'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
@@ -3712,6 +3847,12 @@ function openHomologacaoModal(item=null){
     data.docs = docStore;
     const { error } = await supa.from('homologacoes').update(data).eq('id',item.id);
     if(error) return toast(error.message,'error');
+    const mud = detectMudancas(item, data, [
+      ['etapa','Etapa', v=>etapaHomMap[v]||v],
+      ['tecnico','Técnico',null], ['concessionaria','Concessionária',null],
+    ]);
+    const acao = mud.some(m=>m.startsWith('Etapa')) ? (data.etapa==='aprovada'?'aprovado':data.etapa==='reprovada'?'reprovado':'etapa') : 'atualizado';
+    await registrarHistorico('homologacoes', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
     toast('Salvo','success'); await loadAll(); closeModal(); renderPipeline();
   });
   $('#delHomBtn')?.addEventListener('click', async ()=>{
@@ -3827,6 +3968,7 @@ function openPosVendaModal(item=null){
         </div>
 
         ${renderLinkedDocBtns(linked)}
+        ${histSection()}
       </div>
       <div class="modal-footer">
         ${isAdmin()?`<button type="button" class="btn btn-danger" id="delPvBtn">Excluir</button>`:''}
@@ -3837,12 +3979,23 @@ function openPosVendaModal(item=null){
   `);
   const form = $('#pvForm');
   attachLinkedDocListeners(linked);
+  carregarHistorico($('#histList'), 'posvenda', item.id);
+  const statusPvMap = {ativo:'Ativo', inativo:'Inativo', manutencao:'Manutenção'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
     Object.keys(data).filter(k=>k.startsWith('_')).forEach(k=>delete data[k]);
     const { error } = await supa.from('posvenda').update(data).eq('id',item.id);
     if(error) return toast(error.message,'error');
+    const mud = detectMudancas(item, data, [
+      ['status','Status', v=>statusPvMap[v]||v],
+      ['data_ativacao','Data Ativação',null],
+      ['check_5d','Acolhimento (5d)', v=>v?'✓ Feito':'Pendente'],
+      ['check_30d','Gratidão (30d)', v=>v?'✓ Feito':'Pendente'],
+      ['check_90d','Embaixador (90d)', v=>v?'✓ Feito':'Pendente'],
+    ]);
+    const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
+    await registrarHistorico('posvenda', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
     toast('Salvo','success'); await loadAll(); closeModal(); renderPipeline();
   });
   $('#delPvBtn')?.addEventListener('click', async ()=>{
