@@ -871,8 +871,8 @@ async function renderPipeline(){
   await loadAll();
   const role = userRole();
   let stages = STAGES;
-  if(role === 'tec_vistoria') stages = STAGES.filter(s=>s.id==='vistoria');
-  else if(role === 'tec_instalacao') stages = STAGES.filter(s=>s.id==='instalacao');
+  // tec_vistoria vê todas as colunas (filtrado pelos seus cards em renderStageCol)
+  if(role === 'tec_instalacao') stages = STAGES.filter(s=>s.id==='instalacao');
   else if(role === 'tec_homologacao') stages = STAGES.filter(s=>s.id==='homologacao');
 
   const isTec = ['tec_vistoria','tec_instalacao','tec_homologacao'].includes(role);
@@ -886,6 +886,27 @@ async function renderPipeline(){
 
 function renderStageCol(stage){
   let items = filterByVendor(State[stage.dataKey]||[]);
+
+  // tec_vistoria: mostra apenas cards vinculados às suas próprias vistorias
+  if(userRole() === 'tec_vistoria'){
+    const tecNome = (State.profile?.nome||'').toLowerCase().trim();
+    // Conjunto dos IDs de vistoria onde ele é o técnico
+    const myVistIds = new Set(
+      (State.vistorias||[])
+        .filter(v=>(v.tecnico||'').toLowerCase().trim() === tecNome)
+        .map(v=>v.id)
+    );
+    if(stage.id === 'vistoria'){
+      items = items.filter(v=>(v.tecnico||'').toLowerCase().trim() === tecNome);
+    } else {
+      // Para outros estágios: verifica vistoria_id direto ou traça a cadeia
+      items = items.filter(item=>{
+        if(item.vistoria_id) return myVistIds.has(item.vistoria_id);
+        const linked = getLinkedDocs(item);
+        return linked.vistoria ? myVistIds.has(linked.vistoria.id) : false;
+      });
+    }
+  }
 
   // Oculta itens que já avançaram para a próxima etapa (evita card duplicado)
   if(stage.id === 'lead'){
@@ -959,13 +980,20 @@ function renderCard(item,stage){
   const kwh = item.kwh ? `${fmtNum(item.kwh,0)} kWh` : '';
   const kwp = item.kwp ? `${fmtNum(item.kwp,2)} kWp` : '';
   const flags = stageFlags(item,stage);
+  const isTecVist = userRole() === 'tec_vistoria';
+  // tec_vistoria: sem drag; em colunas que não são vistoria mostra chip informativo
+  const draggable = isTecVist ? 'false' : 'true';
+  const visitaHint = (isTecVist && stage.id !== 'vistoria')
+    ? `<div style="font-size:10px;color:#6B21A8;font-style:italic;margin-top:3px">🔍 Clique → editar vistoria</div>`
+    : '';
   return `
-    <div class="kanban-card" draggable="true" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.vendedor||'')).toLowerCase()}">
+    <div class="kanban-card" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.vendedor||'')).toLowerCase()}">
       <div class="kanban-card-inner">
         <div class="name">${stage.icon} ${esc(item.nome||'—')}</div>
         <div class="meta">${kwp || kwh || ''}</div>
         <div class="meta">${esc(item.vendedor||'')}</div>
         ${flags}
+        ${visitaHint}
         <div class="footer">${badge(stat)}</div>
       </div>
     </div>`;
@@ -1374,6 +1402,18 @@ function openStageModal(stage,id){
   const cfg = STAGES.find(s=>s.id===stage);
   const item = (State[cfg.dataKey]||[]).find(x=>String(x.id)===String(id));
   if(!item) return;
+
+  // tec_vistoria: só pode editar o modal de vistoria.
+  // Se clicar em card de outro estágio, abre a vistoria vinculada.
+  if(userRole() === 'tec_vistoria' && stage !== 'vistoria'){
+    const linked = getLinkedDocs(item);
+    const vistoria = linked.vistoria
+      || (State.vistorias||[]).find(v=>String(v.id)===String(item.vistoria_id));
+    if(vistoria) openVistoriaModal(vistoria);
+    else toast('Vistoria vinculada não encontrada.','warn');
+    return;
+  }
+
   switch(stage){
     case 'lead': openLeadModal(item); break;
     case 'proposta': openPropostaModal(item); break;
