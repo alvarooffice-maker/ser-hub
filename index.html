@@ -152,11 +152,14 @@ tbody tr:hover{background:#fafaf6}
 .section.collapsed .section-body{display:none}
 
 /* KANBAN */
-.kanban{display:flex;gap:14px;overflow-x:auto;align-items:flex-start;padding-bottom:8px;min-height:0}
-.kanban-col{flex:0 0 280px;background:#ecead9;border-radius:10px;display:flex;flex-direction:column;overflow:hidden;max-height:calc(100vh - 108px)}
+/* ── Pipeline: .content vira flex-col para kanban poder ocupar 100% da altura ── */
+.content.pipeline-mode{display:flex;flex-direction:column;overflow:hidden}
+.kanban{flex:1;min-height:0;display:flex;gap:14px;overflow-x:auto;align-items:stretch;padding-bottom:8px}
+.kanban-col{flex:0 0 280px;background:#ecead9;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
 .kanban-col-header{padding:12px 14px;background:#dcdbc4;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--primary);flex-shrink:0}
 .kanban-col-header .count{background:var(--primary);color:#fff;padding:2px 9px;border-radius:11px;font-size:11px}
-.kanban-col-body{overflow-y:scroll;max-height:calc(100vh - 157px);padding:10px 6px 10px 10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:rgba(107,33,168,.45) rgba(0,0,0,.06)}
+/* flex:1 + min-height:0 é a chave: deixa o body crescer até preencher a coluna e rolar quando tiver mais cards */
+.kanban-col-body{flex:1;min-height:0;overflow-y:auto;padding:10px 6px 10px 10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:rgba(107,33,168,.45) rgba(0,0,0,.06)}
 .kanban-col-body::-webkit-scrollbar{width:7px;-webkit-appearance:none}
 .kanban-col-body::-webkit-scrollbar-track{background:rgba(0,0,0,.08);border-radius:6px;margin:4px}
 .kanban-col-body::-webkit-scrollbar-thumb{background:rgba(107,33,168,.5);border-radius:6px;min-height:40px}
@@ -522,8 +525,10 @@ function navigate(route){
   $('#pageTitle').textContent = r?.label || route;
   $('#pageActions').innerHTML = '';
   $('#content').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  // Pipeline: bloqueia scroll do .content para que cada coluna role individualmente
-  document.querySelector('.content').style.overflow = route === 'pipeline' ? 'hidden' : '';
+  // Pipeline: ativa layout flex-col no .content para que cada coluna kanban role individualmente
+  const contentEl = document.querySelector('.content');
+  contentEl.classList.toggle('pipeline-mode', route === 'pipeline');
+  contentEl.style.overflow = route === 'pipeline' ? '' : '';  // gerenciado pelo CSS da classe
   switch(route){
     case 'dashboard': renderDashboard(); break;
     case 'pipeline': renderPipeline(); break;
