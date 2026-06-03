@@ -2332,6 +2332,7 @@ function openVistoriaModal(item=null){
         <div class="section collapsed"><div class="section-header"><h4>🔌 2. Dados do Inversor</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
 
+            ${formField({label:'Local de Instalação do Inversor *',name:'di_local_inversor',value:di.local_inversor,required:true,full:true})}
             ${fileUploadBlock('Foto do Local de Instalação do Inversor *','local_inversor','vistorias',fotos.local_inversor||[],true)}
             ${fileUploadBlock('Foto do Local de Passagem do Cabo CC','local_cabo_cc','vistorias',fotos.local_cabo_cc||[],true)}
 
