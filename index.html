@@ -354,7 +354,7 @@ const supaAdmin = supabase.createClient(SURL, SSERVICE, { auth:{ persistSession:
 
 const State = {
   user:null, profile:null, route:'dashboard',
-  leads:[], propostas:[], vistorias:[], contratos:[], logistica:[], instalacoes:[], homologacoes:[], posvenda:[],
+  leads:[], propostas:[], vistorias:[], contratos:[], logistica:[], instalacoes:[], homologacoes:[], posvenda:[], atendimentos:[],
   remarketing:[], comissoes:[], receitas:[], despesas:[], cadastros:[], perfis:[],
   tentativas_contato:[], metas:[],
   charts:{}
@@ -540,7 +540,7 @@ function navigate(route){
    DATA LOADERS
    ============================================================ */
 async function loadAll(){
-  const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis','tentativas_contato','metas'];
+  const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','atendimentos','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis','tentativas_contato','metas'];
   const stateMap = { financeiro_receitas:'receitas', financeiro_despesas:'despesas' };
   await Promise.all(tables.map(async t => {
     try{
@@ -865,7 +865,8 @@ const STAGES = [
   { id:'logistica', label:'Logística', icon:'📦', table:'logistica', dataKey:'logistica' },
   { id:'instalacao', label:'Instalação', icon:'🔧', table:'instalacoes', dataKey:'instalacoes' },
   { id:'homologacao', label:'Homologação', icon:'📋', table:'homologacoes', dataKey:'homologacoes' },
-  { id:'posvenda', label:'Pós Venda', icon:'⭐', table:'posvenda', dataKey:'posvenda' }
+  { id:'posvenda',     label:'Pós Venda',    icon:'⭐', table:'posvenda',     dataKey:'posvenda' },
+  { id:'atendimentos', label:'Atendimentos', icon:'🛠️', table:'atendimentos', dataKey:'atendimentos' }
 ];
 
 async function renderPipeline(){
@@ -882,6 +883,7 @@ async function renderPipeline(){
   $('#content').innerHTML = `<div class="kanban" id="kanban">${stages.map(s=>renderStageCol(s)).join('')}</div>`;
   attachKanbanDnD();
   attachKanbanSearch();
+  $('#newAtendBtn')?.addEventListener('click', ()=> openAtendimentoModal());
 }
 
 function renderStageCol(stage){
@@ -966,8 +968,8 @@ function renderStageCol(stage){
     items = items.filter(h => !promovidos.has(h.id));
   }
 
-  // Deduplicação por cliente — garante 1 card por pessoa em TODAS as colunas
-  {
+  // Atendimentos: sem deduplicação (múltiplos por cliente são esperados)
+  if(stage.id !== 'atendimentos'){
     const seen = new Map();
     items.forEach(it => {
       let key;
@@ -985,12 +987,18 @@ function renderStageCol(stage){
     items = [...seen.values()];
   }
 
+  // Botão "+" para criar novo atendimento direto na coluna
+  const addBtn = stage.id === 'atendimentos'
+    ? `<button class="col-search-btn" id="newAtendBtn" title="Novo Atendimento" style="font-size:16px;font-weight:700">＋</button>`
+    : '';
+
   return `
     <div class="kanban-col" data-stage="${stage.id}">
       <div class="kanban-col-header">
         <span>${stage.icon} ${stage.label}</span>
         <div style="display:flex;align-items:center;gap:5px">
           <span class="count" id="col-count-${stage.id}">${items.length}</span>
+          ${addBtn}
           <button class="col-search-btn" data-stage="${stage.id}" title="Pesquisar nesta coluna">🔍</button>
         </div>
       </div>
@@ -1036,12 +1044,17 @@ function renderCard(item,stage){
     ? `<div style="font-size:10px;color:#0369a1;font-style:italic;margin-top:3px">🔍 Clique → editar instalação</div>`
     : '';
 
+  const tipoAtendMap = {retorno_tecnico:'Retorno Técnico',manutencao:'Manutenção',venda_bateria:'Venda de Bateria',venda_app:'Venda de App',venda_produto:'Venda de Produto',outro:'Outro'};
+  const isAtend = stage.id === 'atendimentos';
+  const meta1 = isAtend ? (tipoAtendMap[item.tipo]||item.tipo||'') : (kwp || kwh || '');
+  const meta2 = isAtend ? (item.responsavel||'') : (item.vendedor||'');
+
   return `
-    <div class="kanban-card" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.vendedor||'')).toLowerCase()}">
+    <div class="kanban-card" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.responsavel||item.vendedor||'')).toLowerCase()}">
       <div class="kanban-card-inner">
         <div class="name">${stage.icon} ${esc(item.nome||'—')}</div>
-        <div class="meta">${kwp || kwh || ''}</div>
-        <div class="meta">${esc(item.vendedor||'')}</div>
+        <div class="meta">${esc(meta1)}</div>
+        <div class="meta">${esc(meta2)}</div>
         ${flags}
         ${tecHint}
         <div class="footer">${badge(stat)}</div>
@@ -1058,7 +1071,8 @@ function stageStatus(item,stage){
     case 'logistica': return item.status;
     case 'instalacao': return item.status;
     case 'homologacao': return item.etapa;
-    case 'posvenda': return item.status;
+    case 'posvenda':     return item.status;
+    case 'atendimentos': return item.status;
   }
   return '';
 }
@@ -1481,7 +1495,8 @@ function openStageModal(stage,id){
     case 'logistica': openLogisticaModal(item); break;
     case 'instalacao': openInstalacaoModal(item); break;
     case 'homologacao': openHomologacaoModal(item); break;
-    case 'posvenda': openPosVendaModal(item); break;
+    case 'posvenda':     openPosVendaModal(item); break;
+    case 'atendimentos': openAtendimentoModal(item); break;
   }
 }
 
@@ -2444,6 +2459,114 @@ function openVistoriaModal(item=null){
       docs:  pickFiles(allFiles, docKeys)
     };
     abrirVistoriaJanela(pdfItem);
+  });
+}
+
+/* ============================================================
+   ATENDIMENTOS MODAL
+   ============================================================ */
+function openAtendimentoModal(item=null){
+  const isNew = !item;
+  item = item || {};
+
+  const tipoOpts = [
+    ['','— selecione —'],
+    ['retorno_tecnico','Retorno Técnico'],
+    ['manutencao','Manutenção'],
+    ['venda_bateria','Venda de Bateria'],
+    ['venda_app','Venda de App'],
+    ['venda_produto','Venda de Produto'],
+    ['outro','Outro']
+  ];
+  const statusOpts = [
+    ['aberto','Aberto'],
+    ['em_andamento','Em Andamento'],
+    ['concluido','Concluído'],
+    ['cancelado','Cancelado']
+  ];
+  const tipoMap = {retorno_tecnico:'Retorno Técnico',manutencao:'Manutenção',venda_bateria:'Venda de Bateria',venda_app:'Venda de App',venda_produto:'Venda de Produto',outro:'Outro'};
+
+  const fotos = item.fotos || {};
+  const docs  = item.docs  || {};
+  const fotoKeys = ['fotos_atendimento'];
+  const docKeys  = ['docs_atendimento'];
+
+  openModal(`
+    <div class="modal-header"><h2>${isNew?'Novo Atendimento':'Atendimento'}</h2><button class="modal-close">×</button></div>
+    <form id="atendForm">
+      <div class="modal-body">
+        <div class="section"><div class="section-header"><h4>🛠️ Dados do Atendimento</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body"><div class="form-grid">
+            ${formField({label:'Cliente *',name:'nome',value:item.nome,required:true})}
+            ${formField({label:'Telefone',name:'telefone',value:item.telefone})}
+            ${formField({label:'Tipo de Serviço *',name:'tipo',type:'select',value:item.tipo||'',options:tipoOpts,required:true})}
+            ${formField({label:'Data',name:'data_agendamento',type:'date',value:item.data_agendamento})}
+            ${formField({label:'Hora',name:'hora_agendamento',type:'time',value:item.hora_agendamento})}
+            ${formField({label:'Responsável',name:'responsavel',value:item.responsavel,datalist:DL_TECNICO})}
+            ${formField({label:'Status *',name:'status',type:'select',value:item.status||'aberto',options:statusOpts,required:true})}
+            ${formField({label:'Valor (R$)',name:'valor',type:'number',value:item.valor})}
+            ${formField({label:'Descrição *',name:'descricao',type:'textarea',value:item.descricao,required:true,full:true})}
+            ${formField({label:'Observações',name:'obs',type:'textarea',value:item.obs,full:true})}
+            ${fileUploadBlock('Fotos / Documentos','fotos_atendimento','atendimentos',fotos.fotos_atendimento||[],true)}
+          </div></div>
+        </div>
+        ${!isNew ? histSection() : ''}
+      </div>
+      <div class="modal-footer">
+        ${!isNew && isAdmin()?`<button type="button" class="btn btn-danger" id="delAtendBtn">Excluir</button>`:''}
+        <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+        <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
+      </div>
+    </form>
+  `,'lg');
+
+  const form = $('#atendForm');
+  if(!isNew) carregarHistorico($('#histList'), 'atendimentos', item.id);
+
+  const allFiles = {};
+  [...fotoKeys,...docKeys].forEach(k=>{ allFiles[k]=(fotos[k]||docs[k]||[]).slice(); });
+  attachFileUploads(form, allFiles);
+
+  form.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const raw = readForm(form);
+    const data = {
+      nome: raw.nome, telefone: raw.telefone,
+      tipo: raw.tipo, descricao: raw.descricao,
+      responsavel: raw.responsavel,
+      data_agendamento: raw.data_agendamento || null,
+      hora_agendamento: raw.hora_agendamento || null,
+      status: raw.status || 'aberto',
+      valor: raw.valor ? Number(raw.valor) : null,
+      obs: raw.obs,
+      fotos: pickFiles(allFiles, fotoKeys),
+      docs:  pickFiles(allFiles, docKeys),
+      atualizado_em: new Date().toISOString()
+    };
+    if(isNew){
+      data.criado_por = State.user?.id;
+      const { data:criado, error } = await supa.from('atendimentos').insert(data).select('id').single();
+      if(error) return toast(error.message,'error');
+      await registrarHistorico('atendimentos', criado.id, 'criado', `Atendimento criado: ${data.nome} — ${tipoMap[data.tipo]||data.tipo}`);
+      toast('Atendimento criado! ✓','success');
+    } else {
+      const { error } = await supa.from('atendimentos').update(data).eq('id',item.id);
+      if(error) return toast(error.message,'error');
+      const mud = detectMudancas(item, data, [
+        ['status','Status',null],['tipo','Tipo',v=>tipoMap[v]||v],['responsavel','Responsável',null]
+      ]);
+      const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
+      await registrarHistorico('atendimentos', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
+      toast('Atendimento salvo! ✓','success');
+    }
+    closeModal();
+    if(State.route==='pipeline') renderPipeline();
+  });
+
+  $('#delAtendBtn')?.addEventListener('click', async ()=>{
+    if(!await confirmDel('Excluir atendimento?')) return;
+    await supa.from('atendimentos').delete().eq('id',item.id);
+    toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
   });
 }
 

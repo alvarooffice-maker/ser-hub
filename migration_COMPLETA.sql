@@ -351,6 +351,39 @@ CREATE INDEX IF NOT EXISTS idx_historico_registro
   ON historico (tabela, registro_id, criado_em DESC);
 
 -- ════════════════════════════════════════════════════════════
+-- BLOCO 15 — TABELA ATENDIMENTOS (retorno, manutenção, serviços pós-venda)
+-- ════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS atendimentos (
+  id               uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  lead_id          uuid        REFERENCES leads(id),
+  nome             text        NOT NULL,
+  telefone         text,
+  tipo             text        NOT NULL DEFAULT 'outro',
+  descricao        text,
+  responsavel      text,
+  data_agendamento date,
+  hora_agendamento time,
+  status           text        NOT NULL DEFAULT 'aberto',
+  valor            numeric,
+  obs              text,
+  fotos            jsonb       DEFAULT '{}',
+  docs             jsonb       DEFAULT '{}',
+  criado_por       uuid,
+  criado_em        timestamptz DEFAULT now(),
+  atualizado_em    timestamptz
+);
+
+ALTER TABLE atendimentos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "autenticados_atend" ON atendimentos;
+CREATE POLICY "autenticados_atend" ON atendimentos
+  FOR ALL USING (auth.role() = 'authenticated');
+
+CREATE INDEX IF NOT EXISTS idx_atendimentos_criado  ON atendimentos (criado_em DESC);
+CREATE INDEX IF NOT EXISTS idx_atendimentos_status  ON atendimentos (status);
+CREATE INDEX IF NOT EXISTS idx_atendimentos_lead    ON atendimentos (lead_id);
+
+-- ════════════════════════════════════════════════════════════
 -- VERIFICAÇÃO — descomente e rode para confirmar
 -- ════════════════════════════════════════════════════════════
 /*
