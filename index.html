@@ -152,12 +152,12 @@ tbody tr:hover{background:#fafaf6}
 .section.collapsed .section-body{display:none}
 
 /* KANBAN */
-.kanban{display:flex;gap:14px;overflow-x:auto;align-items:flex-start;padding-bottom:8px}
-.kanban-col{flex:0 0 280px;background:#ecead9;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+/* 100vh - 60px topbar - 48px padding do .content = espaço disponível para as colunas */
+.kanban{display:flex;gap:14px;overflow-x:auto;align-items:flex-start;padding-bottom:8px;height:calc(100vh - 108px)}
+.kanban-col{flex:0 0 280px;height:100%;background:#ecead9;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
 .kanban-col-header{padding:12px 14px;background:#dcdbc4;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--primary);flex-shrink:0}
 .kanban-col-header .count{background:var(--primary);color:#fff;padding:2px 9px;border-radius:11px;font-size:11px}
-/* height é definido por JS (fixKanbanBodyHeight) para garantir scroll em qualquer viewport */
-.kanban-col-body{overflow-y:auto;padding:10px 6px 10px 10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:rgba(107,33,168,.45) rgba(0,0,0,.06)}
+.kanban-col-body{flex:1;min-height:0;overflow-y:auto;padding:10px 6px 10px 10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:rgba(107,33,168,.45) rgba(0,0,0,.06)}
 .kanban-col-body::-webkit-scrollbar{width:7px;-webkit-appearance:none}
 .kanban-col-body::-webkit-scrollbar-track{background:rgba(0,0,0,.08);border-radius:6px;margin:4px}
 .kanban-col-body::-webkit-scrollbar-thumb{background:rgba(107,33,168,.5);border-radius:6px;min-height:40px}
@@ -882,33 +882,6 @@ async function renderPipeline(){
   $('#content').innerHTML = `<div class="kanban" id="kanban">${stages.map(s=>renderStageCol(s)).join('')}</div>`;
   attachKanbanDnD();
   attachKanbanSearch();
-  fixKanbanBodyHeight();
-}
-
-// Aplica altura fixa em cada kanban-col-body para que o scroll funcione
-function fixKanbanBodyHeight(){
-  requestAnimationFrame(()=>{
-    const content = document.querySelector('.content');
-    if(!content) return;
-    const st      = getComputedStyle(content);
-    const avail   = content.clientHeight
-                    - parseFloat(st.paddingTop)
-                    - parseFloat(st.paddingBottom);
-    document.querySelectorAll('.kanban-col').forEach(col=>{
-      const hdr   = col.querySelector('.kanban-col-header');
-      const body  = col.querySelector('.kanban-col-body');
-      if(!hdr || !body) return;
-      const headerH = hdr.offsetHeight;
-      const bodyH   = Math.max(200, avail - headerH - 10);
-      // Altura fixa na coluna para que overflow:hidden funcione
-      col.style.height    = avail + 'px';
-      col.style.maxHeight = avail + 'px';
-      // Altura fixa no body para que overflow-y:auto ative o scroll
-      body.style.height    = bodyH + 'px';
-      body.style.maxHeight = bodyH + 'px';
-      body.style.overflowY = 'auto';
-    });
-  });
 }
 
 function renderStageCol(stage){
