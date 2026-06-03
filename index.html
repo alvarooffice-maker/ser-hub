@@ -2127,25 +2127,38 @@ function openVistoriaModal(item=null){
   const isNew = !item;
   item = item || {};
   const linked = getLinkedDocs(item);
-  const resOpts = [['','— selecione —'],['aprovada','Aprovada'],['reprovada','Reprovada'],['aprovada_com_obra','Aprovada c/ obra'],['aprovada_com_sombreamento','Aprovada c/ sombreamento'],['aprovada_com_obra_e_sombreamento','Aprovada c/ obra e sombreamento']];
-  const statusOpts = [['agendada','Agendada'],['realizada','Realizada'],['aprovada','Aprovada'],['reprovada','Reprovada'],['cancelada','Cancelada']];
 
-  const dp = item.dados_padrao || {};
-  const dec = item.dados_eletrodutos || {};
-  const dc = item.dados_cabeamento || {};
-  const di = item.dados_inversor || {};
+  const statusOpts   = [['agendada','Agendada'],['realizada','Realizada'],['cancelada','Cancelada']];
+  const parecerOpts  = [['','— selecione —'],['aprovado','Aprovado'],['aprovado_com_obra','Aprovado com Obra'],['aprovado_com_sombreamento','Aprovado com Sombreamento'],['aprovado_com_obra_e_sombreamento','Aprovado com Obra e Sombreamento'],['reprovado','Reprovado']];
+  const redeOpts     = [['','— selecione —'],['monofasico','Monofásico'],['bifasico','Bifásico'],['trifasico','Trifásico']];
+  const estOpts      = [['','— selecione —'],['colonial','Colonial'],['americana','Americana'],['metalica_trapezoidal','Metálica / Trapezoidal'],['fibrocimento','Fibrocimento'],['laje','Laje'],['solo','Solo'],['platibanda','Platibanda'],['outro','Outro']];
+  const telhaOpts    = [['','— selecione —'],['ceramica','Cerâmica / Colonial'],['americana','Americana'],['metalica','Metálica / Trapezoidal'],['fibrocimento','Fibrocimento'],['amianto','Amianto'],['aluzinco','Aluzinco'],['laje','Laje'],['platibanda','Platibanda'],['outro','Outro']];
+  const aptasOpts    = [['','— selecione —'],['nenhuma','Nenhuma das águas'],['agua_01','Água 01'],['agua_02','Água 02'],['agua_03','Água 03'],['agua_04','Água 04'],['agua_05','Água 05'],['agua_06','Água 06'],['todas','Todas as águas']];
+  const obraOpts     = [['','— selecione —'],['nao_ha','Não há necessidade'],['agua_01','Água 01'],['agua_02','Água 02'],['agua_03','Água 03'],['agua_04','Água 04'],['agua_05','Água 05'],['agua_06','Água 06'],['todas','Todas as águas']];
+
+  const dp = item.dados_padrao    || {};
+  const di = item.dados_inversor  || {};
   const de = item.dados_estrutura || {};
   const fotos = item.fotos || {};
-  const docs = item.docs || {};
+  const docs  = item.docs  || {};
 
-  const fotoKeys = ['fachada','local_inversor','padrao','poste','google_maps','ramal_entrada','padrao_atual','disjuntor','aterramento','telhas','local_modulos','estrutura','telhado_aereo','croqui'];
-  const docKeys = ['laudo_tecnico','laudo_sombreamento'];
+  // foto keys separados por seção (para o PDF e para pickFiles)
+  const fotoKeysPadrao   = ['localizacao','fachada','poste','ramal_entrada','local_padrao','padrao_atual','disjuntor'];
+  const fotoKeysInversor = ['local_inversor'];
+  const fotoKeysEstrutura= ['estrutura','telhas','telhado_aereo','croqui'];
+  const fotoKeys = [...fotoKeysPadrao, ...fotoKeysInversor, ...fotoKeysEstrutura];
+  const docKeys  = ['pdf_sombreamento','laudo_tecnico'];
 
   openModal(`
-    <div class="modal-header"><h2>${isNew?'Nova Vistoria':'Vistoria Técnica'}</h2><button class="modal-close">×</button></div>
+    <div class="modal-header">
+      <h2>${isNew?'Nova Vistoria':'Vistoria Técnica'}</h2>
+      <button class="modal-close">×</button>
+    </div>
     <form id="vistForm">
       <div class="modal-body">
-        <div class="section"><div class="section-header"><h4>Agendamento</h4><span class="section-toggle">▼</span></div>
+
+        <!-- ── AGENDAMENTO ───────────────────────────────── -->
+        <div class="section"><div class="section-header"><h4>📅 Agendamento</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
             ${formField({label:'Nome',name:'nome',value:item.nome,required:true})}
             ${formField({label:'Telefone',name:'telefone',value:item.telefone})}
@@ -2154,14 +2167,12 @@ function openVistoriaModal(item=null){
             ${formField({label:'Hora Agendamento',name:'hora_agendamento',type:'time',value:item.hora_agendamento})}
             ${formField({label:'Técnico',name:'tecnico',value:item.tecnico,datalist:DL_TECNICO})}
             ${formField({label:'Google Maps URL',name:'gmap',value:item.gmap})}
-            ${formField({label:'Cliente Presente',name:'cliente_presente',type:'toggle',value:item.cliente_presente})}
-            ${formField({label:'Responsável (se ausente)',name:'responsavel_ausencia',value:item.responsavel_ausencia})}
-            ${formField({label:'Resultado',name:'resultado',type:'select',value:item.resultado,options:resOpts})}
             ${formField({label:'Status',name:'status',type:'select',value:item.status||'agendada',options:statusOpts})}
           </div></div>
         </div>
 
-        <div class="section collapsed"><div class="section-header"><h4>Endereço</h4><span class="section-toggle">▼</span></div>
+        <!-- ── ENDEREÇO ──────────────────────────────────── -->
+        <div class="section collapsed"><div class="section-header"><h4>📍 Endereço</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
             ${formField({label:'CEP',name:'cep',value:item.cep})}
             ${formField({label:'Rua',name:'rua',value:item.rua})}
@@ -2173,7 +2184,8 @@ function openVistoriaModal(item=null){
           </div></div>
         </div>
 
-        <div class="section collapsed"><div class="section-header"><h4>Kit Confirmado</h4><span class="section-toggle">▼</span></div>
+        <!-- ── KIT CONFIRMADO ────────────────────────────── -->
+        <div class="section collapsed"><div class="section-header"><h4>🔋 Kit Confirmado</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
             ${formField({label:'Qtd Módulos',name:'qtd_modulos',type:'number',value:item.qtd_modulos})}
             ${formField({label:'Marca Módulo',name:'marca_modulo',value:item.marca_modulo,datalist:DL_MARCA_MODULO})}
@@ -2185,76 +2197,114 @@ function openVistoriaModal(item=null){
           </div></div>
         </div>
 
-        <div class="section collapsed"><div class="section-header"><h4>Padrão</h4><span class="section-toggle">▼</span></div>
+        <!-- ══ 1. DADOS DO PADRÃO ════════════════════════ -->
+        <div class="section collapsed"><div class="section-header"><h4>⚡ 1. Dados do Padrão</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
-            ${formField({label:'Aumento de Carga',name:'dp_aumento_carga',value:dp.aumento_carga})}
-            ${formField({label:'Tipo da Caixa',name:'dp_tipo_caixa',value:dp.tipo_caixa})}
-            ${formField({label:'Tipo Cabo Linha',name:'dp_tipo_cabo_linha',value:dp.tipo_cabo_linha})}
-            ${formField({label:'Tipo Cabo Carga',name:'dp_tipo_cabo_carga',value:dp.tipo_cabo_carga})}
-            ${formField({label:'Dist. Padrão-Ancoragem',name:'dp_dist_padrao_ancoragem',value:dp.dist_padrao_ancoragem})}
-            ${formField({label:'Dist. Ancoragem-Ramal',name:'dp_dist_ancoragem_ramal',value:dp.dist_ancoragem_ramal})}
-            ${formField({label:'Qtd Eletroduto Carga',name:'dp_qtd_eletroduto_carga',type:'number',value:dp.qtd_eletroduto_carga})}
-            ${formField({label:'Qtd Curvas Carga',name:'dp_qtd_curvas_carga',type:'number',value:dp.qtd_curvas_carga})}
-            ${formField({label:'Qtd Eletroduto Linha',name:'dp_qtd_eletroduto_linha',type:'number',value:dp.qtd_eletroduto_linha})}
-            ${formField({label:'Qtd Curvas Linha',name:'dp_qtd_curvas_linha',type:'number',value:dp.qtd_curvas_linha})}
-            ${formField({label:'Obs Padrão',name:'dp_obs_padrao',type:'textarea',value:dp.obs_padrao,full:true})}
+
+            ${formField({label:'Data de Realização',name:'dp_data_realizacao',type:'date',value:dp.data_realizacao})}
+            ${formField({label:'Cliente presente?',name:'cliente_presente',type:'toggle',value:item.cliente_presente})}
+            <div id="respAusenciaWrap" style="display:${item.cliente_presente===false||item.cliente_presente==='false'?'block':'none'}">
+              ${formField({label:'Responsável que acompanhou',name:'responsavel_ausencia',value:item.responsavel_ausencia,full:true})}
+            </div>
+
+            ${fileUploadBlock('Print da Localização *','localizacao','vistorias',fotos.localizacao||[],true)}
+            ${fileUploadBlock('Foto da Fachada *','fachada','vistorias',fotos.fachada||[],true)}
+
+            ${formField({label:'Fornecimento — Rede atual *',name:'dp_rede_atual',type:'select',value:dp.rede_atual,options:redeOpts,required:true})}
+            ${formField({label:'Necessita aumento de carga? *',name:'dp_aumento_carga',type:'toggle',value:dp.aumento_carga})}
+
+            ${fileUploadBlock('Imagem do Poste *','poste','vistorias',fotos.poste||[],true)}
+
+            ${formField({label:'Cabo Linha',name:'dp_cabo_linha',value:dp.cabo_linha})}
+            ${formField({label:'Cabo Carga',name:'dp_cabo_carga',value:dp.cabo_carga})}
+
+            ${fileUploadBlock('Foto do Ramal de Entrada','ramal_entrada','vistorias',fotos.ramal_entrada||[],true)}
+
+            ${formField({label:'Distância Padrão → Ancoragem *',name:'dp_dist_padrao_ancoragem',value:dp.dist_padrao_ancoragem,required:true})}
+            ${formField({label:'Distância Ancoragem → Ramal *',name:'dp_dist_ancoragem_ramal',value:dp.dist_ancoragem_ramal,required:true})}
+            ${formField({label:'Localização do Padrão *',name:'dp_localizacao_padrao',value:dp.localizacao_padrao,required:true})}
+
+            ${fileUploadBlock('Foto do Local de Instalação do Padrão *','local_padrao','vistorias',fotos.local_padrao||[],true)}
+
+            ${formField({label:'Caixa do Padrão *',name:'dp_tipo_caixa',value:dp.tipo_caixa,required:true})}
+
+            ${fileUploadBlock('Foto do Padrão Atual *','padrao_atual','vistorias',fotos.padrao_atual||[],true)}
+
+            ${formField({label:'Disjuntor do Padrão *',name:'dp_disjuntor',value:dp.disjuntor,required:true})}
+
+            ${fileUploadBlock('Foto do Disjuntor do Padrão *','disjuntor','vistorias',fotos.disjuntor||[],true)}
+
+            ${formField({label:'Qtd Eletroduto — Carga do Padrão *',name:'dp_qtd_eletroduto_carga',type:'number',value:dp.qtd_eletroduto_carga,required:true})}
+            ${formField({label:'Qtd Curvas — Carga do Padrão *',name:'dp_qtd_curvas_carga',type:'number',value:dp.qtd_curvas_carga,required:true})}
+            ${formField({label:'Qtd Eletroduto — Linha do Padrão *',name:'dp_qtd_eletroduto_linha',type:'number',value:dp.qtd_eletroduto_linha,required:true})}
+            ${formField({label:'Qtd Curvas — Linha do Padrão *',name:'dp_qtd_curvas_linha',type:'number',value:dp.qtd_curvas_linha,required:true})}
+            ${formField({label:'Necessidade de Poste Auxiliar? *',name:'dp_poste_auxiliar',type:'toggle',value:dp.poste_auxiliar})}
+            ${formField({label:'Observação sobre o Padrão',name:'dp_obs_padrao',type:'textarea',value:dp.obs_padrao,full:true})}
+
           </div></div>
         </div>
 
-        <div class="section collapsed"><div class="section-header"><h4>Eletrodutos CC / CA / Aterramento</h4><span class="section-toggle">▼</span></div>
+        <!-- ══ 2. DADOS DO INVERSOR ══════════════════════ -->
+        <div class="section collapsed"><div class="section-header"><h4>🔌 2. Dados do Inversor</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
-            ${formField({label:'CC: Eletroduto',name:'dec_cc_eletroduto',type:'number',value:dec.cc_eletroduto})}
-            ${formField({label:'CC: Curvas',name:'dec_cc_curvas',type:'number',value:dec.cc_curvas})}
-            ${formField({label:'CC: Condulete',name:'dec_cc_condulete',type:'number',value:dec.cc_condulete})}
-            ${formField({label:'CA: Eletroduto',name:'dec_ca_eletroduto',type:'number',value:dec.ca_eletroduto})}
-            ${formField({label:'CA: Curvas',name:'dec_ca_curvas',type:'number',value:dec.ca_curvas})}
-            ${formField({label:'CA: Condulete',name:'dec_ca_condulete',type:'number',value:dec.ca_condulete})}
-            ${formField({label:'AT: Eletroduto',name:'dec_at_eletroduto',type:'number',value:dec.at_eletroduto})}
-            ${formField({label:'AT: Curvas',name:'dec_at_curvas',type:'number',value:dec.at_curvas})}
-            ${formField({label:'AT: Caixas',name:'dec_at_caixas',type:'number',value:dec.at_caixas})}
+
+            ${formField({label:'Local de Instalação do Inversor *',name:'di_local_inversor',value:di.local_inversor,required:true,full:true})}
+            ${formField({label:'Local de Passagem do Cabo CC',name:'di_local_cabo_cc',value:di.local_cabo_cc,full:true})}
+
+            ${formField({label:'Qtd Eletroduto — CC *',name:'di_qtd_eletroduto_cc',type:'number',value:di.qtd_eletroduto_cc,required:true})}
+            ${formField({label:'Qtd Curvas — CC *',name:'di_qtd_curvas_cc',type:'number',value:di.qtd_curvas_cc,required:true})}
+            ${formField({label:'Qtd Conduletes — CC',name:'di_qtd_conduletes_cc',type:'number',value:di.qtd_conduletes_cc})}
+            ${formField({label:'Qtd Eletroduto — CA *',name:'di_qtd_eletroduto_ca',type:'number',value:di.qtd_eletroduto_ca,required:true})}
+            ${formField({label:'Qtd Curvas — CA *',name:'di_qtd_curvas_ca',type:'number',value:di.qtd_curvas_ca,required:true})}
+            ${formField({label:'Qtd Eletroduto — Aterramento *',name:'di_qtd_eletroduto_at',type:'number',value:di.qtd_eletroduto_at,required:true})}
+            ${formField({label:'Qtd Curvas — Aterramento *',name:'di_qtd_curvas_at',type:'number',value:di.qtd_curvas_at,required:true})}
+            ${formField({label:'Qtd Caixas Conduletes — Aterramento *',name:'di_qtd_caixas_at',type:'number',value:di.qtd_caixas_at,required:true})}
+            ${formField({label:'Metragem Tubulação Flexível CC',name:'di_metro_flex_cc',value:di.metro_flex_cc})}
+            ${formField({label:'Metragem Cabo CC (Módulos → Inversor) *',name:'di_metro_cabo_cc',value:di.metro_cabo_cc,required:true})}
+            ${formField({label:'Metragem Cabo AT (Módulos → Inversor) *',name:'di_metro_at_mod_inv',value:di.metro_at_mod_inv,required:true})}
+            ${formField({label:'Metragem Cabo AT (Inversor → Haste) *',name:'di_metro_at_inv_haste',value:di.metro_at_inv_haste,required:true})}
+            ${formField({label:'Local do Aterramento *',name:'di_local_aterramento',value:di.local_aterramento,required:true,full:true})}
+            ${formField({label:'Metragem Tubulação Flexível CA *',name:'di_metro_flex_ca',value:di.metro_flex_ca,required:true})}
+            ${formField({label:'Metragem Cabo CA (Inversor → Conexão) *',name:'di_metro_cabo_ca',value:di.metro_cabo_ca,required:true})}
+
+            ${fileUploadBlock('Foto do Local do Inversor','local_inversor','vistorias',fotos.local_inversor||[],true)}
+
           </div></div>
         </div>
 
-        <div class="section collapsed"><div class="section-header"><h4>Cabeamento</h4><span class="section-toggle">▼</span></div>
+        <!-- ══ 3. DADOS DA ESTRUTURA ═════════════════════ -->
+        <div class="section collapsed"><div class="section-header"><h4>🏠 3. Dados da Estrutura</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
-            ${formField({label:'Flexível CC',name:'dc_flex_cc',value:dc.flex_cc})}
-            ${formField({label:'Cabo CC Mod-Inv',name:'dc_cabo_cc_mod_inv',value:dc.cabo_cc_mod_inv})}
-            ${formField({label:'AT Mod-Inv',name:'dc_at_mod_inv',value:dc.at_mod_inv})}
-            ${formField({label:'AT Inv-Art',name:'dc_at_inv_art',value:dc.at_inv_art})}
-            ${formField({label:'Flexível CA',name:'dc_flex_ca',value:dc.flex_ca})}
-            ${formField({label:'Cabo CA Inv-Conexão',name:'dc_cabo_ca_inv_conexao',value:dc.cabo_ca_inv_conexao})}
+
+            ${formField({label:'Tipo de Estrutura *',name:'de_tipo_estrutura',type:'select',value:de.tipo_estrutura,options:estOpts,required:true})}
+            ${formField({label:'Tipo da Telha *',name:'de_tipo_telha',type:'select',value:de.tipo_telha,options:telhaOpts,required:true})}
+
+            ${fileUploadBlock('Imagens das Estruturas','estrutura','vistorias',fotos.estrutura||[],true)}
+
+            ${formField({label:'Estruturas Aptas *',name:'de_estruturas_aptas',type:'select',value:de.estruturas_aptas,options:aptasOpts,required:true})}
+            ${formField({label:'Estruturas com Necessidade de Obra *',name:'de_estruturas_obra',type:'select',value:de.estruturas_obra,options:obraOpts,required:true})}
+            ${formField({label:'Descrição da Obra',name:'de_desc_obra',type:'textarea',value:de.desc_obra,full:true})}
+            ${formField({label:'Qtd Módulos que a Área Comporta *',name:'de_modulos_comporta',type:'number',value:de.modulos_comporta,required:true})}
+            ${formField({label:'Necessita trocar inversor (inclinações)? *',name:'de_trocar_inversor_inclinacao',type:'toggle',value:de.trocar_inversor_inclinacao})}
+
+            ${fileUploadBlock('Foto das Telhas *','telhas','vistorias',fotos.telhas||[],true)}
+            ${fileUploadBlock('Imagem Aérea *','telhado_aereo','vistorias',fotos.telhado_aereo||[],true)}
+            ${fileUploadBlock('Imagem do Croqui *','croqui','vistorias',fotos.croqui||[],true)}
+
+            ${formField({label:'Há risco de sombreamento? *',name:'de_risco_sombreamento',type:'toggle',value:de.risco_sombreamento})}
+
+            ${fileUploadBlock('PDF Análise de Sombreamento','pdf_sombreamento','vistorias',docs.pdf_sombreamento||[],true)}
+            ${fileUploadBlock('Laudo Técnico','laudo_tecnico','vistorias',docs.laudo_tecnico||[],true)}
+
+            ${formField({label:'Observação sobre Estrutura',name:'de_obs_estrutura',type:'textarea',value:de.obs_estrutura,full:true})}
+
+            <div style="grid-column:1/-1;border-top:2px solid var(--primary);padding-top:14px;margin-top:6px">
+              ${formField({label:'Parecer Final *',name:'resultado',type:'select',value:item.resultado,options:parecerOpts,required:true,full:true})}
+            </div>
+
           </div></div>
         </div>
 
-        <div class="section collapsed"><div class="section-header"><h4>Inversor / Estrutura</h4><span class="section-toggle">▼</span></div>
-          <div class="section-body"><div class="form-grid">
-            ${formField({label:'Obs Inversor',name:'di_obs_inversor',type:'textarea',value:di.obs_inversor,full:true})}
-            ${formField({label:'Tipo Estrutura',name:'de_tipo_estrutura',value:de.tipo_estrutura})}
-            ${formField({label:'Tipo Telha',name:'de_tipo_telha',value:de.tipo_telha})}
-            ${formField({label:'Estruturas Aptas',name:'de_estruturas_aptas',value:de.estruturas_aptas})}
-            ${formField({label:'Estruturas c/ Obra',name:'de_estruturas_obra',value:de.estruturas_obra})}
-            ${formField({label:'Descrição Obra',name:'de_desc_obra',type:'textarea',value:de.desc_obra,full:true})}
-            ${formField({label:'Módulos Comporta',name:'de_modulos_comporta',type:'number',value:de.modulos_comporta})}
-            ${formField({label:'Trocar Inv. (Inclinação)',name:'de_trocar_inversor_inclinacao',type:'toggle',value:de.trocar_inversor_inclinacao})}
-            ${formField({label:'Obs Estrutura',name:'de_obs_estrutura',type:'textarea',value:de.obs_estrutura,full:true})}
-          </div></div>
-        </div>
-
-        <div class="section collapsed"><div class="section-header"><h4>Parecer Final</h4><span class="section-toggle">▼</span></div>
-          <div class="section-body">${formField({label:'Parecer Final',name:'parecer_final',type:'textarea',value:item.parecer_final,rows:5,full:true})}</div>
-        </div>
-
-        <div class="section collapsed"><div class="section-header"><h4>📸 Fotos</h4><span class="section-toggle">▼</span></div>
-          <div class="section-body"><div class="form-grid">
-            ${fotoKeys.map(k=>fileUploadBlock(k.replace(/_/g,' '), k, 'vistorias', fotos[k]||[], true)).join('')}
-          </div></div>
-        </div>
-
-        <div class="section collapsed"><div class="section-header"><h4>📑 Documentos</h4><span class="section-toggle">▼</span></div>
-          <div class="section-body"><div class="form-grid">
-            ${docKeys.map(k=>fileUploadBlock(k.replace(/_/g,' '), k, 'vistorias', docs[k]||[], false)).join('')}
-          </div></div>
-        </div>
         ${!isNew?renderLinkedDocBtns(linked):''}
         ${!isNew ? histSection() : ''}
       </div>
@@ -2270,7 +2320,17 @@ function openVistoriaModal(item=null){
   const form = $('#vistForm');
   attachCEP(form);
 
+  // Mostrar/ocultar responsável ausência conforme toggle de presença
+  const toggleRespWrap = () => {
+    const presente = form.elements.cliente_presente?.checked;
+    const wrap = document.getElementById('respAusenciaWrap');
+    if(wrap) wrap.style.display = presente ? 'none' : 'block';
+  };
+  form.elements.cliente_presente?.addEventListener('change', toggleRespWrap);
+  toggleRespWrap();
+
   if(!isNew){ attachLinkedDocListeners(linked); carregarHistorico($('#histList'), 'vistorias', item.id); }
+
   const allFiles = {};
   [...fotoKeys, ...docKeys].forEach(k=>{
     allFiles[k] = (fotos[k] || docs[k] || []).slice();
@@ -2282,23 +2342,38 @@ function openVistoriaModal(item=null){
     const raw = readForm(form);
     const data = {
       nome:raw.nome, telefone:raw.telefone, email:raw.email,
-      data_agendamento:raw.data_agendamento, hora_agendamento:raw.hora_agendamento, tecnico:raw.tecnico,
-      gmap:raw.gmap, cliente_presente:!!raw.cliente_presente, responsavel_ausencia:raw.responsavel_ausencia,
+      data_agendamento:raw.data_agendamento, hora_agendamento:raw.hora_agendamento,
+      tecnico:raw.tecnico, gmap:raw.gmap,
+      cliente_presente:!!raw.cliente_presente,
+      responsavel_ausencia:raw.responsavel_ausencia,
       resultado:raw.resultado, status:raw.status,
-      cep:raw.cep, rua:raw.rua, numero:raw.numero, complemento:raw.complemento, bairro:raw.bairro, cidade:raw.cidade, estado:raw.estado,
-      qtd_modulos:raw.qtd_modulos?Number(raw.qtd_modulos):null, marca_modulo:raw.marca_modulo, pot_modulo:raw.pot_modulo?Number(raw.pot_modulo):null,
-      qtd_inversores:raw.qtd_inversores?Number(raw.qtd_inversores):null, marca_inversor:raw.marca_inversor, pot_inversor:raw.pot_inversor?Number(raw.pot_inversor):null,
+      cep:raw.cep, rua:raw.rua, numero:raw.numero, complemento:raw.complemento,
+      bairro:raw.bairro, cidade:raw.cidade, estado:raw.estado,
+      qtd_modulos:raw.qtd_modulos?Number(raw.qtd_modulos):null,
+      marca_modulo:raw.marca_modulo||null,
+      pot_modulo:raw.pot_modulo?Number(raw.pot_modulo):null,
+      qtd_inversores:raw.qtd_inversores?Number(raw.qtd_inversores):null,
+      marca_inversor:raw.marca_inversor||null,
+      pot_inversor:raw.pot_inversor?Number(raw.pot_inversor):null,
       kwp:raw.kwp?Number(raw.kwp):null,
-      parecer_final:raw.parecer_final,
-      dados_padrao: extractJsonGroup(raw,'dp_'),
-      dados_eletrodutos: extractJsonGroup(raw,'dec_'),
-      dados_cabeamento: extractJsonGroup(raw,'dc_'),
-      dados_inversor: extractJsonGroup(raw,'di_'),
+      dados_padrao:    extractJsonGroup(raw,'dp_'),
+      dados_inversor:  extractJsonGroup(raw,'di_'),
       dados_estrutura: extractJsonGroup(raw,'de_'),
       fotos: pickFiles(allFiles, fotoKeys),
-      docs: pickFiles(allFiles, docKeys)
+      docs:  pickFiles(allFiles, docKeys)
     };
-    const resVistMap = {aprovada:'Aprovada',reprovada:'Reprovada',aprovada_com_obra:'Aprovada c/ Obra',aprovada_com_sombreamento:'Aprovada c/ Sombreamento',aprovada_com_obra_e_sombreamento:'Aprovada c/ Obra e Sombreamento'};
+    const parecerMap = {
+      aprovado:'Aprovado', aprovado_com_obra:'Aprovado c/ Obra',
+      aprovado_com_sombreamento:'Aprovado c/ Sombreamento',
+      aprovado_com_obra_e_sombreamento:'Aprovado c/ Obra e Sombreamento',
+      reprovado:'Reprovado',
+      // backward compat
+      aprovada:'Aprovada', aprovada_com_obra:'Aprovada c/ Obra',
+      aprovada_com_sombreamento:'Aprovada c/ Sombreamento',
+      aprovada_com_obra_e_sombreamento:'Aprovada c/ Obra e Sombreamento'
+    };
+    const eAprovado = v => ['aprovado','aprovado_com_obra','aprovado_com_sombreamento','aprovado_com_obra_e_sombreamento','aprovada','aprovada_com_obra','aprovada_com_sombreamento','aprovada_com_obra_e_sombreamento'].includes(v||'');
+
     if(isNew){
       data.criado_por = State.user?.id;
       const { data: vistCriada, error } = await supa.from('vistorias').insert(data).select('id').single();
@@ -2310,16 +2385,13 @@ function openVistoriaModal(item=null){
       const { error } = await supa.from('vistorias').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
       const mud = detectMudancas(item, data, [
-        ['resultado','Resultado', v=>resVistMap[v]||v],
+        ['resultado','Parecer', v=>parecerMap[v]||v],
         ['status','Status',null], ['tecnico','Técnico',null],
       ]);
-      const acao = mud.some(m=>m.startsWith('Resultado')) ? 'status' : 'atualizado';
+      const acao = mud.some(m=>m.startsWith('Parecer')) ? 'status' : 'atualizado';
       await registrarHistorico('vistorias', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
 
-      // Vistoria aprovada → cria Contrato automaticamente (se ainda não existir)
-      const agoraAprovada = (data.resultado||'').includes('aprovada');
-      const eraAprovada   = prevResultado.includes('aprovada');
-      if(agoraAprovada && !eraAprovada){
+      if(eAprovado(data.resultado) && !eAprovado(prevResultado)){
         const jaExiste = (State.contratos||[]).find(c => c.vistoria_id === item.id);
         if(!jaExiste){
           await loadAll();
@@ -2346,33 +2418,30 @@ function openVistoriaModal(item=null){
     toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
   });
 
-  // Botão "Gerar Relatório PDF" — usa dados atuais do form + fotos já enviadas
   $('#vistPdfBtn')?.addEventListener('click', ()=>{
     const raw = readForm(form);
     const pdfItem = {
       ...item,
-      nome: raw.nome, telefone: raw.telefone, email: raw.email,
-      data_agendamento: raw.data_agendamento, hora_agendamento: raw.hora_agendamento,
-      tecnico: raw.tecnico, gmap: raw.gmap,
-      cliente_presente: !!raw.cliente_presente, responsavel_ausencia: raw.responsavel_ausencia,
-      resultado: raw.resultado, status: raw.status,
-      cep: raw.cep, rua: raw.rua, numero: raw.numero, complemento: raw.complemento,
-      bairro: raw.bairro, cidade: raw.cidade, estado: raw.estado,
-      qtd_modulos: raw.qtd_modulos ? Number(raw.qtd_modulos) : null,
-      marca_modulo: raw.marca_modulo||null,
-      pot_modulo: raw.pot_modulo ? Number(raw.pot_modulo) : null,
-      qtd_inversores: raw.qtd_inversores ? Number(raw.qtd_inversores) : null,
-      marca_inversor: raw.marca_inversor||null,
-      pot_inversor: raw.pot_inversor ? Number(raw.pot_inversor) : null,
-      kwp: raw.kwp ? Number(raw.kwp) : null,
-      parecer_final: raw.parecer_final,
-      dados_padrao: extractJsonGroup(raw,'dp_'),
-      dados_eletrodutos: extractJsonGroup(raw,'dec_'),
-      dados_cabeamento: extractJsonGroup(raw,'dc_'),
-      dados_inversor: extractJsonGroup(raw,'di_'),
+      nome:raw.nome, telefone:raw.telefone, email:raw.email,
+      data_agendamento:raw.data_agendamento, hora_agendamento:raw.hora_agendamento,
+      tecnico:raw.tecnico, gmap:raw.gmap,
+      cliente_presente:!!raw.cliente_presente,
+      responsavel_ausencia:raw.responsavel_ausencia,
+      resultado:raw.resultado, status:raw.status,
+      cep:raw.cep, rua:raw.rua, numero:raw.numero, complemento:raw.complemento,
+      bairro:raw.bairro, cidade:raw.cidade, estado:raw.estado,
+      qtd_modulos:raw.qtd_modulos?Number(raw.qtd_modulos):null,
+      marca_modulo:raw.marca_modulo||null,
+      pot_modulo:raw.pot_modulo?Number(raw.pot_modulo):null,
+      qtd_inversores:raw.qtd_inversores?Number(raw.qtd_inversores):null,
+      marca_inversor:raw.marca_inversor||null,
+      pot_inversor:raw.pot_inversor?Number(raw.pot_inversor):null,
+      kwp:raw.kwp?Number(raw.kwp):null,
+      dados_padrao:    extractJsonGroup(raw,'dp_'),
+      dados_inversor:  extractJsonGroup(raw,'di_'),
       dados_estrutura: extractJsonGroup(raw,'de_'),
       fotos: pickFiles(allFiles, fotoKeys),
-      docs: pickFiles(allFiles, docKeys)
+      docs:  pickFiles(allFiles, docKeys)
     };
     abrirVistoriaJanela(pdfItem);
   });
@@ -2555,8 +2624,6 @@ function abrirVistoriaJanela(v, imprimir=false){
   const dt  = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '—';
   const bool= b => b?'Sim':'Não';
   const dp  = v.dados_padrao||{};
-  const dec = v.dados_eletrodutos||{};
-  const dc  = v.dados_cabeamento||{};
   const di  = v.dados_inversor||{};
   const de  = v.dados_estrutura||{};
   const win = window.open('','_blank');
@@ -2637,9 +2704,9 @@ table.kit .hl{color:#4B0082;font-weight:700}
 </div>
 
 <div class="result-row">
-  <div class="item"><div class="lbl">Resultado da Vistoria</div></div>
-  <span class="result-badge ${(v.resultado||'').includes('aprovada')?((v.resultado||'').includes('obra')||v.resultado==='aprovada_com_sombreamento'?'obra':'aprovada'):'reprovada'}">
-    ${{aprovada:'✅ Aprovada',reprovada:'❌ Reprovada',aprovada_com_obra:'⚠️ Aprovada c/ Obra',aprovada_com_sombreamento:'⚠️ Aprovada c/ Sombreamento',aprovada_com_obra_e_sombreamento:'⚠️ Aprovada c/ Obra e Sombreamento'}[v.resultado]||txt(v.resultado)}
+  <div class="item"><div class="lbl">Parecer Final</div></div>
+  <span class="result-badge ${(()=>{const r=v.resultado||'';if(r.includes('obra')||r.includes('sombreamento'))return 'obra';if(r.startsWith('aprovad'))return 'aprovada';return 'reprovada';})()}">
+    ${{aprovado:'✅ Aprovado',reprovado:'❌ Reprovado',aprovado_com_obra:'⚠️ Aprovado c/ Obra',aprovado_com_sombreamento:'⚠️ Aprovado c/ Sombreamento',aprovado_com_obra_e_sombreamento:'⚠️ Aprovado c/ Obra e Sombreamento',aprovada:'✅ Aprovada',reprovada:'❌ Reprovada',aprovada_com_obra:'⚠️ Aprovada c/ Obra',aprovada_com_sombreamento:'⚠️ Aprovada c/ Sombreamento',aprovada_com_obra_e_sombreamento:'⚠️ Aprovada c/ Obra e Sombreamento'}[v.resultado]||txt(v.resultado)}
   </span>
   <span style="font-size:11px;color:#555">Status: <strong>${txt(v.status)}</strong></span>
   <span style="font-size:11px;color:#555">Cliente presente: <strong>${bool(v.cliente_presente)}</strong></span>
@@ -2655,45 +2722,47 @@ table.kit .hl{color:#4B0082;font-weight:700}
   </tbody>
 </table>
 
-<h2>🔌 Dados do Padrão</h2>
+<h2>⚡ 1. Dados do Padrão</h2>
 <div class="grid3">
-  <div class="item"><div class="lbl">Aumento de Carga</div><div class="val">${txt(dp.aumento_carga)}</div></div>
-  <div class="item"><div class="lbl">Tipo da Caixa</div><div class="val">${txt(dp.tipo_caixa)}</div></div>
-  <div class="item"><div class="lbl">Tipo Cabo Linha</div><div class="val">${txt(dp.tipo_cabo_linha)}</div></div>
-  <div class="item"><div class="lbl">Tipo Cabo Carga</div><div class="val">${txt(dp.tipo_cabo_carga)}</div></div>
+  <div class="item"><div class="lbl">Rede Atual</div><div class="val">${txt(dp.rede_atual)}</div></div>
+  <div class="item"><div class="lbl">Aumento de Carga</div><div class="val">${bool(dp.aumento_carga)}</div></div>
+  <div class="item"><div class="lbl">Cabo Linha</div><div class="val">${txt(dp.cabo_linha)}</div></div>
+  <div class="item"><div class="lbl">Cabo Carga</div><div class="val">${txt(dp.cabo_carga)}</div></div>
   <div class="item"><div class="lbl">Dist. Padrão–Ancoragem</div><div class="val"><strong>${txt(dp.dist_padrao_ancoragem)}</strong></div></div>
   <div class="item"><div class="lbl">Dist. Ancoragem–Ramal</div><div class="val"><strong>${txt(dp.dist_ancoragem_ramal)}</strong></div></div>
+  <div class="item"><div class="lbl">Localização do Padrão</div><div class="val">${txt(dp.localizacao_padrao)}</div></div>
+  <div class="item"><div class="lbl">Caixa do Padrão</div><div class="val">${txt(dp.tipo_caixa)}</div></div>
+  <div class="item"><div class="lbl">Disjuntor do Padrão</div><div class="val">${txt(dp.disjuntor)}</div></div>
   <div class="item"><div class="lbl">Eletroduto Carga (qtd)</div><div class="val">${txt(dp.qtd_eletroduto_carga)}</div></div>
   <div class="item"><div class="lbl">Curvas Carga (qtd)</div><div class="val">${txt(dp.qtd_curvas_carga)}</div></div>
   <div class="item"><div class="lbl">Eletroduto Linha (qtd)</div><div class="val">${txt(dp.qtd_eletroduto_linha)}</div></div>
   <div class="item"><div class="lbl">Curvas Linha (qtd)</div><div class="val">${txt(dp.qtd_curvas_linha)}</div></div>
+  <div class="item"><div class="lbl">Poste Auxiliar</div><div class="val">${bool(dp.poste_auxiliar)}</div></div>
   ${dp.obs_padrao?`<div class="item" style="grid-column:span 3"><div class="lbl">Obs. Padrão</div><div class="val">${dp.obs_padrao}</div></div>`:''}
 </div>
 
-<h2>⚡ Eletrodutos CC / CA / Aterramento</h2>
+<h2>🔌 2. Dados do Inversor</h2>
 <div class="grid3">
-  <div class="item"><div class="lbl">CC — Eletroduto</div><div class="val"><strong>${txt(dec.cc_eletroduto)}</strong></div></div>
-  <div class="item"><div class="lbl">CC — Curvas</div><div class="val">${txt(dec.cc_curvas)}</div></div>
-  <div class="item"><div class="lbl">CC — Condulete</div><div class="val">${txt(dec.cc_condulete)}</div></div>
-  <div class="item"><div class="lbl">CA — Eletroduto</div><div class="val"><strong>${txt(dec.ca_eletroduto)}</strong></div></div>
-  <div class="item"><div class="lbl">CA — Curvas</div><div class="val">${txt(dec.ca_curvas)}</div></div>
-  <div class="item"><div class="lbl">CA — Condulete</div><div class="val">${txt(dec.ca_condulete)}</div></div>
-  <div class="item"><div class="lbl">AT — Eletroduto</div><div class="val"><strong>${txt(dec.at_eletroduto)}</strong></div></div>
-  <div class="item"><div class="lbl">AT — Curvas</div><div class="val">${txt(dec.at_curvas)}</div></div>
-  <div class="item"><div class="lbl">AT — Caixas</div><div class="val">${txt(dec.at_caixas)}</div></div>
+  <div class="item" style="grid-column:span 3"><div class="lbl">Local de Instalação do Inversor</div><div class="val"><strong>${txt(di.local_inversor)}</strong></div></div>
+  ${di.local_cabo_cc?`<div class="item" style="grid-column:span 3"><div class="lbl">Local de Passagem do Cabo CC</div><div class="val">${di.local_cabo_cc}</div></div>`:''}
+  <div class="item"><div class="lbl">CC — Eletroduto</div><div class="val"><strong>${txt(di.qtd_eletroduto_cc)}</strong></div></div>
+  <div class="item"><div class="lbl">CC — Curvas</div><div class="val">${txt(di.qtd_curvas_cc)}</div></div>
+  <div class="item"><div class="lbl">CC — Conduletes</div><div class="val">${txt(di.qtd_conduletes_cc)}</div></div>
+  <div class="item"><div class="lbl">CA — Eletroduto</div><div class="val"><strong>${txt(di.qtd_eletroduto_ca)}</strong></div></div>
+  <div class="item"><div class="lbl">CA — Curvas</div><div class="val">${txt(di.qtd_curvas_ca)}</div></div>
+  <div class="item"><div class="lbl">AT — Eletroduto</div><div class="val"><strong>${txt(di.qtd_eletroduto_at)}</strong></div></div>
+  <div class="item"><div class="lbl">AT — Curvas</div><div class="val">${txt(di.qtd_curvas_at)}</div></div>
+  <div class="item"><div class="lbl">AT — Caixas Conduletes</div><div class="val">${txt(di.qtd_caixas_at)}</div></div>
+  <div class="item"><div class="lbl">Flex. CC (m)</div><div class="val">${txt(di.metro_flex_cc)}</div></div>
+  <div class="item"><div class="lbl">Cabo CC Mód→Inv (m)</div><div class="val">${txt(di.metro_cabo_cc)}</div></div>
+  <div class="item"><div class="lbl">AT Mód→Inv (m)</div><div class="val">${txt(di.metro_at_mod_inv)}</div></div>
+  <div class="item"><div class="lbl">AT Inv→Haste (m)</div><div class="val">${txt(di.metro_at_inv_haste)}</div></div>
+  <div class="item" style="grid-column:span 3"><div class="lbl">Local do Aterramento</div><div class="val">${txt(di.local_aterramento)}</div></div>
+  <div class="item"><div class="lbl">Flex. CA (m)</div><div class="val">${txt(di.metro_flex_ca)}</div></div>
+  <div class="item"><div class="lbl">Cabo CA Inv→Conexão (m)</div><div class="val">${txt(di.metro_cabo_ca)}</div></div>
 </div>
 
-<h2>🔗 Cabeamento</h2>
-<div class="grid3">
-  <div class="item"><div class="lbl">Flexível CC</div><div class="val">${txt(dc.flex_cc)}</div></div>
-  <div class="item"><div class="lbl">Cabo CC Mod→Inv</div><div class="val">${txt(dc.cabo_cc_mod_inv)}</div></div>
-  <div class="item"><div class="lbl">AT Mod→Inv</div><div class="val">${txt(dc.at_mod_inv)}</div></div>
-  <div class="item"><div class="lbl">AT Inv→ART</div><div class="val">${txt(dc.at_inv_art)}</div></div>
-  <div class="item"><div class="lbl">Flexível CA</div><div class="val">${txt(dc.flex_ca)}</div></div>
-  <div class="item"><div class="lbl">Cabo CA Inv→Conexão</div><div class="val">${txt(dc.cabo_ca_inv_conexao)}</div></div>
-</div>
-
-<h2>🏗️ Estrutura e Telhado</h2>
+<h2>🏠 3. Dados da Estrutura</h2>
 <div class="grid3">
   <div class="item"><div class="lbl">Tipo de Estrutura</div><div class="val"><strong>${txt(de.tipo_estrutura)}</strong></div></div>
   <div class="item"><div class="lbl">Tipo de Telha</div><div class="val"><strong>${txt(de.tipo_telha)}</strong></div></div>
@@ -2701,16 +2770,14 @@ table.kit .hl{color:#4B0082;font-weight:700}
   <div class="item"><div class="lbl">Estruturas Aptas</div><div class="val">${txt(de.estruturas_aptas)}</div></div>
   <div class="item"><div class="lbl">Estruturas c/ Obra</div><div class="val">${txt(de.estruturas_obra)}</div></div>
   <div class="item"><div class="lbl">Trocar Inv. (inclinação)</div><div class="val">${bool(de.trocar_inversor_inclinacao)}</div></div>
+  <div class="item"><div class="lbl">Risco de Sombreamento</div><div class="val">${bool(de.risco_sombreamento)}</div></div>
   ${de.desc_obra?`<div class="item" style="grid-column:span 3"><div class="lbl">Descrição da Obra Necessária</div><div class="val" style="background:#fffbeb;padding:8px;border-radius:4px;border:1px solid #fbbf24"><strong>${de.desc_obra}</strong></div></div>`:''}
-  ${di.obs_inversor?`<div class="item" style="grid-column:span 3"><div class="lbl">Obs. Inversor</div><div class="val">${di.obs_inversor}</div></div>`:''}
   ${de.obs_estrutura?`<div class="item" style="grid-column:span 3"><div class="lbl">Obs. Estrutura</div><div class="val">${de.obs_estrutura}</div></div>`:''}
 </div>
 
-${v.parecer_final?`<h2>📋 Parecer Final do Técnico</h2><div class="parecer-box">${v.parecer_final}</div>`:''}
-
-${(v.resultado||'').includes('obra')||(v.resultado||'').includes('sombreamento')?`
-<div class="alert">⚠️ ATENÇÃO: Esta vistoria foi aprovada com ressalvas. Verifique o parecer final e a descrição de obras antes de iniciar a instalação.</div>`:''}
-${v.resultado==='reprovada'?`<div class="alert" style="background:#fee2e2;border-color:#ef4444">❌ VISTORIA REPROVADA — Instalação não autorizada. Verifique as pendências com a equipe técnica.</div>`:''}
+${(()=>{const r=v.resultado||'';return (r.includes('obra')||r.includes('sombreamento'))?`
+<div class="alert">⚠️ ATENÇÃO: Esta vistoria foi aprovada com ressalvas. Verifique a descrição de obras antes de iniciar a instalação.</div>`:''})()}
+${['reprovado','reprovada'].includes(v.resultado||'')?`<div class="alert" style="background:#fee2e2;border-color:#ef4444">❌ VISTORIA REPROVADA — Instalação não autorizada. Verifique as pendências com a equipe técnica.</div>`:''}
 
 ${(()=>{
   const fotos = v.fotos || {};
