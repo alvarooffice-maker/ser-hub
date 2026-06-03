@@ -5018,14 +5018,14 @@ function openUserModal(item=null){
         });
         if(error) throw error;
         const profile = { id:auth.user?.id, nome:data.nome, email:data.email, perfil:data.perfil, ativo:data.ativo };
-        const { error:e2 } = await supaAdmin.from('perfis').insert(profile);
+        const { error:e2 } = await supaAdmin.from('perfis').upsert(profile, { onConflict:'id' });
         if(e2) throw e2;
         toast('Usuário criado','success');
       }catch(err){ return toast(err.message,'error'); }
     } else {
-      const { data:updated, error } = await supa.from('perfis').update({ nome:data.nome, perfil:data.perfil, ativo:data.ativo }).eq('email',item.email).select();
+      const { data:updated, error } = await supaAdmin.from('perfis').update({ nome:data.nome, perfil:data.perfil, ativo:data.ativo }).eq('email',item.email).select();
       if(error) return toast(error.message,'error');
-      if(!updated||updated.length===0) return toast('Não foi possível salvar. Verifique as permissões no Supabase (RLS).','error');
+      if(!updated||updated.length===0) return toast('Registro não encontrado. Tente excluir e recriar o usuário.','error');
       toast('Atualizado','success');
     }
     closeModal(); renderUsuarios();
