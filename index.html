@@ -4962,6 +4962,7 @@ async function renderUsuarios(){
         <button class="btn btn-sm btn-secondary" data-edit="${i}">Editar</button>
         ${isAdmin()?`<button class="btn btn-sm btn-secondary" data-tog="${i}">${u.ativo?'Desativar':'Ativar'}</button>`:''}
         ${isAdmin()?`<button class="btn btn-sm btn-secondary" data-rpwd="${i}">Redefinir senha</button>`:''}
+        ${isAdmin()?`<button class="btn btn-sm btn-secondary" data-setpwd="${i}">🔑 Definir senha</button>`:''}
         ${isAdmin()&&u.email!==State.user?.email?`<button class="btn btn-sm btn-danger" data-del="${i}">Excluir</button>`:''}
       </td>
     </tr>`).join('') : '<tr><td colspan="5" class="empty">Sem usuários</td></tr>';
@@ -4971,7 +4972,7 @@ async function renderUsuarios(){
     <tbody>${tbody}</tbody>
   </table></div></div>`;
   $('#content').addEventListener('click', async e=>{
-    const btn = e.target.closest('button[data-edit],button[data-tog],button[data-del],button[data-rpwd]');
+    const btn = e.target.closest('button[data-edit],button[data-tog],button[data-del],button[data-rpwd],button[data-setpwd]');
     if(!btn) return;
     const ds = btn.dataset;
     if(ds.edit!==undefined){
@@ -4987,6 +4988,18 @@ async function renderUsuarios(){
       const { error } = await supa.auth.resetPasswordForEmail(u.email, { redirectTo: location.origin+location.pathname });
       if(error) toast(error.message,'error');
       else toast(`Reset enviado para ${u.email}`,'success');
+    } else if(ds.setpwd!==undefined){
+      const u = window._usrItems[+ds.setpwd]; if(!u||!u.email) return;
+      const nova = prompt(`Nova senha para ${u.nome||u.email}:\n(mín. 8 caracteres, letras e números, ex: Senha2025)`);
+      if(!nova) return;
+      if(nova.length < 8){ toast('Senha muito curta — mínimo 8 caracteres.','error'); return; }
+      // Busca o id do usuário no auth
+      const { data:lista } = await supaAdmin.auth.admin.listUsers({ perPage:1000 });
+      const authUser = lista?.users?.find(x=>x.email===u.email);
+      if(!authUser){ toast('Usuário não encontrado no sistema de autenticação.','error'); return; }
+      const { error } = await supaAdmin.auth.admin.updateUserById(authUser.id, { password: nova });
+      if(error) toast(error.message,'error');
+      else toast(`Senha de ${u.nome||u.email} atualizada!`,'success');
     } else if(ds.del!==undefined){
       const u = window._usrItems[+ds.del]; if(!u) return;
       if(!await confirmDel(`Excluir "${u.nome||u.email}"?`)) return;
