@@ -889,17 +889,24 @@ async function renderPipeline(){
 function fixKanbanBodyHeight(){
   requestAnimationFrame(()=>{
     const content = document.querySelector('.content');
-    const header  = document.querySelector('.kanban-col-header');
-    if(!content || !header) return;
-    const st   = getComputedStyle(content);
-    const avail = content.clientHeight
-                  - parseFloat(st.paddingTop)
-                  - parseFloat(st.paddingBottom);
-    const headerH = header.offsetHeight;
-    const bodyH   = Math.max(200, avail - headerH - 10); // 10px = gap/padding
-    document.querySelectorAll('.kanban-col-body').forEach(b=>{
-      b.style.height    = bodyH + 'px';
-      b.style.maxHeight = bodyH + 'px';
+    if(!content) return;
+    const st      = getComputedStyle(content);
+    const avail   = content.clientHeight
+                    - parseFloat(st.paddingTop)
+                    - parseFloat(st.paddingBottom);
+    document.querySelectorAll('.kanban-col').forEach(col=>{
+      const hdr   = col.querySelector('.kanban-col-header');
+      const body  = col.querySelector('.kanban-col-body');
+      if(!hdr || !body) return;
+      const headerH = hdr.offsetHeight;
+      const bodyH   = Math.max(200, avail - headerH - 10);
+      // Altura fixa na coluna para que overflow:hidden funcione
+      col.style.height    = avail + 'px';
+      col.style.maxHeight = avail + 'px';
+      // Altura fixa no body para que overflow-y:auto ative o scroll
+      body.style.height    = bodyH + 'px';
+      body.style.maxHeight = bodyH + 'px';
+      body.style.overflowY = 'auto';
     });
   });
 }
