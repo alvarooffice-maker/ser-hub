@@ -2334,7 +2334,7 @@ function openVistoriaModal(item=null){
 
             ${formField({label:'Local de Instalação do Inversor *',name:'di_local_inversor',value:di.local_inversor,required:true,full:true})}
             ${fileUploadBlock('Foto do Local de Instalação do Inversor *','local_inversor','vistorias',fotos.local_inversor||[],true)}
-            ${fileUploadBlock('Foto do Local de Passagem do Cabo CC','local_cabo_cc','vistorias',fotos.local_cabo_cc||[],true)}
+            ${fileUploadBlock('Foto do Local de Passagem do Cabo CC *','local_cabo_cc','vistorias',fotos.local_cabo_cc||[],true)}
 
             ${formField({label:'Qtd Eletroduto — CC *',name:'di_qtd_eletroduto_cc',type:'number',value:di.qtd_eletroduto_cc,required:true})}
             ${formField({label:'Qtd Curvas — CC *',name:'di_qtd_curvas_cc',type:'number',value:di.qtd_curvas_cc,required:true})}
