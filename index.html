@@ -2172,7 +2172,7 @@ function openVistoriaModal(item=null){
       <span id="autosaveInd" style="font-size:11px;color:#6B21A8;margin-left:8px;flex:1"></span>
       <button class="modal-close">×</button>
     </div>
-    <form id="vistForm">
+    <form id="vistForm" novalidate>
       <div class="modal-body">
         <div id="draftBanner" style="display:none;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none;align-items:center;justify-content:space-between;gap:12px;font-size:12px">
           <span>💾 <strong>Rascunho encontrado.</strong> Deseja restaurar o que foi preenchido?</span>
@@ -2321,7 +2321,7 @@ function openVistoriaModal(item=null){
             ${formField({label:'Observação sobre Estrutura',name:'de_obs_estrutura',type:'textarea',value:de.obs_estrutura,full:true})}
 
             <div style="grid-column:1/-1;border-top:2px solid var(--primary);padding-top:14px;margin-top:6px">
-              ${formField({label:'Parecer Final *',name:'resultado',type:'select',value:item.resultado,options:parecerOpts,required:true,full:true})}
+              ${formField({label:'Parecer Final',name:'resultado',type:'select',value:item.resultado,options:parecerOpts,full:true})}
             </div>
 
           </div></div>
