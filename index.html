@@ -382,7 +382,7 @@ const DL_POT_INVERSOR  = ['1,5','2','3','3,3','3,5','3,6','4','5','6','7','8','1
 const DL_POT_BATERIA   = ['2,56','5','5,12','7,1','10','10,24','14,2','20'];
 const DL_BANCO         = ['BV Financeira','Santander Financiamentos','Sicoob','Sicredi','Portocred','PortoBank','Solfácil','Sol Agora','Creditas','BNB','Caixa Econômica','Bradesco','Banco do Brasil','77Sol','BTG','BanPará'];
 const DL_DISTRIBUIDORA = ['Aldo Solar','Greener','Canal Solar','Renovigi','WEG','Intelbras','EcoSolys','DFV Solar','BlueSol','Solar Premium','FortLev','SouEnergy','Fotus','Solfácil','77Sol','BelSol','Soollar'];
-const DL_TECNICO       = ['CMD','3L Soluções','Paulo Adriano','Michel Darlan'];
+let DL_TECNICO         = ['CMD','3L Soluções','Paulo Adriano','Michel Darlan']; // atualizado dinamicamente em loadAll()
 const uid = ()=> 'id_'+Math.random().toString(36).slice(2,11);
 
 function toast(msg,type='info',ms=3200){
@@ -549,6 +549,15 @@ async function loadAll(){
       State[stateMap[t] || t] = data || [];
     }catch(e){ console.warn(t,e); }
   }));
+
+  // Atualiza DL_TECNICO com os técnicos cadastrados no sistema
+  const tecRoles = ['tec_vistoria','tec_instalacao','tec_homologacao','tec_vistoria_instalacao'];
+  const tecsDoPerfil = (State.perfis||[])
+    .filter(p => tecRoles.includes(p.perfil) && p.ativo !== false && p.nome)
+    .map(p => p.nome);
+  // Mantém nomes legados que não estejam no perfis
+  const legado = ['CMD','3L Soluções','Paulo Adriano','Michel Darlan'];
+  DL_TECNICO = [...new Set([...tecsDoPerfil, ...legado])];
 }
 
 async function loadTable(table){
@@ -4998,7 +5007,8 @@ function openUserModal(item=null){
     <form id="userForm"><div class="modal-body"><div class="form-grid">
       ${formField({label:'Nome',name:'nome',value:item.nome,required:true})}
       ${formField({label:'Email',name:'email',type:'email',value:item.email,required:true,readonly:!isNew})}
-      ${isNew?formField({label:'Senha',name:'password',type:'password',value:'',required:true}):''}
+      ${isNew?formField({label:'Senha (mín. 8 caracteres, letras e números)',name:'password',type:'password',value:'',required:true}):''}
+      ${isNew?`<div style="grid-column:1/-1;font-size:11px;color:#888;margin-top:-8px">💡 Ex: <strong>Senha2025</strong> — evite caracteres especiais como @#$%</div>`:''}
       ${formField({label:'Perfil',name:'perfil',type:'select',value:item.perfil||'vendedor',options:perfilOpts})}
       ${formField({label:'Ativo',name:'ativo',type:'toggle',value:item.ativo!==false})}
     </div></div>
