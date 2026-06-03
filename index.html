@@ -876,7 +876,7 @@ async function renderPipeline(){
   // tec_vistoria e tec_instalacao vêem todas as colunas (filtrado pelos seus cards em renderStageCol)
   if(role === 'tec_homologacao') stages = STAGES.filter(s=>s.id==='homologacao');
 
-  const isTec = ['tec_vistoria','tec_instalacao','tec_homologacao'].includes(role);
+  const isTec = ['tec_vistoria','tec_instalacao','tec_homologacao','tec_vistoria_instalacao'].includes(role);
   $('#pageActions').innerHTML = isTec ? '' : `<button class="btn btn-primary" id="newLeadBtn">+ Novo Lead</button>`;
   $('#newLeadBtn')?.addEventListener('click', ()=> openLeadModal());
 
@@ -888,6 +888,43 @@ async function renderPipeline(){
 
 function renderStageCol(stage){
   let items = filterByVendor(State[stage.dataKey]||[]);
+
+  // ── tec_vistoria_instalacao: combina cadeia de vistoria + instalação ──────────
+  if(userRole() === 'tec_vistoria_instalacao'){
+    const tecNome = (State.profile?.nome||'').toLowerCase().trim();
+    // Vistorias do técnico
+    const minhasVist = (State.vistorias||[]).filter(v=>(v.tecnico||'').toLowerCase().trim()===tecNome);
+    const vistIds = new Set(minhasVist.map(v=>v.id));
+    // Instalações do técnico
+    const minhasInst = (State.instalacoes||[]).filter(i=>(i.tecnico||'').toLowerCase().trim()===tecNome);
+    const instIdsProprios = new Set(minhasInst.map(i=>i.id));
+    // Cadeia para frente a partir das vistorias
+    const contIdsV = new Set((State.contratos||[]).filter(c=>vistIds.has(c.vistoria_id)).map(c=>c.id));
+    const logIdsV  = new Set((State.logistica||[]).filter(l=>contIdsV.has(l.contrato_id)).map(l=>l.id));
+    const instIdsV = new Set((State.instalacoes||[]).filter(i=>logIdsV.has(i.logistica_id)).map(i=>i.id));
+    // Cadeia para frente a partir das instalações
+    const logIdsI  = new Set(minhasInst.map(i=>i.logistica_id).filter(Boolean));
+    const contIdsI = new Set((State.logistica||[]).filter(l=>logIdsI.has(l.id)).map(l=>l.contrato_id).filter(Boolean));
+    const vistIdsI = new Set((State.contratos||[]).filter(c=>contIdsI.has(c.id)).map(c=>c.vistoria_id).filter(Boolean));
+    // Merge das instalações visíveis
+    const instIds  = new Set([...instIdsProprios,...instIdsV]);
+    const homIds   = new Set((State.homologacoes||[]).filter(h=>instIds.has(h.instalacao_id)).map(h=>h.id));
+    // Cadeia para trás — unindo ambas as origens
+    const propIdsV = new Set(minhasVist.map(v=>v.proposta_id).filter(Boolean));
+    const propIdsI = new Set((State.vistorias||[]).filter(v=>new Set([...vistIds,...vistIdsI]).has(v.id)).map(v=>v.proposta_id).filter(Boolean));
+    const propIds  = new Set([...propIdsV,...propIdsI]);
+    const allVistIds = new Set([...vistIds,...vistIdsI]);
+    const allContIds = new Set([...contIdsV,...contIdsI]);
+    const allLogIds  = new Set([...logIdsV,...logIdsI]);
+    const leadIds  = new Set((State.propostas||[]).filter(p=>propIds.has(p.id)).map(p=>p.lead_id).filter(Boolean));
+    const filtroIds = {
+      lead: leadIds, proposta: propIds, vistoria: allVistIds,
+      contrato: allContIds, logistica: allLogIds, instalacao: instIds,
+      homologacao: homIds
+      // posvenda excluído
+    };
+    items = items.filter(i=>(filtroIds[stage.id]||new Set()).has(i.id));
+  }
 
   // ── tec_instalacao: filtra por cadeia encadeada a partir das SUAS instalações ──
   if(userRole() === 'tec_instalacao'){
@@ -1032,16 +1069,19 @@ function renderCard(item,stage){
   const kwp = item.kwp ? `${fmtNum(item.kwp,2)} kWp` : '';
   const flags = stageFlags(item,stage);
   const role = userRole();
-  const isTecVist = role === 'tec_vistoria';
-  const isTecInst = role === 'tec_instalacao';
-  // tec_vistoria e tec_instalacao: sem drag
-  const draggable = (isTecVist || isTecInst) ? 'false' : 'true';
+  const isTecVist  = role === 'tec_vistoria';
+  const isTecInst  = role === 'tec_instalacao';
+  const isTecBoth  = role === 'tec_vistoria_instalacao';
+  // técnicos restritos: sem drag
+  const draggable = (isTecVist || isTecInst || isTecBoth) ? 'false' : 'true';
 
   // chip informativo nos cards de outras colunas
   const tecHint = (isTecVist && stage.id !== 'vistoria')
     ? `<div style="font-size:10px;color:#6B21A8;font-style:italic;margin-top:3px">🔍 Clique → editar vistoria</div>`
     : (isTecInst && stage.id !== 'instalacao')
     ? `<div style="font-size:10px;color:#0369a1;font-style:italic;margin-top:3px">🔍 Clique → editar instalação</div>`
+    : (isTecBoth && !['vistoria','instalacao'].includes(stage.id))
+    ? `<div style="font-size:10px;color:#6B21A8;font-style:italic;margin-top:3px">🔍 Clique → editar vistoria / instalação</div>`
     : '';
 
   const tipoAtendMap = {retorno_tecnico:'Retorno Técnico',manutencao:'Manutenção',venda_bateria:'Venda de Bateria',venda_app:'Venda de App',venda_produto:'Venda de Produto',outro:'Outro'};
@@ -1474,6 +1514,17 @@ function openStageModal(stage,id){
       || (State.vistorias||[]).find(v=>String(v.id)===String(item.vistoria_id));
     if(vistoria) openVistoriaModal(vistoria);
     else toast('Vistoria vinculada não encontrada.','warn');
+    return;
+  }
+
+  // tec_vistoria_instalacao: pode editar vistoria e instalação.
+  if(userRole() === 'tec_vistoria_instalacao' && !['vistoria','instalacao'].includes(stage)){
+    const linked = getLinkedDocs(item);
+    const vistoria  = linked.vistoria  || (State.vistorias||[]).find(v=>String(v.id)===String(item.vistoria_id));
+    const instalacao= linked.instalacao|| (State.instalacoes||[]).find(i=>String(i.id)===String(item.instalacao_id));
+    if(vistoria)   { openVistoriaModal(vistoria);   return; }
+    if(instalacao) { openInstalacaoModal(instalacao); return; }
+    toast('Modal vinculado não encontrado.','warn');
     return;
   }
 
@@ -4941,7 +4992,7 @@ function openUserModal(item=null){
   if(!isAdmin() && item==null){ toast('Apenas admin pode criar usuários.','error'); return; }
   const isNew = !item;
   item = item || {};
-  const perfilOpts = [['admin','Admin'],['supervisor','Supervisor'],['vendedor','Vendedor'],['tec_vistoria','Téc. Vistoria'],['tec_instalacao','Téc. Instalação'],['tec_homologacao','Téc. Homologação'],['financeiro','Financeiro']];
+  const perfilOpts = [['admin','Admin'],['supervisor','Supervisor'],['vendedor','Vendedor'],['tec_vistoria','Téc. Vistoria'],['tec_instalacao','Téc. Instalação'],['tec_vistoria_instalacao','Téc. Vistoria + Instalação'],['tec_homologacao','Téc. Homologação'],['financeiro','Financeiro']];
   openModal(`
     <div class="modal-header"><h2>${isNew?'Novo Usuário':'Editar Usuário'}</h2><button class="modal-close">×</button></div>
     <form id="userForm"><div class="modal-body"><div class="form-grid">
