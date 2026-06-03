@@ -374,7 +374,7 @@ const fmtDateTime = d => d ? new Date(d).toLocaleString('pt-BR') : '';
 const today = ()=>{ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 
 /* ── Listas pré-estabelecidas para evitar erros de digitação ── */
-const DL_MARCA_MODULO  = ['Canadian Solar','JA Solar','LONGi','BYD','DAH Solar','Risen Energy','Jinko Solar','Trina Solar','Astronergy','Tongwei Solar','Leapton','Pulling Energy','Osda','Ronma','Hanersun','Maxeon','Renepv','Aiko','Gokin','Dmegc','Era Solar'];
+const DL_MARCA_MODULO  = ['Canadian Solar','JA Solar','LONGi','BYD','DAH Solar','Risen Energy','Jinko Solar','Trina Solar','Tsun','Astronergy','Tongwei Solar','Leapton','Pulling Energy','Osda','Ronma','Hanersun','Maxeon','Renepv','Aiko','Gokin','Dmegc','Era Solar'];
 const DL_MARCA_INVERSOR= ['Growatt','Solis','Deye','SAJ','Fronius','Huawei','GoodWe','SOFAR','Fox ESS','Chint Power','Solplanet','Sungrow','Auxsol'];
 const DL_MARCA_BATERIA = ['BYD','Pylontech','Dyness','Alpha-ESS','Fox ESS','Growatt','Deye','Solplanet','GoodWe','Huawei'];
 const DL_POT_MODULO    = ['400','410','420','430','440','450','460','470','480','490','500','510','520','530','540','550','560','570','580','585','590','600','610','620','630','640','650','660','670','680','690','700','710'];
@@ -2657,7 +2657,7 @@ function openContratoModal(item=null){
   const linked = getLinkedDocs(item);
   const statusOpts = [['pendente','Pendente'],['enviado','Enviado'],['assinado','Assinado'],['cancelado','Cancelado']];
   const faseOpts = [['','—'],['Monofásico','Monofásico'],['Bifásico','Bifásico'],['Trifásico','Trifásico']];
-  const pgtoOpts = [['','—'],['À Vista','À Vista'],['Financiamento Bancário','Financiamento Bancário'],['Parcelamento Interno','Parcelamento Interno'],['Misto','Misto']];
+  const pgtoOpts = [['','—'],['À Vista','À Vista'],['Cartão de Crédito','Cartão de Crédito'],['Financiamento Bancário','Financiamento Bancário'],['Parcelamento Interno','Parcelamento Interno'],['Misto','Misto']];
 
   openModal(`
     <div class="modal-header"><h2>${isNew?'Novo Contrato':'Editar Contrato'}</h2><button class="modal-close">×</button></div>
