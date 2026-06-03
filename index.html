@@ -66,7 +66,7 @@ input,select,textarea{font:inherit;color:inherit}
 .logout-btn{color:#cfd4c5;font-size:16px;padding:6px}
 .logout-btn:hover{color:#fff}
 
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .topbar{height:60px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px}
 .topbar h1{font-size:18px;font-weight:600}
 .topbar .actions{margin-left:auto;display:flex;gap:8px;align-items:center}
@@ -153,7 +153,7 @@ tbody tr:hover{background:#fafaf6}
 
 /* KANBAN */
 /* ── Pipeline: .content vira flex-col para kanban poder ocupar 100% da altura ── */
-.content.pipeline-mode{display:flex;flex-direction:column;overflow:hidden}
+.content.pipeline-mode{display:flex;flex-direction:column;overflow:hidden;min-height:0}
 .kanban{flex:1;min-height:0;display:flex;gap:14px;overflow-x:auto;align-items:stretch;padding-bottom:8px}
 .kanban-col{flex:0 0 280px;background:#ecead9;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
 .kanban-col-header{padding:12px 14px;background:#dcdbc4;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--primary);flex-shrink:0}
