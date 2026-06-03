@@ -351,6 +351,21 @@ CREATE INDEX IF NOT EXISTS idx_historico_registro
   ON historico (tabela, registro_id, criado_em DESC);
 
 -- ════════════════════════════════════════════════════════════
+-- BLOCO 15b — CORRIGIR CHECK CONSTRAINT resultado em vistorias
+-- Novos valores: aprovado/reprovado (sem 'a' no final) adicionados no Parecer Final
+-- ════════════════════════════════════════════════════════════
+
+ALTER TABLE vistorias DROP CONSTRAINT IF EXISTS vistorias_resultado_check;
+
+ALTER TABLE vistorias ADD CONSTRAINT vistorias_resultado_check
+  CHECK (resultado IN (
+    'aprovada','aprovada_com_obra','aprovada_com_sombreamento','aprovada_com_obra_e_sombreamento',
+    'reprovada',
+    'aprovado','aprovado_com_obra','aprovado_com_sombreamento','aprovado_com_obra_e_sombreamento',
+    'reprovado'
+  ));
+
+-- ════════════════════════════════════════════════════════════
 -- BLOCO 15 — TABELA ATENDIMENTOS (retorno, manutenção, serviços pós-venda)
 -- ════════════════════════════════════════════════════════════
 
