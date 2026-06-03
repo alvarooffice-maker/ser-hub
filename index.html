@@ -2145,7 +2145,9 @@ function openVistoriaModal(item=null){
 
   const statusOpts   = [['agendada','Agendada'],['realizada','Realizada'],['cancelada','Cancelada']];
   const parecerOpts  = [['','— selecione —'],['aprovado','Aprovado'],['aprovado_com_obra','Aprovado com Obra'],['aprovado_com_sombreamento','Aprovado com Sombreamento'],['aprovado_com_obra_e_sombreamento','Aprovado com Obra e Sombreamento'],['reprovado','Reprovado']];
-  const redeOpts     = [['','— selecione —'],['monofasico','Monofásico'],['bifasico','Bifásico'],['trifasico','Trifásico']];
+  const redeOpts         = [['','— selecione —'],['monofasico','Monofásico'],['bifasico','Bifásico'],['trifasico','Trifásico'],['nova_uc','Nova Unidade Consumidora']];
+  const aumentoCargaOpts = [['','— selecione —'],['bifasico','Bifásico'],['trifasico','Trifásico'],['nao_se_aplica','Não se aplica']];
+  const locPadraoOpts    = [['','— selecione —'],['fachada_da_casa','Fachada da casa'],['poste_auxiliar_existente','Poste auxiliar já existe no local'],['necessidade_de_pontalete','Necessidade de pontalete'],['necessidade_de_novo_poste','Necessidade de novo poste auxiliar']];
   const estOpts      = [['','— selecione —'],['colonial','Colonial'],['americana','Americana'],['metalica_trapezoidal','Metálica / Trapezoidal'],['fibrocimento','Fibrocimento'],['laje','Laje'],['solo','Solo'],['platibanda','Platibanda'],['outro','Outro']];
   const telhaOpts    = [['','— selecione —'],['ceramica','Cerâmica / Colonial'],['americana','Americana'],['metalica','Metálica / Trapezoidal'],['fibrocimento','Fibrocimento'],['amianto','Amianto'],['aluzinco','Aluzinco'],['laje','Laje'],['platibanda','Platibanda'],['outro','Outro']];
   const aptasOpts    = [['','— selecione —'],['nenhuma','Nenhuma das águas'],['agua_01','Água 01'],['agua_02','Água 02'],['agua_03','Água 03'],['agua_04','Água 04'],['agua_05','Água 05'],['agua_06','Água 06'],['todas','Todas as águas']];
@@ -2159,7 +2161,7 @@ function openVistoriaModal(item=null){
 
   // foto keys separados por seção (para o PDF e para pickFiles)
   const fotoKeysPadrao   = ['localizacao','fachada','poste','ramal_entrada','local_padrao','padrao_atual','disjuntor'];
-  const fotoKeysInversor = ['local_inversor'];
+  const fotoKeysInversor = ['local_inversor','local_cabo_cc','local_aterramento'];
   const fotoKeysEstrutura= ['estrutura','telhas','telhado_aereo','croqui'];
   const fotoKeys = [...fotoKeysPadrao, ...fotoKeysInversor, ...fotoKeysEstrutura];
   const docKeys  = ['pdf_sombreamento','laudo_tecnico'];
@@ -2167,10 +2169,18 @@ function openVistoriaModal(item=null){
   openModal(`
     <div class="modal-header">
       <h2>${isNew?'Nova Vistoria':'Vistoria Técnica'}</h2>
+      <span id="autosaveInd" style="font-size:11px;color:#6B21A8;margin-left:8px;flex:1"></span>
       <button class="modal-close">×</button>
     </div>
     <form id="vistForm">
       <div class="modal-body">
+        <div id="draftBanner" style="display:none;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none;align-items:center;justify-content:space-between;gap:12px;font-size:12px">
+          <span>💾 <strong>Rascunho encontrado.</strong> Deseja restaurar o que foi preenchido?</span>
+          <div style="display:flex;gap:8px;flex-shrink:0">
+            <button type="button" id="draftRestoreBtn" class="btn btn-sm btn-primary">Restaurar</button>
+            <button type="button" id="draftDiscardBtn" class="btn btn-sm btn-secondary">Descartar</button>
+          </div>
+        </div>
 
         <!-- ── AGENDAMENTO ───────────────────────────────── -->
         <div class="section"><div class="section-header"><h4>📅 Agendamento</h4><span class="section-toggle">▼</span></div>
@@ -2226,7 +2236,7 @@ function openVistoriaModal(item=null){
             ${fileUploadBlock('Foto da Fachada *','fachada','vistorias',fotos.fachada||[],true)}
 
             ${formField({label:'Fornecimento — Rede atual *',name:'dp_rede_atual',type:'select',value:dp.rede_atual,options:redeOpts,required:true})}
-            ${formField({label:'Necessita aumento de carga? *',name:'dp_aumento_carga',type:'toggle',value:dp.aumento_carga})}
+            ${formField({label:'Necessita aumento de carga? *',name:'dp_aumento_carga',type:'select',value:dp.aumento_carga,options:aumentoCargaOpts,required:true})}
 
             ${fileUploadBlock('Imagem do Poste *','poste','vistorias',fotos.poste||[],true)}
 
@@ -2236,8 +2246,8 @@ function openVistoriaModal(item=null){
             ${fileUploadBlock('Foto do Ramal de Entrada','ramal_entrada','vistorias',fotos.ramal_entrada||[],true)}
 
             ${formField({label:'Distância Padrão → Ancoragem *',name:'dp_dist_padrao_ancoragem',value:dp.dist_padrao_ancoragem,required:true})}
-            ${formField({label:'Distância Ancoragem → Ramal *',name:'dp_dist_ancoragem_ramal',value:dp.dist_ancoragem_ramal,required:true})}
-            ${formField({label:'Localização do Padrão *',name:'dp_localizacao_padrao',value:dp.localizacao_padrao,required:true})}
+            ${formField({label:'Distância Padrão → Ramal de Entrada *',name:'dp_dist_ancoragem_ramal',value:dp.dist_ancoragem_ramal,required:true})}
+            ${formField({label:'Localização do Padrão *',name:'dp_localizacao_padrao',type:'select',value:dp.localizacao_padrao,options:locPadraoOpts,required:true})}
 
             ${fileUploadBlock('Foto do Local de Instalação do Padrão *','local_padrao','vistorias',fotos.local_padrao||[],true)}
 
@@ -2253,7 +2263,6 @@ function openVistoriaModal(item=null){
             ${formField({label:'Qtd Curvas — Carga do Padrão *',name:'dp_qtd_curvas_carga',type:'number',value:dp.qtd_curvas_carga,required:true})}
             ${formField({label:'Qtd Eletroduto — Linha do Padrão *',name:'dp_qtd_eletroduto_linha',type:'number',value:dp.qtd_eletroduto_linha,required:true})}
             ${formField({label:'Qtd Curvas — Linha do Padrão *',name:'dp_qtd_curvas_linha',type:'number',value:dp.qtd_curvas_linha,required:true})}
-            ${formField({label:'Necessidade de Poste Auxiliar? *',name:'dp_poste_auxiliar',type:'toggle',value:dp.poste_auxiliar})}
             ${formField({label:'Observação sobre o Padrão',name:'dp_obs_padrao',type:'textarea',value:dp.obs_padrao,full:true})}
 
           </div></div>
@@ -2263,8 +2272,8 @@ function openVistoriaModal(item=null){
         <div class="section collapsed"><div class="section-header"><h4>🔌 2. Dados do Inversor</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
 
-            ${formField({label:'Local de Instalação do Inversor *',name:'di_local_inversor',value:di.local_inversor,required:true,full:true})}
-            ${formField({label:'Local de Passagem do Cabo CC',name:'di_local_cabo_cc',value:di.local_cabo_cc,full:true})}
+            ${fileUploadBlock('Foto do Local de Instalação do Inversor *','local_inversor','vistorias',fotos.local_inversor||[],true)}
+            ${fileUploadBlock('Foto do Local de Passagem do Cabo CC','local_cabo_cc','vistorias',fotos.local_cabo_cc||[],true)}
 
             ${formField({label:'Qtd Eletroduto — CC *',name:'di_qtd_eletroduto_cc',type:'number',value:di.qtd_eletroduto_cc,required:true})}
             ${formField({label:'Qtd Curvas — CC *',name:'di_qtd_curvas_cc',type:'number',value:di.qtd_curvas_cc,required:true})}
@@ -2278,11 +2287,9 @@ function openVistoriaModal(item=null){
             ${formField({label:'Metragem Cabo CC (Módulos → Inversor) *',name:'di_metro_cabo_cc',value:di.metro_cabo_cc,required:true})}
             ${formField({label:'Metragem Cabo AT (Módulos → Inversor) *',name:'di_metro_at_mod_inv',value:di.metro_at_mod_inv,required:true})}
             ${formField({label:'Metragem Cabo AT (Inversor → Haste) *',name:'di_metro_at_inv_haste',value:di.metro_at_inv_haste,required:true})}
-            ${formField({label:'Local do Aterramento *',name:'di_local_aterramento',value:di.local_aterramento,required:true,full:true})}
+            ${fileUploadBlock('Foto do Local do Aterramento *','local_aterramento','vistorias',fotos.local_aterramento||[],true)}
             ${formField({label:'Metragem Tubulação Flexível CA *',name:'di_metro_flex_ca',value:di.metro_flex_ca,required:true})}
             ${formField({label:'Metragem Cabo CA (Inversor → Conexão) *',name:'di_metro_cabo_ca',value:di.metro_cabo_ca,required:true})}
-
-            ${fileUploadBlock('Foto do Local do Inversor','local_inversor','vistorias',fotos.local_inversor||[],true)}
 
           </div></div>
         </div>
@@ -2351,6 +2358,61 @@ function openVistoriaModal(item=null){
     allFiles[k] = (fotos[k] || docs[k] || []).slice();
   });
   attachFileUploads(form, allFiles);
+
+  // ── Auto-save: persiste o rascunho no localStorage ───────
+  const _draftKey = `vistoria_rascunho_${item.id||'nova'}`;
+  const _saveDraft = ()=>{
+    try{
+      localStorage.setItem(_draftKey, JSON.stringify({
+        ts: Date.now(),
+        fields: readForm(form),
+        files: JSON.parse(JSON.stringify(allFiles))
+      }));
+      const ind = document.getElementById('autosaveInd');
+      if(ind){ const t=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); ind.textContent=`💾 salvo às ${t}`; }
+    }catch(e){}
+  };
+  let _draftTimer = null;
+  form.addEventListener('input',  ()=>{ clearTimeout(_draftTimer); _draftTimer=setTimeout(_saveDraft,1500); });
+  form.addEventListener('change', ()=>{ clearTimeout(_draftTimer); _draftTimer=setTimeout(_saveDraft,1500); });
+
+  // Verificar se existe rascunho e oferecer restauração
+  try{
+    const saved = localStorage.getItem(_draftKey);
+    if(saved){
+      const draft = JSON.parse(saved);
+      const mins = Math.round((Date.now()-draft.ts)/60000);
+      if(mins < 1440){
+        const banner = document.getElementById('draftBanner');
+        if(banner){
+          banner.style.display='flex';
+          banner.querySelector('span').innerHTML=`💾 <strong>Rascunho encontrado</strong> — salvo há ${mins<1?'menos de 1':mins} min. Deseja restaurar o que foi preenchido?`;
+          document.getElementById('draftRestoreBtn')?.addEventListener('click',()=>{
+            Object.entries(draft.fields||{}).forEach(([k,v])=>{
+              const el = form.elements[k];
+              if(!el) return;
+              if(el.type==='checkbox') el.checked=!!v;
+              else el.value=v;
+            });
+            Object.entries(draft.files||{}).forEach(([k,arr])=>{
+              allFiles[k]=arr;
+              const wrap=form.querySelector(`[data-thumbs="${k}"]`);
+              if(wrap) wrap.innerHTML=arr.map((f,i)=>thumbHtml(f,k,i)).join('');
+            });
+            toggleRespWrap();
+            banner.style.display='none';
+            toast('Rascunho restaurado!','success');
+            _saveDraft();
+          });
+          document.getElementById('draftDiscardBtn')?.addEventListener('click',()=>{
+            localStorage.removeItem(_draftKey);
+            banner.style.display='none';
+          });
+        }
+      }
+    }
+  }catch(e){}
+  // ─────────────────────────────────────────────────────────
 
   form.addEventListener('submit', async e=>{
     e.preventDefault();
@@ -2423,6 +2485,7 @@ function openVistoriaModal(item=null){
         toast('Vistoria salva','success');
       }
     }
+    localStorage.removeItem(_draftKey); // limpa rascunho após salvar
     closeModal();
     if(State.route==='pipeline') renderPipeline();
   });
