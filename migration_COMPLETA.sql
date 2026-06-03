@@ -351,6 +351,20 @@ CREATE INDEX IF NOT EXISTS idx_historico_registro
   ON historico (tabela, registro_id, criado_em DESC);
 
 -- ════════════════════════════════════════════════════════════
+-- BLOCO 15a — CORRIGIR CHECK CONSTRAINT perfil em perfis
+-- Novo perfil: tec_vistoria_instalacao
+-- ════════════════════════════════════════════════════════════
+
+ALTER TABLE perfis DROP CONSTRAINT IF EXISTS perfis_perfil_check;
+
+ALTER TABLE perfis ADD CONSTRAINT perfis_perfil_check
+  CHECK (perfil IN (
+    'admin','supervisor','vendedor','financeiro',
+    'tec_vistoria','tec_instalacao','tec_homologacao',
+    'tec_vistoria_instalacao'
+  ));
+
+-- ════════════════════════════════════════════════════════════
 -- BLOCO 15b — CORRIGIR CHECK CONSTRAINT resultado em vistorias
 -- Novos valores: aprovado/reprovado (sem 'a' no final) adicionados no Parecer Final
 -- ════════════════════════════════════════════════════════════
