@@ -2376,7 +2376,7 @@ function openVistoriaModal(item=null){
             ${fileUploadBlock('Imagem Aérea *','telhado_aereo','vistorias',fotos.telhado_aereo||[],true)}
             ${fileUploadBlock('Imagem do Croqui *','croqui','vistorias',fotos.croqui||[],true)}
 
-            ${formField({label:'Há risco de sombreamento? *',name:'de_risco_sombreamento',type:'toggle',value:de.risco_sombreamento})}
+            ${formField({label:'Há risco de sombreamento? *',name:'de_risco_sombreamento',type:'select',value:de.risco_sombreamento,options:[['','— selecione —'],['sim','Sim'],['nao','Não']],required:true})}
 
             ${fileUploadBlock('PDF Análise de Sombreamento','pdf_sombreamento','vistorias',docs.pdf_sombreamento||[],true)}
             ${fileUploadBlock('Laudo Técnico','laudo_tecnico','vistorias',docs.laudo_tecnico||[],true)}
