@@ -2370,7 +2370,7 @@ function openVistoriaModal(item=null){
             ${formField({label:'Estruturas com Necessidade de Obra *',name:'de_estruturas_obra',type:'select',value:de.estruturas_obra,options:obraOpts,required:true})}
             ${formField({label:'Descrição da Obra',name:'de_desc_obra',type:'textarea',value:de.desc_obra,full:true})}
             ${formField({label:'Qtd Módulos que a Área Comporta *',name:'de_modulos_comporta',type:'number',value:de.modulos_comporta,required:true})}
-            ${formField({label:'Necessita trocar inversor (inclinações)? *',name:'de_trocar_inversor_inclinacao',type:'toggle',value:de.trocar_inversor_inclinacao})}
+            ${formField({label:'Necessita trocar inversor (inclinações)? *',name:'de_trocar_inversor_inclinacao',type:'select',value:de.trocar_inversor_inclinacao,options:[['','— selecione —'],['sim','Sim'],['nao','Não']],required:true})}
 
             ${fileUploadBlock('Foto das Telhas *','telhas','vistorias',fotos.telhas||[],true)}
             ${fileUploadBlock('Imagem Aérea *','telhado_aereo','vistorias',fotos.telhado_aereo||[],true)}
