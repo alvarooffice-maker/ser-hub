@@ -2287,8 +2287,8 @@ function openVistoriaModal(item=null){
           <div class="section-body"><div class="form-grid">
 
             ${formField({label:'Data de Realização',name:'dp_data_realizacao',type:'date',value:dp.data_realizacao})}
-            ${formField({label:'Cliente presente?',name:'cliente_presente',type:'toggle',value:item.cliente_presente})}
-            <div id="respAusenciaWrap" style="display:${item.cliente_presente===false||item.cliente_presente==='false'?'block':'none'}">
+            ${formField({label:'Cliente presente? *',name:'cliente_presente',type:'select',value:item.cliente_presente===true?'sim':item.cliente_presente===false?'nao':'',options:[['','— selecione —'],['sim','Sim'],['nao','Não']],required:true})}
+            <div id="respAusenciaWrap" style="display:${item.cliente_presente===false||item.cliente_presente==='false'||item.cliente_presente==='nao'?'block':'none'}">
               ${formField({label:'Responsável que acompanhou',name:'responsavel_ausencia',value:item.responsavel_ausencia,full:true})}
             </div>
 
@@ -2407,9 +2407,9 @@ function openVistoriaModal(item=null){
 
   // Mostrar/ocultar responsável ausência conforme toggle de presença
   const toggleRespWrap = () => {
-    const presente = form.elements.cliente_presente?.checked;
+    const val = form.elements.cliente_presente?.value;
     const wrap = document.getElementById('respAusenciaWrap');
-    if(wrap) wrap.style.display = presente ? 'none' : 'block';
+    if(wrap) wrap.style.display = val === 'nao' ? 'block' : 'none';
   };
   form.elements.cliente_presente?.addEventListener('change', toggleRespWrap);
   toggleRespWrap();
@@ -2484,7 +2484,7 @@ function openVistoriaModal(item=null){
       nome:raw.nome, telefone:raw.telefone, email:raw.email,
       data_agendamento:raw.data_agendamento, hora_agendamento:raw.hora_agendamento,
       tecnico:raw.tecnico, gmap:raw.gmap,
-      cliente_presente:!!raw.cliente_presente,
+      cliente_presente: raw.cliente_presente==='sim' ? true : raw.cliente_presente==='nao' ? false : null,
       responsavel_ausencia:raw.responsavel_ausencia,
       resultado:raw.resultado, status:raw.status,
       cep:raw.cep, rua:raw.rua, numero:raw.numero, complemento:raw.complemento,
@@ -2566,7 +2566,7 @@ function openVistoriaModal(item=null){
       nome:raw.nome, telefone:raw.telefone, email:raw.email,
       data_agendamento:raw.data_agendamento, hora_agendamento:raw.hora_agendamento,
       tecnico:raw.tecnico, gmap:raw.gmap,
-      cliente_presente:!!raw.cliente_presente,
+      cliente_presente: raw.cliente_presente==='sim' ? true : raw.cliente_presente==='nao' ? false : null,
       responsavel_ausencia:raw.responsavel_ausencia,
       resultado:raw.resultado, status:raw.status,
       cep:raw.cep, rua:raw.rua, numero:raw.numero, complemento:raw.complemento,
