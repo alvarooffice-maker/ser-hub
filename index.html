@@ -2349,6 +2349,7 @@ function openVistoriaModal(item=null){
             ${formField({label:'Metragem Cabo CC (Módulos → Inversor) *',name:'di_metro_cabo_cc',value:di.metro_cabo_cc,required:true})}
             ${formField({label:'Metragem Cabo AT (Módulos → Inversor) *',name:'di_metro_at_mod_inv',value:di.metro_at_mod_inv,required:true})}
             ${formField({label:'Metragem Cabo AT (Inversor → Haste) *',name:'di_metro_at_inv_haste',value:di.metro_at_inv_haste,required:true})}
+            ${formField({label:'Local do Aterramento *',name:'di_local_aterramento',value:di.local_aterramento,required:true,full:true})}
             ${fileUploadBlock('Foto do Local do Aterramento *','local_aterramento','vistorias',fotos.local_aterramento||[],true)}
             ${formField({label:'Metragem Tubulação Flexível CA *',name:'di_metro_flex_ca',value:di.metro_flex_ca,required:true})}
             ${formField({label:'Metragem Cabo CA (Inversor → Conexão) *',name:'di_metro_cabo_ca',value:di.metro_cabo_ca,required:true})}
