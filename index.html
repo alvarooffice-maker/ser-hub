@@ -466,7 +466,9 @@ function showApp(){
   $('#app').classList.add('active');
   renderUser();
   renderNav();
-  navigate('dashboard');
+  const roleRouteMap = { tec_vistoria:'vistoriador', tec_instalacao:'instalador', tec_homologacao:'homologador' };
+  const startRoute = roleRouteMap[userRole()] || 'dashboard';
+  navigate(startRoute);
 }
 
 function renderUser(){
@@ -483,6 +485,9 @@ function renderUser(){
 const ROUTES = [
   { id:'dashboard', label:'Dashboard', icon:'📊' },
   { id:'pipeline', label:'Pipeline', icon:'🏠' },
+  { id:'vistoriador', label:'Minhas Vistorias', icon:'🔍' },
+  { id:'instalador', label:'Minhas Instalações', icon:'🔧' },
+  { id:'homologador', label:'Minhas Homologações', icon:'📋' },
   { id:'remarketing', label:'Remarketing', icon:'🔁' },
   { id:'comissoes', label:'Comissões', icon:'💰', section:'GESTÃO' },
   { id:'financeiro', label:'Financeiro', icon:'📈', section:'GESTÃO' },
@@ -496,7 +501,10 @@ function visibleRoutes(){
     if(r.adminOnly && !['admin','supervisor'].includes(role)) return false;
     if(role==='financeiro') return ['dashboard','comissoes','financeiro'].includes(r.id);
     if(role==='vendedor') return ['dashboard','pipeline','remarketing'].includes(r.id);
-    if(['tec_vistoria','tec_instalacao','tec_homologacao'].includes(role)) return ['dashboard','pipeline'].includes(r.id);
+    if(role==='tec_vistoria') return ['dashboard','vistoriador'].includes(r.id);
+    if(role==='tec_instalacao') return ['dashboard','instalador'].includes(r.id);
+    if(role==='tec_homologacao') return ['dashboard','homologador'].includes(r.id);
+    if(['vistoriador','instalador','homologador'].includes(r.id)) return false; // oculto para outros perfis
     return true;
   });
 }
@@ -524,10 +532,13 @@ function navigate(route){
   $('#pageActions').innerHTML = '';
   $('#content').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   // Pipeline: bloqueia scroll do .content para que cada coluna role individualmente
-  document.querySelector('.content').style.overflow = route === 'pipeline' ? 'hidden' : '';
+  document.querySelector('.content').style.overflow = ['pipeline','vistoriador','instalador','homologador'].includes(route) ? 'hidden' : '';
   switch(route){
     case 'dashboard': renderDashboard(); break;
     case 'pipeline': renderPipeline(); break;
+    case 'vistoriador': renderVistoriadorKanban(); break;
+    case 'instalador': renderInstaladorKanban(); break;
+    case 'homologador': renderHomologadorKanban(); break;
     case 'remarketing': renderRemarketing(); break;
     case 'comissoes': renderComissoes(); break;
     case 'financeiro': renderFinanceiro(); break;
@@ -882,8 +893,11 @@ async function renderPipeline(){
   await loadAll();
   const role = userRole();
   let stages = STAGES;
-  // tec_vistoria e tec_instalacao vêem todas as colunas (filtrado pelos seus cards em renderStageCol)
-  if(role === 'tec_homologacao') stages = STAGES.filter(s=>s.id==='homologacao');
+  // Cada técnico vê apenas a coluna do seu modal
+  if(role === 'tec_vistoria')              stages = STAGES.filter(s=>s.id==='vistoria');
+  else if(role === 'tec_instalacao')       stages = STAGES.filter(s=>s.id==='instalacao');
+  else if(role === 'tec_homologacao')      stages = STAGES.filter(s=>s.id==='homologacao');
+  else if(role === 'tec_vistoria_instalacao') stages = STAGES.filter(s=>['vistoria','instalacao'].includes(s.id));
 
   const isTec = ['tec_vistoria','tec_instalacao','tec_homologacao','tec_vistoria_instalacao'].includes(role);
   $('#pageActions').innerHTML = isTec ? '' : `<button class="btn btn-primary" id="newLeadBtn">+ Novo Lead</button>`;
@@ -893,6 +907,190 @@ async function renderPipeline(){
   attachKanbanDnD();
   attachKanbanSearch();
   $('#newAtendBtn')?.addEventListener('click', ()=> openAtendimentoModal());
+}
+
+/* ============================================================
+   KANBAN DO VISTORIADOR
+   Visão dedicada para tec_vistoria: 4 colunas baseadas no
+   status da vistoria, filtradas pelo técnico logado.
+   ============================================================ */
+async function renderVistoriadorKanban(){
+  await loadAll();
+  const tecNome = (State.profile?.nome||'').toLowerCase().trim();
+
+  const VIST_COLS = [
+    { id:'aguardando', label:'Aguardando Agendamento', icon:'⏳',
+      filter: v => !v.data_agendamento && v.status !== 'cancelada' && v.status !== 'realizada' },
+    { id:'agendada',   label:'Agendada',               icon:'📅',
+      filter: v => v.status === 'agendada' },
+    { id:'realizada',  label:'Realizada',              icon:'✅',
+      filter: v => v.status === 'realizada' },
+    { id:'cancelada',  label:'Cancelada',              icon:'❌',
+      filter: v => v.status === 'cancelada' }
+  ];
+
+  // Vistorias atribuídas ao técnico logado
+  const minhas = (State.vistorias||[]).filter(v =>
+    (v.tecnico||'').toLowerCase().trim() === tecNome
+  );
+
+  function buildCol(col){
+    const items = minhas.filter(col.filter);
+    const cards = items.map(v => {
+      const data = v.data_agendamento
+        ? `${fmtDate(v.data_agendamento)}${v.hora_agendamento ? ' às '+v.hora_agendamento : ''}`
+        : '<span style="color:#888;font-style:italic">Sem data</span>';
+      const end = [v.rua, v.numero, v.bairro, v.cidade].filter(Boolean).join(', ');
+      return `
+        <div class="kanban-card" data-id="${v.id}" data-col="${col.id}"
+             data-search="${(v.nome||'').toLowerCase()}"
+             style="cursor:pointer">
+          <div class="kanban-card-inner">
+            <div class="name">🔍 ${esc(v.nome||'—')}</div>
+            ${v.telefone ? `<div class="meta">📞 ${esc(v.telefone)}</div>` : ''}
+            ${end ? `<div class="meta">📍 ${esc(end)}</div>` : ''}
+            <div class="meta">📅 ${data}</div>
+            ${v.kwp ? `<div class="meta">${fmtNum(v.kwp,2)} kWp</div>` : ''}
+            <div class="footer">${badge(v.status||'agendada')}</div>
+          </div>
+        </div>`;
+    }).join('') || '<div class="empty" style="padding:20px;font-size:12px">Sem itens</div>';
+
+    return `
+      <div class="kanban-col" data-vcol="${col.id}">
+        <div class="kanban-col-header">
+          <span>${col.icon} ${col.label}</span>
+          <span class="count">${items.length}</span>
+        </div>
+        <div class="kanban-col-body">${cards}</div>
+      </div>`;
+  }
+
+  $('#pageActions').innerHTML = '';
+  $('#content').innerHTML = `<div class="kanban" id="kanban">${VIST_COLS.map(buildCol).join('')}</div>`;
+
+  // Clique abre modal de vistoria
+  $$('.kanban-card[data-col]').forEach(card => {
+    card.addEventListener('click', () => openStageModal('vistoria', card.dataset.id));
+  });
+}
+
+/* ============================================================
+   KANBAN DO INSTALADOR
+   Visão dedicada para tec_instalacao: 4 colunas baseadas no
+   status da instalação, filtradas pelo técnico logado.
+   ============================================================ */
+async function renderInstaladorKanban(){
+  await loadAll();
+  const tecNome = (State.profile?.nome||'').toLowerCase().trim();
+
+  const INST_COLS = [
+    { id:'aguardando', label:'Aguardando Agendamento', icon:'⏳',
+      filter: i => i.status === 'aguardando_agendamento' || (!i.data_instalacao && i.status !== 'cancelada' && i.status !== 'concluida') },
+    { id:'agendada',   label:'Agendada',   icon:'📅', filter: i => i.status === 'agendada' },
+    { id:'concluida',  label:'Concluída',  icon:'✅', filter: i => i.status === 'concluida' || i.status === 'em_andamento' },
+    { id:'cancelada',  label:'Cancelada',  icon:'❌', filter: i => i.status === 'cancelada' }
+  ];
+
+  const minhas = (State.instalacoes||[]).filter(i =>
+    (i.tecnico||'').toLowerCase().trim() === tecNome
+  );
+
+  function buildCol(col){
+    const items = minhas.filter(col.filter);
+    const cards = items.map(i => {
+      const data = i.data_instalacao
+        ? `${fmtDate(i.data_instalacao)}${i.hora_instalacao ? ' às '+i.hora_instalacao : ''}`
+        : '<span style="color:#888;font-style:italic">Sem data</span>';
+      const end = i.endereco || '';
+      return `
+        <div class="kanban-card" data-id="${i.id}" data-col="${col.id}"
+             data-search="${(i.nome||'').toLowerCase()}" style="cursor:pointer">
+          <div class="kanban-card-inner">
+            <div class="name">🔧 ${esc(i.nome||'—')}</div>
+            ${i.telefone ? `<div class="meta">📞 ${esc(i.telefone)}</div>` : ''}
+            ${end ? `<div class="meta">📍 ${esc(end)}</div>` : ''}
+            <div class="meta">📅 ${data}</div>
+            ${i.kwp ? `<div class="meta">${fmtNum(i.kwp,2)} kWp</div>` : ''}
+            <div class="footer">${badge(i.status||'aguardando_agendamento')}</div>
+          </div>
+        </div>`;
+    }).join('') || '<div class="empty" style="padding:20px;font-size:12px">Sem itens</div>';
+
+    return `
+      <div class="kanban-col" data-vcol="${col.id}">
+        <div class="kanban-col-header">
+          <span>${col.icon} ${col.label}</span>
+          <span class="count">${items.length}</span>
+        </div>
+        <div class="kanban-col-body">${cards}</div>
+      </div>`;
+  }
+
+  $('#pageActions').innerHTML = '';
+  $('#content').innerHTML = `<div class="kanban" id="kanban">${INST_COLS.map(buildCol).join('')}</div>`;
+
+  $$('.kanban-card[data-col]').forEach(card => {
+    card.addEventListener('click', () => openStageModal('instalacao', card.dataset.id));
+  });
+}
+
+/* ============================================================
+   KANBAN DO HOMOLOGADOR
+   Visão dedicada para tec_homologacao: colunas baseadas na
+   etapa da homologação, filtradas pelo técnico logado.
+   ============================================================ */
+async function renderHomologadorKanban(){
+  await loadAll();
+  const tecNome = (State.profile?.nome||'').toLowerCase().trim();
+
+  const HOM_COLS = [
+    { id:'aguardando_docs',  label:'Aguardando Documentação', icon:'📋', key:'aguardando_docs' },
+    { id:'projeto',          label:'Projeto',                 icon:'📐', key:'projeto' },
+    { id:'trt_art_pg',       label:'TRT/ART Pago',            icon:'💰', key:'trt_art_pg' },
+    { id:'parecer_acesso',   label:'Parecer de Acesso',       icon:'✅', key:'parecer_acesso' },
+    { id:'aumento_de_carga', label:'Aumento de Carga',        icon:'🔌', key:'aumento_de_carga' },
+    { id:'vistoria_final',   label:'Vistoria Final',          icon:'🔍', key:'vistoria_final' },
+    { id:'aprovada',         label:'Aprovada',                icon:'🏆', key:'aprovada' },
+    { id:'reprovada',        label:'Reprovada',               icon:'❌', key:'reprovada' }
+  ];
+
+  const minhas = (State.homologacoes||[]).filter(h =>
+    (h.tecnico||'').toLowerCase().trim() === tecNome
+  );
+
+  function buildCol(col){
+    const items = minhas.filter(h => h.etapa === col.key);
+    const cards = items.map(h => {
+      return `
+        <div class="kanban-card" data-id="${h.id}" data-col="${col.id}"
+             data-search="${(h.nome||'').toLowerCase()}" style="cursor:pointer">
+          <div class="kanban-card-inner">
+            <div class="name">📋 ${esc(h.nome||'—')}</div>
+            ${h.telefone ? `<div class="meta">📞 ${esc(h.telefone)}</div>` : ''}
+            ${h.concessionaria ? `<div class="meta">⚡ ${esc(h.concessionaria)}</div>` : ''}
+            ${h.kwp ? `<div class="meta">${fmtNum(h.kwp,2)} kWp</div>` : ''}
+            <div class="footer">${badge(h.etapa||'aguardando_docs')}</div>
+          </div>
+        </div>`;
+    }).join('') || '<div class="empty" style="padding:20px;font-size:12px">Sem itens</div>';
+
+    return `
+      <div class="kanban-col" data-vcol="${col.id}" style="flex:0 0 220px">
+        <div class="kanban-col-header">
+          <span>${col.icon} ${col.label}</span>
+          <span class="count">${items.length}</span>
+        </div>
+        <div class="kanban-col-body">${cards}</div>
+      </div>`;
+  }
+
+  $('#pageActions').innerHTML = '';
+  $('#content').innerHTML = `<div class="kanban" id="kanban">${HOM_COLS.map(buildCol).join('')}</div>`;
+
+  $$('.kanban-card[data-col]').forEach(card => {
+    card.addEventListener('click', () => openStageModal('homologacao', card.dataset.id));
+  });
 }
 
 function renderStageCol(stage){
@@ -1387,6 +1585,7 @@ function checkGuard(item, fromStage, toStage){
   }
   if(fromStage==='instalacao' && toStage==='homologacao'){
     if(item.status === 'cancelada') return {ok:false, msg:'Instalação cancelada não pode avançar para homologação.'};
+    if(!['aguardando_agendamento','agendada','em_andamento','concluida'].includes(item.status)) return {ok:false, msg:'Status da instalação não permite avançar para homologação.'};
   }
   if(fromStage==='homologacao' && toStage==='posvenda'){
     if(item.etapa !== 'aprovada') return {ok:false, msg:'Homologação precisa estar "Aprovada".'};
@@ -1424,7 +1623,7 @@ function buildTransitionPayload(item, fromStage, toStage){
     const endereco = endParts.length ? endParts.join(', ') : (item.endereco||'');
     return {
       ...base, logistica_id:item.id, contrato_id:item.contrato_id, proposta_id:item.proposta_id||null, vistoria_id:item.vistoria_id||null,
-      kwp:item.kwp, valor:item.valor, distribuidora:item.distribuidora, status:'agendada', endereco,
+      kwp:item.kwp, valor:item.valor, distribuidora:item.distribuidora, status:'aguardando_agendamento', endereco,
       cep:contrato?.cep||null, gmap:contrato?.gmap||null
     };
   }
@@ -1865,7 +2064,7 @@ function openLeadModal(item=null){
       }
     }
     closeModal();
-    if(State.route==='pipeline') renderPipeline();
+    if(State.route==='pipeline') renderPipeline(); else if(State.route==='vistoriador') renderVistoriadorKanban(); else if(State.route==='instalador') renderInstaladorKanban(); else if(State.route==='homologador') renderHomologadorKanban();
   });
 
   $('#delLeadBtn')?.addEventListener('click', async ()=>{
@@ -1873,7 +2072,7 @@ function openLeadModal(item=null){
     const { error } = await supa.from('leads').delete().eq('id',item.id);
     if(error) return toast(error.message,'error');
     toast('Lead excluído','success'); closeModal();
-    if(State.route==='pipeline') renderPipeline();
+    if(State.route==='pipeline') renderPipeline(); else if(State.route==='vistoriador') renderVistoriadorKanban(); else if(State.route==='instalador') renderInstaladorKanban(); else if(State.route==='homologador') renderHomologadorKanban();
   });
 
   if(!isNew) attachContactLog(item.id,'lead');
@@ -2105,7 +2304,7 @@ function openPropostaModal(item=null){
       }
     }
     closeModal();
-    if(State.route==='pipeline') renderPipeline();
+    if(State.route==='pipeline') renderPipeline(); else if(State.route==='vistoriador') renderVistoriadorKanban(); else if(State.route==='instalador') renderInstaladorKanban(); else if(State.route==='homologador') renderHomologadorKanban();
   });
   $('#vizPropBtn')?.addEventListener('click', ()=> abrirPropostaJanela(item, false));
   $('#dlPropBtn')?.addEventListener('click',  ()=> abrirPropostaJanela(item, true));
@@ -2114,7 +2313,7 @@ function openPropostaModal(item=null){
     if(!await confirmDel('Excluir proposta?')) return;
     await supa.from('propostas').delete().eq('id',item.id);
     toast('Excluído','success'); closeModal();
-    if(State.route==='pipeline') renderPipeline();
+    if(State.route==='pipeline') renderPipeline(); else if(State.route==='vistoriador') renderVistoriadorKanban(); else if(State.route==='instalador') renderInstaladorKanban(); else if(State.route==='homologador') renderHomologadorKanban();
   });
 }
 
@@ -2550,7 +2749,7 @@ function openVistoriaModal(item=null){
     }
     localStorage.removeItem(_draftKey); // limpa rascunho após salvar
     closeModal();
-    if(State.route==='pipeline') renderPipeline();
+    if(State.route==='pipeline') renderPipeline(); else if(State.route==='vistoriador') renderVistoriadorKanban(); else if(State.route==='instalador') renderInstaladorKanban(); else if(State.route==='homologador') renderHomologadorKanban();
   });
 
   $('#delVistBtn')?.addEventListener('click', async ()=>{
@@ -2686,7 +2885,7 @@ function openAtendimentoModal(item=null){
       toast('Atendimento salvo! ✓','success');
     }
     closeModal();
-    if(State.route==='pipeline') renderPipeline();
+    if(State.route==='pipeline') renderPipeline(); else if(State.route==='vistoriador') renderVistoriadorKanban(); else if(State.route==='instalador') renderInstaladorKanban(); else if(State.route==='homologador') renderHomologadorKanban();
   });
 
   $('#delAtendBtn')?.addEventListener('click', async ()=>{
@@ -2829,13 +3028,13 @@ function openContratoModal(item=null){
           if(eLog) toast('Avançou para Logística: '+eLog.message,'error');
           else toast('Contrato assinado → movido para Logística ✓','success');
           await loadAll(); closeModal();
-          if(State.route==='pipeline') renderPipeline();
+          if(State.route==='pipeline') renderPipeline(); else if(State.route==='vistoriador') renderVistoriadorKanban(); else if(State.route==='instalador') renderInstaladorKanban(); else if(State.route==='homologador') renderHomologadorKanban();
           return;
         }
       }
     }
     toast('Contrato salvo','success'); await loadAll(); closeModal();
-    if(State.route==='pipeline') renderPipeline();
+    if(State.route==='pipeline') renderPipeline(); else if(State.route==='vistoriador') renderVistoriadorKanban(); else if(State.route==='instalador') renderInstaladorKanban(); else if(State.route==='homologador') renderHomologadorKanban();
   });
 
   $('#clickSignBtn')?.addEventListener('click', async ()=>{
@@ -3952,7 +4151,7 @@ function openLogisticaModal(item=null){
 function openInstalacaoModal(item=null){
   item = item || {};
   const linked = getLinkedDocs(item);
-  const statusOpts = [['agendada','Agendada'],['em_andamento','Em andamento'],['concluida','Concluída'],['cancelada','Cancelada']];
+  const statusOpts = [['aguardando_agendamento','Aguardando Agendamento'],['agendada','Agendada'],['em_andamento','Em andamento'],['concluida','Concluída'],['cancelada','Cancelada']];
   const fotos = item.fotos || {};
 
   // Busca endereço do contrato para pré-preencher
@@ -3972,9 +4171,9 @@ function openInstalacaoModal(item=null){
           ${formField({label:'kWp',name:'_kwp',value:item.kwp,readonly:true})}
           ${formField({label:'Vendedor',name:'_vendedor',value:item.vendedor,readonly:true})}
           ${formField({label:'Técnico',name:'tecnico',value:item.tecnico,required:true,datalist:DL_TECNICO})}
-          ${formField({label:'Data Instalação',name:'data_instalacao',type:'date',value:item.data_instalacao,required:true})}
+          ${formField({label:'Data Instalação',name:'data_instalacao',type:'date',value:item.data_instalacao})}
           ${formField({label:'Hora',name:'hora_instalacao',type:'time',value:item.hora_instalacao})}
-          ${formField({label:'Status',name:'status',type:'select',value:item.status||'agendada',options:statusOpts})}
+          ${formField({label:'Status',name:'status',type:'select',value:item.status||'aguardando_agendamento',options:statusOpts})}
         </div>
         <div class="section" style="margin-top:14px"><div class="section-header"><h4>📍 Endereço da Instalação</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
@@ -4014,7 +4213,7 @@ function openInstalacaoModal(item=null){
   carregarHistorico($('#histList'), 'instalacoes', item.id);
   const filesStore = { geral: (fotos.geral||[]).slice() };
   attachFileUploads(form, filesStore);
-  const statusInstMap = {agendada:'Agendada', em_andamento:'Em andamento', concluida:'Concluída', cancelada:'Cancelada'};
+  const statusInstMap = {aguardando_agendamento:'Aguardando Agendamento', agendada:'Agendada', em_andamento:'Em andamento', concluida:'Concluída', cancelada:'Cancelada'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
