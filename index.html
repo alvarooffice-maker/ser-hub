@@ -124,6 +124,11 @@ tbody tr:hover{background:#fafaf6}
 .toggle input:checked{background:var(--primary)}
 .toggle input::before{content:"";position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:2px;left:2px;transition:left .2s}
 .toggle input:checked::before{left:20px}
+.multicheck-group{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0}
+.multicheck-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--text-light);background:#f8f9fa;transition:all .15s;user-select:none}
+.multicheck-pill:hover{border-color:var(--primary);color:var(--primary);background:#f0ebfc}
+.multicheck-pill input{display:none}
+.multicheck-pill:has(input:checked){background:var(--primary);color:#fff;border-color:var(--primary)}
 
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
@@ -1837,7 +1842,13 @@ function formField({label,name,type='text',value='',options=null,required=false,
   const dlId = datalist ? 'dl_'+name+'_'+Math.random().toString(36).slice(2,7) : null;
   const dlHtml = datalist ? `<datalist id="${dlId}">${datalist.map(o=>`<option value="${esc(String(o))}">`).join('')}</datalist>` : '';
   let inp;
-  if(type==='select'){
+  if(type==='multicheck'){
+    const vals = Array.isArray(v) ? v : (v ? [v] : []);
+    inp = `<div class="multicheck-group" data-multicheck="${esc(name)}">
+      ${(options||[]).filter(o=>o[0]).map(([val,text])=>`<label class="multicheck-pill"><input type="checkbox" value="${esc(val)}"${vals.includes(String(val))?'checked':''}><span>${esc(text)}</span></label>`).join('')}
+    </div>`;
+    return `<div class="form-group ${full?'full':''}"><label>${esc(label)}${required?' *':''}</label>${inp}</div>`;
+  } else if(type==='select'){
     inp = `<select name="${name}" ${required?'required':''}>${options.map(o=>{
       const [val,text] = Array.isArray(o)?o:[o,o];
       return `<option value="${esc(val)}" ${String(val)===String(v)?'selected':''}>${esc(text)}</option>`;
@@ -1881,6 +1892,12 @@ function readForm(formEl){
     }
   });
   if(badDates.length) toast(`Data inválida em: ${badDates.join(', ')} — verifique o ano digitado.`,'error', 5000);
+  // Coleta grupos multicheck como arrays
+  $$('[data-multicheck]', formEl).forEach(div=>{
+    const fname = div.dataset.multicheck;
+    const checked = Array.from(div.querySelectorAll('input[type=checkbox]:checked')).map(cb=>cb.value);
+    data[fname] = checked.length > 0 ? checked : null;
+  });
   return data;
 }
 
@@ -2407,10 +2424,10 @@ function openVistoriaModal(item=null){
   const redeOpts         = [['','— selecione —'],['monofasico','Monofásico'],['bifasico','Bifásico'],['trifasico','Trifásico'],['nova_uc','Nova Unidade Consumidora']];
   const aumentoCargaOpts = [['','— selecione —'],['bifasico','Bifásico'],['trifasico','Trifásico'],['nao_se_aplica','Não se aplica']];
   const locPadraoOpts    = [['','— selecione —'],['fachada_da_casa','Fachada da casa'],['muro','Muro'],['poste_auxiliar_existente','Poste auxiliar já existe no local'],['necessidade_de_pontalete','Necessidade de pontalete'],['necessidade_de_novo_poste','Necessidade de novo poste auxiliar']];
-  const estOpts      = [['','— selecione —'],['madeira','Madeira'],['metalica','Metálica'],['laje','Laje'],['solo','Solo']];
-  const telhaOpts    = [['','— selecione —'],['ceramica','Cerâmica / Colonial'],['americana','Americana'],['metalica','Metálica / Trapezoidal'],['fibrocimento','Fibrocimento'],['amianto','Amianto'],['aluzinco','Aluzinco'],['laje','Laje'],['platibanda','Platibanda'],['outro','Outro']];
-  const aptasOpts    = [['','— selecione —'],['nenhuma','Nenhuma das águas'],['agua_01','Água 01'],['agua_02','Água 02'],['agua_03','Água 03'],['agua_04','Água 04'],['agua_05','Água 05'],['agua_06','Água 06'],['todas','Todas as águas']];
-  const obraOpts     = [['','— selecione —'],['nao_ha','Não há necessidade'],['agua_01','Água 01'],['agua_02','Água 02'],['agua_03','Água 03'],['agua_04','Água 04'],['agua_05','Água 05'],['agua_06','Água 06'],['todas','Todas as águas']];
+  const estOpts      = [['madeira','Madeira'],['metalica','Metálica'],['laje','Laje'],['solo','Solo']];
+  const telhaOpts    = [['ceramica','Cerâmica / Colonial'],['americana','Americana'],['metalica','Metálica / Trapezoidal'],['fibrocimento','Fibrocimento'],['amianto','Amianto'],['aluzinco','Aluzinco'],['laje','Laje'],['platibanda','Platibanda'],['outro','Outro']];
+  const aptasOpts    = [['nenhuma','Nenhuma das águas'],['agua_01','Água 01'],['agua_02','Água 02'],['agua_03','Água 03'],['agua_04','Água 04'],['agua_05','Água 05'],['agua_06','Água 06'],['todas','Todas as águas']];
+  const obraOpts     = [['nao_ha','Não há necessidade'],['agua_01','Água 01'],['agua_02','Água 02'],['agua_03','Água 03'],['agua_04','Água 04'],['agua_05','Água 05'],['agua_06','Água 06'],['todas','Todas as águas']];
 
   const dp = item.dados_padrao    || {};
   const di = item.dados_inversor  || {};
@@ -2560,13 +2577,13 @@ function openVistoriaModal(item=null){
         <div class="section collapsed"><div class="section-header"><h4>🏠 3. Dados da Estrutura</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
 
-            ${formField({label:'Tipo de Estrutura *',name:'de_tipo_estrutura',type:'select',value:de.tipo_estrutura,options:estOpts,required:true})}
-            ${formField({label:'Tipo da Telha *',name:'de_tipo_telha',type:'select',value:de.tipo_telha,options:telhaOpts,required:true})}
+            ${formField({label:'Tipo de Estrutura *',name:'de_tipo_estrutura',type:'multicheck',value:de.tipo_estrutura,options:estOpts,full:true})}
+            ${formField({label:'Tipo da Telha *',name:'de_tipo_telha',type:'multicheck',value:de.tipo_telha,options:telhaOpts,full:true})}
 
             ${fileUploadBlock('Imagens das Estruturas','estrutura','vistorias',fotos.estrutura||[],true)}
 
-            ${formField({label:'Estruturas Aptas *',name:'de_estruturas_aptas',type:'select',value:de.estruturas_aptas,options:aptasOpts,required:true})}
-            ${formField({label:'Estruturas com Necessidade de Obra *',name:'de_estruturas_obra',type:'select',value:de.estruturas_obra,options:obraOpts,required:true})}
+            ${formField({label:'Estruturas Aptas *',name:'de_estruturas_aptas',type:'multicheck',value:de.estruturas_aptas,options:aptasOpts,full:true})}
+            ${formField({label:'Estruturas com Necessidade de Obra *',name:'de_estruturas_obra',type:'multicheck',value:de.estruturas_obra,options:obraOpts,full:true})}
             ${formField({label:'Descrição da Obra',name:'de_desc_obra',type:'textarea',value:de.desc_obra,full:true})}
             ${formField({label:'Qtd Módulos que a Área Comporta *',name:'de_modulos_comporta',type:'number',value:de.modulos_comporta,required:true})}
             ${formField({label:'Necessita trocar inversor (inclinações)? *',name:'de_trocar_inversor_inclinacao',type:'select',value:de.trocar_inversor_inclinacao,options:[['','— selecione —'],['sim','Sim'],['nao','Não']],required:true})}
@@ -2651,6 +2668,13 @@ function openVistoriaModal(item=null){
           banner.querySelector('span').innerHTML=`💾 <strong>Rascunho encontrado</strong> — salvo há ${mins<1?'menos de 1':mins} min. Deseja restaurar o que foi preenchido?`;
           document.getElementById('draftRestoreBtn')?.addEventListener('click',()=>{
             Object.entries(draft.fields||{}).forEach(([k,v])=>{
+              // multicheck: restaura checkboxes pelo data-multicheck
+              const mcDiv = form.querySelector(`[data-multicheck="${k}"]`);
+              if(mcDiv){
+                const vals = Array.isArray(v)?v:(v?[v]:[]);
+                mcDiv.querySelectorAll('input[type=checkbox]').forEach(cb=>{ cb.checked=vals.includes(cb.value); });
+                return;
+              }
               const el = form.elements[k];
               if(!el) return;
               if(el.type==='checkbox') el.checked=!!v;
@@ -3071,6 +3095,7 @@ function abrirVistoriaJanela(v, imprimir=false){
   const num = (x,d=0) => x!=null?Number(x).toFixed(d):'—';
   const dt  = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '—';
   const bool= b => b?'Sim':'Não';
+  const fmtMulti = (v,map) => { const arr=Array.isArray(v)?v:(v?[v]:[]); return arr.length?arr.map(x=>map[x]||x).join(', '):'—'; };
   const dp  = v.dados_padrao||{};
   const di  = v.dados_inversor||{};
   const de  = v.dados_estrutura||{};
@@ -3212,11 +3237,11 @@ table.kit .hl{color:#4B0082;font-weight:700}
 
 <h2>🏠 3. Dados da Estrutura</h2>
 <div class="grid3">
-  <div class="item"><div class="lbl">Tipo de Estrutura</div><div class="val"><strong>${txt(de.tipo_estrutura)}</strong></div></div>
-  <div class="item"><div class="lbl">Tipo de Telha</div><div class="val"><strong>${txt(de.tipo_telha)}</strong></div></div>
+  <div class="item"><div class="lbl">Tipo de Estrutura</div><div class="val"><strong>${fmtMulti(de.tipo_estrutura,{madeira:'Madeira',metalica:'Metálica',laje:'Laje',solo:'Solo'})}</strong></div></div>
+  <div class="item"><div class="lbl">Tipo de Telha</div><div class="val"><strong>${fmtMulti(de.tipo_telha,{ceramica:'Cerâmica / Colonial',americana:'Americana',metalica:'Metálica / Trapezoidal',fibrocimento:'Fibrocimento',amianto:'Amianto',aluzinco:'Aluzinco',laje:'Laje',platibanda:'Platibanda',outro:'Outro'})}</strong></div></div>
   <div class="item"><div class="lbl">Módulos que Comporta</div><div class="val"><strong style="font-size:16px;color:#4B0082">${txt(de.modulos_comporta)}</strong></div></div>
-  <div class="item"><div class="lbl">Estruturas Aptas</div><div class="val">${txt(de.estruturas_aptas)}</div></div>
-  <div class="item"><div class="lbl">Estruturas c/ Obra</div><div class="val">${txt(de.estruturas_obra)}</div></div>
+  <div class="item"><div class="lbl">Estruturas Aptas</div><div class="val">${fmtMulti(de.estruturas_aptas,{nenhuma:'Nenhuma das águas',agua_01:'Água 01',agua_02:'Água 02',agua_03:'Água 03',agua_04:'Água 04',agua_05:'Água 05',agua_06:'Água 06',todas:'Todas as águas'})}</div></div>
+  <div class="item"><div class="lbl">Estruturas c/ Obra</div><div class="val">${fmtMulti(de.estruturas_obra,{nao_ha:'Não há necessidade',agua_01:'Água 01',agua_02:'Água 02',agua_03:'Água 03',agua_04:'Água 04',agua_05:'Água 05',agua_06:'Água 06',todas:'Todas as águas'})}</div></div>
   <div class="item"><div class="lbl">Trocar Inv. (inclinação)</div><div class="val">${bool(de.trocar_inversor_inclinacao)}</div></div>
   <div class="item"><div class="lbl">Risco de Sombreamento</div><div class="val">${bool(de.risco_sombreamento)}</div></div>
   ${de.desc_obra?`<div class="item" style="grid-column:span 3"><div class="lbl">Descrição da Obra Necessária</div><div class="val" style="background:#fffbeb;padding:8px;border-radius:4px;border:1px solid #fbbf24"><strong>${de.desc_obra}</strong></div></div>`:''}
