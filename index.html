@@ -130,6 +130,50 @@ tbody tr:hover{background:#fafaf6}
 .multicheck-pill input{display:none}
 .multicheck-pill:has(input:checked){background:var(--primary);color:#fff;border-color:var(--primary)}
 
+/* Calculadora de Baterias */
+.bat-autonomia-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.bat-autonomia-card{background:#fafaf6;border:2px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:all .15s;text-align:center}
+.bat-autonomia-card:hover{border-color:var(--primary)}
+.bat-autonomia-card.selected{border-color:var(--primary);background:#f5f0fc}
+.bat-autonomia-card .horas{font-size:20px;font-weight:800;color:var(--primary)}
+.bat-autonomia-card .label{font-size:10.5px;color:var(--text-light);margin-top:3px}
+.bat-table{width:100%;border-collapse:collapse}
+.bat-table thead th{font-size:11px;font-weight:600;letter-spacing:.3px;color:var(--text-light);text-align:left;padding:8px 10px;border-bottom:1px solid var(--border)}
+.bat-table thead th:last-child{text-align:center}
+.bat-row{border-bottom:1px solid rgba(0,0,0,.04);transition:background .15s}
+.bat-row:hover{background:#fafaf6}
+.bat-row td{padding:9px 10px;vertical-align:middle}
+.bat-row .equip-name{display:flex;align-items:center;gap:10px}
+.bat-row .equip-icon{font-size:17px;width:28px;text-align:center}
+.bat-row .equip-label{font-size:13px;font-weight:500;color:var(--text)}
+.bat-row .equip-default{font-size:11px;color:var(--text-light);margin-top:1px}
+.bat-qty-control{display:flex;align-items:center;justify-content:center;gap:6px}
+.bat-qty-btn{width:25px;height:25px;background:#fff;border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s}
+.bat-qty-btn:hover{background:var(--primary);border-color:var(--primary);color:#fff}
+.bat-qty-val{min-width:22px;text-align:center;font-size:13.5px;font-weight:600}
+.bat-input-small{width:68px;text-align:center;padding:6px 8px;font-size:12.5px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text);margin:0 auto;display:block}
+.bat-toggle-col{display:flex;justify-content:center}
+.bat-toggle-check{width:19px;height:19px;accent-color:var(--primary);cursor:pointer}
+.bat-custom-row{display:flex;gap:8px;align-items:center;margin-top:10px;padding:10px;background:#fafaf6;border-radius:8px;border:1px solid var(--border)}
+.bat-custom-row input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text);font-size:12.5px}
+.bat-custom-row input[data-bn]{flex:2}
+.bat-custom-row input[data-bp],.bat-custom-row input[data-bq],.bat-custom-row input[data-bh]{flex:1;min-width:60px;text-align:center}
+.bat-remove-btn{background:none;border:none;color:var(--text-light);cursor:pointer;font-size:17px;padding:4px 8px;border-radius:6px;flex-shrink:0}
+.bat-remove-btn:hover{color:var(--danger)}
+.bat-resultado-main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0}
+.bat-res-card{background:#fafaf6;border-radius:10px;padding:18px;border:1px solid var(--border);text-align:center}
+.bat-res-card.destaque{background:#f5f0fc;border-color:var(--primary)}
+.bat-res-card .nome{font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text-light);margin-bottom:8px}
+.bat-res-card .valor{font-size:32px;font-weight:800;color:var(--primary);line-height:1}
+.bat-res-card .unidade{font-size:12px;color:var(--text-light);margin-top:4px}
+.bat-detail-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}
+.bat-detail-table thead th{font-size:10.5px;letter-spacing:.3px;color:var(--text-light);text-align:left;padding:6px 10px;border-bottom:1px solid var(--border)}
+.bat-detail-table tbody td{padding:7px 10px;border-bottom:1px solid rgba(0,0,0,.04)}
+.bat-detail-table tr.total td{font-weight:700;color:var(--primary);border-top:1px solid var(--border)}
+.bat-nota{background:#fffbeb;border:1px solid #f5d98b;border-radius:8px;padding:12px 16px;font-size:12px;color:#946200;line-height:1.7;margin-top:14px}
+.bat-nota strong{color:#7a4f00}
+@media(max-width:760px){.bat-autonomia-grid{grid-template-columns:repeat(3,1fr)}.bat-resultado-main{grid-template-columns:1fr}}
+
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
 .modal-overlay.active{display:flex}
@@ -494,6 +538,7 @@ const ROUTES = [
   { id:'instalador', label:'Minhas Instalações', icon:'🔧' },
   { id:'homologador', label:'Minhas Homologações', icon:'📋' },
   { id:'remarketing', label:'Remarketing', icon:'🔁' },
+  { id:'baterias', label:'Calculadora de Baterias', icon:'🔋' },
   { id:'comissoes', label:'Comissões', icon:'💰', section:'GESTÃO' },
   { id:'financeiro', label:'Financeiro', icon:'📈', section:'GESTÃO' },
   { id:'cadastros', label:'Cadastros', icon:'👥', section:'GESTÃO' },
@@ -505,7 +550,7 @@ function visibleRoutes(){
   return ROUTES.filter(r=>{
     if(r.adminOnly && !['admin','supervisor'].includes(role)) return false;
     if(role==='financeiro') return ['dashboard','comissoes','financeiro'].includes(r.id);
-    if(role==='vendedor') return ['dashboard','pipeline','remarketing'].includes(r.id);
+    if(role==='vendedor') return ['dashboard','pipeline','remarketing','baterias'].includes(r.id);
     if(role==='tec_vistoria') return ['dashboard','vistoriador'].includes(r.id);
     if(role==='tec_instalacao') return ['dashboard','instalador'].includes(r.id);
     if(role==='tec_homologacao') return ['dashboard','homologador'].includes(r.id);
@@ -545,6 +590,7 @@ function navigate(route){
     case 'instalador': renderInstaladorKanban(); break;
     case 'homologador': renderHomologadorKanban(); break;
     case 'remarketing': renderRemarketing(); break;
+    case 'baterias': renderBaterias(); break;
     case 'comissoes': renderComissoes(); break;
     case 'financeiro': renderFinanceiro(); break;
     case 'cadastros': renderCadastros(); break;
@@ -4736,6 +4782,407 @@ function openRemarketingModal(item){
     if(error) return toast(error.message,'error');
     toast('Salvo','success'); closeModal(); renderRemarketing();
   });
+}
+
+/* ============================================================
+   CALCULADORA DE BATERIAS
+   ============================================================ */
+const BAT_EQUIPAMENTOS = [
+  { icon:'💡', nome:'Iluminação LED', detalhe:'10 pontos de luz', potencia:100, qtd:1, horas:6 },
+  { icon:'🌡️', nome:'Ar-condicionado 9.000 BTU', detalhe:'~700W médio', potencia:700, qtd:1, horas:4 },
+  { icon:'🌡️', nome:'Ar-condicionado 12.000 BTU', detalhe:'~1100W médio', potencia:1100, qtd:1, horas:4 },
+  { icon:'❄️', nome:'Geladeira (comum)', detalhe:'~150W médio', potencia:150, qtd:1, horas:6 },
+  { icon:'❄️', nome:'Geladeira (duplex/frost-free)', detalhe:'~200W médio', potencia:200, qtd:1, horas:6 },
+  { icon:'📺', nome:'Televisão 50"', detalhe:'~150W', potencia:150, qtd:1, horas:4 },
+  { icon:'🌀', nome:'Ventilador de teto', detalhe:'~70W', potencia:70, qtd:2, horas:6 },
+  { icon:'💻', nome:'Computador / Monitor', detalhe:'~200W', potencia:200, qtd:1, horas:4 },
+  { icon:'📶', nome:'Roteador / Internet', detalhe:'~20W', potencia:20, qtd:1, horas:6 },
+  { icon:'🔌', nome:"Bomba d'água", detalhe:'~500W', potencia:500, qtd:1, horas:2 },
+  { icon:'🔒', nome:'CFTV / Câmeras', detalhe:'~80W (gravador + 4 câm)', potencia:80, qtd:1, horas:6 },
+  { icon:'💊', nome:'Aparelho médico (CPAP)', detalhe:'~50W', potencia:50, qtd:1, horas:6 },
+];
+const BAT_CAPACIDADE_UNIDADE = 5; // kWh por bateria
+const BAT_AUTONOMIAS = [
+  {h:2, label:'Proteção básica'}, {h:4, label:'Uso diurno'}, {h:6, label:'Noite parcial'},
+  {h:8, label:'Noite completa'}, {h:12, label:'12 horas'}, {h:24, label:'Dia completo'},
+];
+
+function renderBaterias(){
+  $('#pageActions').innerHTML = '';
+  let autonomiaHoras = 6;
+  let customItems = [];
+  let ultimoCalculo = null;
+
+  $('#content').innerHTML = `
+    <div class="card" style="max-width:1000px;margin:0 auto">
+      <div style="margin-bottom:18px">
+        <h2 style="font-size:21px;font-weight:800;color:var(--primary);margin-bottom:4px">🔋 Calculadora de Baterias</h2>
+        <p style="font-size:13px;color:var(--text-light);line-height:1.6">Preencha os dados do cliente, selecione as cargas prioritárias e o tempo de autonomia desejado para dimensionar o banco de baterias do sistema híbrido.</p>
+      </div>
+
+      <div class="section">
+        <div class="section-header"><h4>👤 Dados do Cliente</h4><span class="section-toggle">▼</span></div>
+        <div class="section-body"><div class="form-grid">
+          ${formField({label:'Nome do Cliente',name:'bat_nome',placeholder:'Ex.: João Silva'})}
+          ${formField({label:'Cidade / Bairro',name:'bat_cidade',placeholder:'Ex.: Ananindeua, PA'})}
+        </div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-header"><h4>⏱️ Tempo de Autonomia Desejado</h4><span class="section-toggle">▼</span></div>
+        <div class="section-body">
+          <p style="font-size:12.5px;color:var(--text-light);margin-bottom:12px">Quanto tempo as cargas prioritárias devem continuar funcionando durante a falta de energia?</p>
+          <div class="bat-autonomia-grid" id="batAutonomiaGrid"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header"><h4>🔌 Cargas Prioritárias</h4><span class="section-toggle">▼</span></div>
+        <div class="section-body">
+          <p style="font-size:12.5px;color:var(--text-light);margin-bottom:14px">Marque os equipamentos que devem continuar funcionando durante a falta de energia. Ajuste a quantidade e as horas de uso (dentro da autonomia).</p>
+          <table class="bat-table">
+            <thead><tr>
+              <th style="width:36%">Equipamento</th>
+              <th style="width:14%;text-align:center">Qtd.</th>
+              <th style="width:18%;text-align:center">Potência (W)</th>
+              <th style="width:18%;text-align:center">Horas de uso</th>
+              <th style="width:14%;text-align:center">Ativo</th>
+            </tr></thead>
+            <tbody id="batCargasBody"></tbody>
+          </table>
+          <div id="batCustomContainer"></div>
+          <button type="button" class="btn-add-file" id="batAddCustomBtn" style="margin-top:12px">+ Adicionar equipamento personalizado</button>
+          <div class="alert" id="batAlertaSemCarga" style="display:none;margin-top:12px;background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;font-size:12.5px;font-weight:600">⚠️ Selecione ao menos uma carga prioritária para calcular.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin:18px 0;flex-wrap:wrap">
+        <button type="button" class="btn btn-primary" id="batCalcularBtn">⚡ Calcular Baterias</button>
+        <button type="button" class="btn btn-secondary" id="batLimparBtn">↺ Limpar tudo</button>
+      </div>
+
+      <div id="batResultadoWrap" style="display:none">
+        <div class="section">
+          <div class="section-header"><h4>✓ Resultado do Dimensionamento</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body">
+            <div class="bat-resultado-main">
+              <div class="bat-res-card">
+                <div class="nome">Energia Total Necessária</div>
+                <div class="valor" id="batResEnergia">—</div>
+                <div class="unidade">kWh</div>
+              </div>
+              <div class="bat-res-card destaque">
+                <div class="nome">Nº de Baterias (${BAT_CAPACIDADE_UNIDADE} kWh)</div>
+                <div class="valor" id="batResBaterias">—</div>
+                <div class="unidade">unidades</div>
+              </div>
+              <div class="bat-res-card">
+                <div class="nome">Capacidade Total</div>
+                <div class="valor" id="batResCapacidade">—</div>
+                <div class="unidade">kWh instalados</div>
+              </div>
+            </div>
+            <table class="bat-detail-table">
+              <thead><tr>
+                <th>Equipamento</th><th style="text-align:center">Qtd.</th>
+                <th style="text-align:center">Pot. Unit. (W)</th><th style="text-align:center">Horas</th>
+                <th style="text-align:right">Consumo (Wh)</th>
+              </tr></thead>
+              <tbody id="batDetalheBody"></tbody>
+            </table>
+            <div class="bat-nota" id="batNotaBox"></div>
+            <div style="margin-top:16px">
+              <button type="button" class="btn btn-primary" id="batPdfBtn">🖨️ Gerar Relatório PDF</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ── Seções colapsáveis (fora de modal — precisa bind manual) ──
+  $$('#content .section-header').forEach(h=>{
+    h.addEventListener('click', ()=> h.parentElement.classList.toggle('collapsed'));
+  });
+
+  // ── Autonomia ──
+  const autGrid = $('#batAutonomiaGrid');
+  function renderAutonomiaCards(){
+    autGrid.innerHTML = BAT_AUTONOMIAS.map(a=>`
+      <div class="bat-autonomia-card${a.h===autonomiaHoras?' selected':''}" data-horas="${a.h}">
+        <div class="horas">${a.h}h</div>
+        <div class="label">${a.label}${a.h===autonomiaHoras?' ✓':''}</div>
+      </div>`).join('');
+    $$('.bat-autonomia-card', autGrid).forEach(card=>{
+      card.addEventListener('click', ()=>{
+        autonomiaHoras = Number(card.dataset.horas);
+        renderAutonomiaCards();
+        // ajusta horas de uso para não ultrapassar a autonomia
+        $$('[id^="batHor_"]').forEach(inp=>{
+          inp.max = autonomiaHoras;
+          if(parseFloat(inp.value) > autonomiaHoras) inp.value = autonomiaHoras;
+        });
+        $$('[data-bh]', $('#batCustomContainer')).forEach(inp=>{
+          inp.max = autonomiaHoras;
+          if(parseFloat(inp.value) > autonomiaHoras) inp.value = autonomiaHoras;
+        });
+      });
+    });
+  }
+  renderAutonomiaCards();
+
+  // ── Cargas padrão ──
+  const cargasBody = $('#batCargasBody');
+  cargasBody.innerHTML = BAT_EQUIPAMENTOS.map((eq,i)=>`
+    <tr class="bat-row" style="opacity:.45" data-row="${i}">
+      <td><div class="equip-name"><span class="equip-icon">${eq.icon}</span>
+        <div><div class="equip-label">${esc(eq.nome)}</div><div class="equip-default">${esc(eq.detalhe)}</div></div>
+      </div></td>
+      <td><div class="bat-qty-control">
+        <button type="button" class="bat-qty-btn" data-qty-dec="${i}">−</button>
+        <span class="bat-qty-val" id="batQty_${i}">${eq.qtd}</span>
+        <button type="button" class="bat-qty-btn" data-qty-inc="${i}">+</button>
+      </div></td>
+      <td><input class="bat-input-small" type="number" id="batPot_${i}" value="${eq.potencia}" min="1" max="99999"></td>
+      <td><input class="bat-input-small" type="number" id="batHor_${i}" value="${eq.horas}" min="0.5" max="${autonomiaHoras}" step="0.5"></td>
+      <td class="bat-toggle-col"><input type="checkbox" class="bat-toggle-check" id="batChk_${i}" data-toggle="${i}"></td>
+    </tr>`).join('');
+
+  $$('[data-toggle]', cargasBody).forEach(chk=>{
+    chk.addEventListener('change', ()=>{
+      const row = chk.closest('tr');
+      row.style.opacity = chk.checked ? '1' : '.45';
+    });
+  });
+  $$('[data-qty-dec]', cargasBody).forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const el = $(`#batQty_${btn.dataset.qtyDec}`);
+      el.textContent = Math.max(0, parseInt(el.textContent)-1);
+    });
+  });
+  $$('[data-qty-inc]', cargasBody).forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const el = $(`#batQty_${btn.dataset.qtyInc}`);
+      el.textContent = parseInt(el.textContent)+1;
+    });
+  });
+
+  // ── Itens personalizados ──
+  const customContainer = $('#batCustomContainer');
+  function renderCustom(){
+    customContainer.innerHTML = customItems.map((item,i)=>`
+      <div class="bat-custom-row" data-custom="${i}">
+        <input type="text" data-bn="${i}" placeholder="Nome do equipamento" value="${esc(item.nome)}">
+        <input type="number" data-bp="${i}" placeholder="W" value="${item.potencia}" min="1" max="99999" title="Potência em Watts">
+        <input type="number" data-bq="${i}" placeholder="Qtd" value="${item.qtd}" min="1" max="99" title="Quantidade">
+        <input type="number" data-bh="${i}" placeholder="h" value="${item.horas}" min="0.5" max="${autonomiaHoras}" step="0.5" title="Horas de uso">
+        <button type="button" class="bat-remove-btn" data-rmcustom="${i}" title="Remover">✕</button>
+      </div>`).join('');
+    $$('[data-rmcustom]', customContainer).forEach(b=>{
+      b.addEventListener('click', ()=>{ customItems.splice(Number(b.dataset.rmcustom),1); renderCustom(); });
+    });
+  }
+  $('#batAddCustomBtn').addEventListener('click', ()=>{
+    customItems.push({ nome:'', potencia:100, horas:autonomiaHoras, qtd:1 });
+    renderCustom();
+  });
+
+  // ── Calcular ──
+  $('#batCalcularBtn').addEventListener('click', ()=>{
+    $('#batAlertaSemCarga').style.display = 'none';
+    let cargas = [];
+
+    BAT_EQUIPAMENTOS.forEach((eq,i)=>{
+      const chk = $(`#batChk_${i}`);
+      if(!chk.checked) return;
+      const qty = parseInt($(`#batQty_${i}`).textContent)||0;
+      const pot = parseFloat($(`#batPot_${i}`).value)||0;
+      const hor = parseFloat($(`#batHor_${i}`).value)||0;
+      if(qty>0 && pot>0 && hor>0) cargas.push({ nome:eq.nome, icon:eq.icon, qtd:qty, potencia:pot, horas:hor });
+    });
+
+    customItems.forEach((_,i)=>{
+      const nome = customContainer.querySelector(`[data-bn="${i}"]`)?.value || 'Equipamento personalizado';
+      const pot  = parseFloat(customContainer.querySelector(`[data-bp="${i}"]`)?.value)||0;
+      const qtd  = parseInt(customContainer.querySelector(`[data-bq="${i}"]`)?.value)||1;
+      const hor  = parseFloat(customContainer.querySelector(`[data-bh="${i}"]`)?.value)||0;
+      if(pot>0 && hor>0) cargas.push({ nome, icon:'🔌', qtd, potencia:pot, horas:hor });
+    });
+
+    if(cargas.length === 0){
+      $('#batAlertaSemCarga').style.display = 'block';
+      return;
+    }
+
+    let totalWh = 0;
+    cargas.forEach(c=> totalWh += c.qtd*c.potencia*c.horas);
+
+    const fatorSeguranca = 1.20; // perdas + temperatura + derating
+    const dod = 0.80;            // profundidade de descarga (baterias de lítio)
+    const energiaCorrigida = (totalWh*fatorSeguranca)/dod;
+    const capacidadeBateriaWh = BAT_CAPACIDADE_UNIDADE*1000;
+    const numBaterias = Math.ceil(energiaCorrigida/capacidadeBateriaWh);
+    const capacidadeTotal = numBaterias*BAT_CAPACIDADE_UNIDADE;
+
+    $('#batResEnergia').textContent = (energiaCorrigida/1000).toFixed(2);
+    $('#batResBaterias').textContent = numBaterias;
+    $('#batResCapacidade').textContent = capacidadeTotal;
+
+    const detBody = $('#batDetalheBody');
+    detBody.innerHTML = cargas.map(c=>{
+      const consumo = c.qtd*c.potencia*c.horas;
+      return `<tr><td>${c.icon} ${esc(c.nome)}</td><td style="text-align:center">${c.qtd}</td>
+        <td style="text-align:center">${c.potencia}</td><td style="text-align:center">${c.horas}h</td>
+        <td style="text-align:right">${consumo.toFixed(0)} Wh</td></tr>`;
+    }).join('') + `<tr class="total"><td colspan="4" style="text-align:right;padding-right:16px">Consumo bruto total</td><td style="text-align:right">${totalWh.toFixed(0)} Wh</td></tr>`;
+
+    $('#batNotaBox').innerHTML = `<strong>📐 Metodologia de cálculo:</strong><br>
+      Consumo bruto: <strong>${totalWh.toFixed(0)} Wh</strong> &nbsp;|&nbsp;
+      Fator de segurança: <strong>+20%</strong> (perdas + temperatura) &nbsp;|&nbsp;
+      DOD (profundidade de descarga): <strong>80%</strong> (baterias de lítio) &nbsp;|&nbsp;
+      Energia necessária líquida: <strong>${(energiaCorrigida/1000).toFixed(2)} kWh</strong><br>
+      Autonomia configurada: <strong>${autonomiaHoras}h</strong> &nbsp;|&nbsp; Capacidade por bateria: <strong>${BAT_CAPACIDADE_UNIDADE} kWh</strong>`;
+
+    ultimoCalculo = { cargas, totalWh, energiaCorrigida, numBaterias, capacidadeTotal, autonomiaHoras };
+
+    $('#batResultadoWrap').style.display = '';
+    $('#batResultadoWrap').scrollIntoView({behavior:'smooth', block:'start'});
+  });
+
+  // ── Limpar ──
+  $('#batLimparBtn').addEventListener('click', async ()=>{
+    if(!await confirmDel('Deseja limpar todos os dados preenchidos?')) return;
+    autonomiaHoras = 6;
+    customItems = [];
+    ultimoCalculo = null;
+    renderBaterias();
+  });
+
+  // ── PDF ──
+  $('#batPdfBtn').addEventListener('click', ()=>{
+    if(!ultimoCalculo) return;
+    const cliente = $('#content [name="bat_nome"]')?.value || '';
+    const cidade  = $('#content [name="bat_cidade"]')?.value || '';
+    abrirBateriaPDF(ultimoCalculo, cliente, cidade, true);
+  });
+}
+
+/* ============================================================
+   RELATÓRIO DE DIMENSIONAMENTO DE BATERIAS — HTML/PDF
+   ============================================================ */
+function abrirBateriaPDF(calc, cliente, cidade, imprimir=false){
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<title>Dimensionamento de Baterias — ${esc(cliente||'Cliente')}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;background:#f0eaf8;color:#111;padding:20px}
+.print-bar{position:sticky;top:0;z-index:100;background:#fff;padding:10px 20px;border-bottom:2px solid #4B0082;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.print-bar span{font-size:13px;color:#4B0082;font-weight:700}
+.print-bar button{background:#4B0082;color:#fff;border:none;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
+.wrap{max-width:820px;margin:0 auto;background:#fff;padding:36px 44px;box-shadow:0 2px 16px rgba(0,0,0,.1)}
+.doc-header{text-align:center;margin-bottom:20px}
+.doc-header img{height:60px;margin-bottom:10px;display:block;margin-left:auto;margin-right:auto}
+.doc-header h1{font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#1a0a2e}
+.doc-header .sub{font-size:10px;color:#666;margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
+hr.rule{border:none;border-top:2px solid #6B21A8;margin:14px 0 20px}
+.id-box{background:#f5f0fc;border-left:4px solid #6B21A8;border-radius:6px;padding:14px 18px;margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 16px;font-size:11.5px}
+.id-box .lbl{font-weight:600;color:#4B0082;font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+.id-box .val{color:#1a0a2e;margin-top:1px}
+h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#4B0082;padding:5px 0 4px;border-bottom:1px solid #c4b5fd;margin:20px 0 10px}
+.bat-pdf-main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.bat-pdf-card{background:#faf7ff;border:1px solid #e9e2f5;border-radius:10px;padding:16px;text-align:center}
+.bat-pdf-card.destaque{background:#f5f0fc;border-color:#6B21A8}
+.bat-pdf-card .nome{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b5f7a;margin-bottom:8px}
+.bat-pdf-card .valor{font-size:28px;font-weight:900;color:#4B0082;line-height:1}
+.bat-pdf-card .unidade{font-size:11px;color:#9ca3af;margin-top:4px}
+table.kit{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:11px}
+table.kit th{background:#4B0082;color:#fff;padding:6px 8px;text-align:left;font-size:10px;letter-spacing:.04em;font-weight:700}
+table.kit td{padding:6px 8px;border-bottom:1px solid #e9e2f5}
+table.kit tr:nth-child(even) td{background:#faf7ff}
+table.kit tr.total td{font-weight:700;color:#4B0082;border-top:2px solid #6B21A8}
+.parecer-box{background:#f5f0fc;border-radius:6px;padding:12px 16px;font-size:11.5px;line-height:1.8;margin-top:8px}
+.parecer-box strong{color:#4B0082}
+.disclaimer{background:#fffbeb;border:1px solid #f59e0b;border-radius:6px;padding:12px 16px;margin-top:18px;font-size:10.5px;color:#92400e;line-height:1.7}
+.doc-footer{margin-top:28px;padding-top:14px;border-top:1px solid #e9e2f5;text-align:center;font-size:10px;color:#9ca3af;line-height:1.7}
+@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{background:#fff;padding:0}.wrap{box-shadow:none;padding:24px 32px}.print-bar{display:none!important}}
+</style></head><body>
+<div class="print-bar">
+  <span>SER Energia — Dimensionamento de Baterias</span>
+  <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+</div>
+<div class="wrap">
+
+<div class="doc-header">
+  <img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/>
+  <h1>Relatório de Dimensionamento de Baterias</h1>
+  <div class="sub">Sistema Híbrido · SER Energia Renovável · CNPJ 58.656.750/0001-04</div>
+</div>
+<hr class="rule"/>
+
+<div class="id-box">
+  <div><div class="lbl">Cliente</div><div class="val">${esc(cliente||'—')}</div></div>
+  <div><div class="lbl">Cidade / Bairro</div><div class="val">${esc(cidade||'—')}</div></div>
+  <div><div class="lbl">Data</div><div class="val">${hoje}</div></div>
+</div>
+
+<h2>⚡ Resultado do Dimensionamento</h2>
+<div class="bat-pdf-main">
+  <div class="bat-pdf-card">
+    <div class="nome">Energia Total Necessária</div>
+    <div class="valor">${(calc.energiaCorrigida/1000).toFixed(2)}</div>
+    <div class="unidade">kWh</div>
+  </div>
+  <div class="bat-pdf-card destaque">
+    <div class="nome">Nº de Baterias (${BAT_CAPACIDADE_UNIDADE} kWh)</div>
+    <div class="valor">${calc.numBaterias}</div>
+    <div class="unidade">unidades</div>
+  </div>
+  <div class="bat-pdf-card">
+    <div class="nome">Capacidade Total</div>
+    <div class="valor">${calc.capacidadeTotal}</div>
+    <div class="unidade">kWh instalados</div>
+  </div>
+</div>
+
+<h2>🔌 Cargas Prioritárias Consideradas</h2>
+<table class="kit">
+  <thead><tr><th>Equipamento</th><th style="text-align:center">Qtd.</th><th style="text-align:center">Pot. Unit. (W)</th><th style="text-align:center">Horas</th><th style="text-align:right">Consumo (Wh)</th></tr></thead>
+  <tbody>
+    ${calc.cargas.map(c=>{
+      const consumo = c.qtd*c.potencia*c.horas;
+      return `<tr><td>${c.icon||'🔌'} ${esc(c.nome)}</td><td style="text-align:center">${c.qtd}</td><td style="text-align:center">${c.potencia}</td><td style="text-align:center">${c.horas}h</td><td style="text-align:right">${consumo.toFixed(0)} Wh</td></tr>`;
+    }).join('')}
+    <tr class="total"><td colspan="4" style="text-align:right;padding-right:16px">Consumo bruto total</td><td style="text-align:right">${calc.totalWh.toFixed(0)} Wh</td></tr>
+  </tbody>
+</table>
+
+<h2>📐 Metodologia de Cálculo</h2>
+<div class="parecer-box">
+  Consumo bruto das cargas selecionadas: <strong>${calc.totalWh.toFixed(0)} Wh</strong><br>
+  Fator de segurança aplicado (perdas de inversor + temperatura + derating): <strong>+20%</strong><br>
+  Profundidade de descarga considerada — DOD (baterias de lítio): <strong>80%</strong><br>
+  Energia líquida necessária: <strong>${(calc.energiaCorrigida/1000).toFixed(2)} kWh</strong><br>
+  Autonomia configurada pelo cliente: <strong>${calc.autonomiaHoras} horas</strong><br>
+  Capacidade unitária de cada bateria considerada: <strong>${BAT_CAPACIDADE_UNIDADE} kWh</strong>
+</div>
+
+<div class="disclaimer">
+  ⚠️ <strong>Observação técnica:</strong> Este dimensionamento é uma estimativa baseada nas cargas e horas de uso informadas. O dimensionamento final do banco de baterias deve ser validado pela equipe técnica da SER Energia Renovável durante a vistoria, considerando o perfil real de consumo, a capacidade do inversor híbrido e as condições de instalação.
+</div>
+
+<div class="doc-footer">
+  SER Energia Renovável &nbsp;|&nbsp; CNPJ 58.656.750/0001-04<br>
+  serenergiarenovavel.pa@gmail.com &nbsp;|&nbsp; (91) 99356-0305
+</div>
+
+</div>
+</body></html>`);
+  win.document.close();
+  if(imprimir) setTimeout(()=>{ win.focus(); win.print(); }, 600);
 }
 
 /* ============================================================
