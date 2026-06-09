@@ -1846,16 +1846,19 @@ function validarCNPJ(v){
   return +c[12]===calc(c,12)&&+c[13]===calc(c,13);
 }
 function attachCPF(formEl){
-  const el = formEl?.elements?.cpf || formEl?.querySelector?.('[name="cpf"]');
-  if(!el) return;
-  el.placeholder='000.000.000-00';
-  el.addEventListener('input', ()=>{
-    const v=el.value.replace(/\D/g,'');
-    if(!v){el.style.borderColor='';el.title='';return;}
-    if(v.length<11){el.style.borderColor='';return;}
-    const ok=validarCPF(v);
-    el.style.borderColor=ok?'#22c55e':'#ef4444';
-    el.title=ok?'CPF válido ✓':'CPF inválido ✗';
+  const cpfFields = ['cpf','vend_cpf','supervisor_cpf'];
+  cpfFields.forEach(fname=>{
+    const el = formEl?.querySelector?.(`[name="${fname}"]`);
+    if(!el) return;
+    el.placeholder='000.000.000-00';
+    el.addEventListener('input', ()=>{
+      const v=el.value.replace(/\D/g,'');
+      if(!v){el.style.borderColor='';el.title='';return;}
+      if(v.length<11){el.style.borderColor='';return;}
+      const ok=validarCPF(v);
+      el.style.borderColor=ok?'#22c55e':'#ef4444';
+      el.title=ok?'CPF válido ✓':'CPF inválido ✗';
+    });
   });
 }
 async function lookupCEP(cep, formEl){
@@ -3045,7 +3048,10 @@ function openContratoModal(item=null){
             ${formField({label:'Descrição Pgto',name:'pgto_desc',type:'textarea',value:item.pgto_desc,full:true})}
             ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
             ${formField({label:'Data Assinatura',name:'data_assinatura',type:'date',value:item.data_assinatura})}
-            ${formField({label:'Vendedor',name:'vendedor',value:item.vendedor})}
+            ${formField({label:'Vendedor (Testemunha 1)',name:'vendedor',value:item.vendedor})}
+            ${formField({label:'CPF do Vendedor',name:'vend_cpf',value:item.vend_cpf,placeholder:'000.000.000-00'})}
+            ${formField({label:'Supervisor (Testemunha 2)',name:'supervisor_nome',value:item.supervisor_nome})}
+            ${formField({label:'CPF do Supervisor',name:'supervisor_cpf',value:item.supervisor_cpf,placeholder:'000.000.000-00'})}
           </div></div>
         </div>
         ${!isNew && item.clicksign_url ? `<div class="card" style="background:#e6f7ed">📝 ClickSign: <a href="${esc(item.clicksign_url)}" target="_blank">${esc(item.clicksign_url)}</a></div>` : ''}
@@ -4096,14 +4102,14 @@ ${(c.pgto_desc||c.banco)?'<p><strong>3.1. O Pagamento ocorrerá: <span style="co
     <div class="sign-cell">
       <div class="sign-name">TESTEMUNHA 1</div>
       <div class="sign-detail">Nome: ${c.vendedor||'_______________'}</div>
-      <div class="sign-detail">CPF: ___________</div>
-      <div class="sign-label">TESTEMUNHA 1</div>
+      <div class="sign-detail">CPF: ${c.vend_cpf||'___________'}</div>
+      <div class="sign-label">TESTEMUNHA 1 — VENDEDOR</div>
     </div>
     <div class="sign-cell">
       <div class="sign-name">TESTEMUNHA 2</div>
-      <div class="sign-detail">Nome: ÁLVARO FERNANDO DO NASCIMENTO SILVA</div>
-      <div class="sign-detail">CPF: 860.231.792-15</div>
-      <div class="sign-label">TESTEMUNHA 2</div>
+      <div class="sign-detail">Nome: ${c.supervisor_nome||'_______________'}</div>
+      <div class="sign-detail">CPF: ${c.supervisor_cpf||'___________'}</div>
+      <div class="sign-label">TESTEMUNHA 2 — SUPERVISOR</div>
     </div>
   </div>
 </div>
