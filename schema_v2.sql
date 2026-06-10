@@ -249,6 +249,10 @@ CREATE TABLE contratos (
   clicksign_url   text,
   -- Vendedor
   vendedor        text,
+  -- Testemunhas (PDF do contrato)
+  vend_cpf          text,
+  supervisor_nome   text,
+  supervisor_cpf    text,
   -- Meta
   criado_por      uuid REFERENCES auth.users(id),
   criado_em       timestamptz DEFAULT now(),
