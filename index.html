@@ -4240,9 +4240,20 @@ function openInstalacaoModal(item=null){
   const cepFinal = item.cep || contrato?.cep || '';
 
   openModal(`
-    <div class="modal-header"><h2>Instalação — ${esc(item.nome||'')}</h2><button class="modal-close">×</button></div>
+    <div class="modal-header">
+      <h2>Instalação — ${esc(item.nome||'')}</h2>
+      <span id="autosaveIndInst" style="font-size:11px;color:#6B21A8;margin-left:8px;flex:1"></span>
+      <button class="modal-close">×</button>
+    </div>
     <form id="instForm">
       <div class="modal-body">
+        <div id="draftBannerInst" style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none;align-items:center;justify-content:space-between;gap:12px;font-size:12px">
+          <span>💾 <strong>Rascunho encontrado.</strong> Deseja restaurar o que foi preenchido?</span>
+          <div style="display:flex;gap:8px;flex-shrink:0">
+            <button type="button" id="draftRestoreBtnInst" class="btn btn-sm btn-primary">Restaurar</button>
+            <button type="button" id="draftDiscardBtnInst" class="btn btn-sm btn-secondary">Descartar</button>
+          </div>
+        </div>
         <div class="form-grid">
           ${formField({label:'Cliente',name:'_nome',value:item.nome,readonly:true})}
           ${formField({label:'kWp',name:'_kwp',value:item.kwp,readonly:true})}
@@ -4290,6 +4301,61 @@ function openInstalacaoModal(item=null){
   carregarHistorico($('#histList'), 'instalacoes', item.id);
   const filesStore = { geral: (fotos.geral||[]).slice() };
   attachFileUploads(form, filesStore);
+
+  // ── Auto-save: persiste o rascunho no localStorage ───────
+  const _draftKeyInst = `instalacao_rascunho_${item.id||'nova'}`;
+  const _saveDraftInst = ()=>{
+    try{
+      localStorage.setItem(_draftKeyInst, JSON.stringify({
+        ts: Date.now(),
+        fields: readForm(form),
+        files: JSON.parse(JSON.stringify(filesStore))
+      }));
+      const ind = document.getElementById('autosaveIndInst');
+      if(ind){ const t=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); ind.textContent=`💾 salvo às ${t}`; }
+    }catch(e){}
+  };
+  let _draftTimerInst = null;
+  form.addEventListener('input',  ()=>{ clearTimeout(_draftTimerInst); _draftTimerInst=setTimeout(_saveDraftInst,1500); });
+  form.addEventListener('change', ()=>{ clearTimeout(_draftTimerInst); _draftTimerInst=setTimeout(_saveDraftInst,1500); });
+
+  // Verificar se existe rascunho e oferecer restauração
+  try{
+    const saved = localStorage.getItem(_draftKeyInst);
+    if(saved){
+      const draft = JSON.parse(saved);
+      const mins = Math.round((Date.now()-draft.ts)/60000);
+      if(mins < 1440){
+        const banner = document.getElementById('draftBannerInst');
+        if(banner){
+          banner.style.display='flex';
+          banner.querySelector('span').innerHTML=`💾 <strong>Rascunho encontrado</strong> — salvo há ${mins<1?'menos de 1':mins} min. Deseja restaurar o que foi preenchido?`;
+          document.getElementById('draftRestoreBtnInst')?.addEventListener('click',()=>{
+            Object.entries(draft.fields||{}).forEach(([k,v])=>{
+              const el = form.elements[k];
+              if(!el) return;
+              if(el.type==='checkbox') el.checked=!!v;
+              else el.value=v;
+            });
+            Object.entries(draft.files||{}).forEach(([k,arr])=>{
+              filesStore[k]=arr;
+              const wrap=form.querySelector(`[data-thumbs="${k}"]`);
+              if(wrap) wrap.innerHTML=arr.map((f,i)=>thumbHtml(f,k,i)).join('');
+            });
+            banner.style.display='none';
+            toast('Rascunho restaurado!','success');
+            _saveDraftInst();
+          });
+          document.getElementById('draftDiscardBtnInst')?.addEventListener('click',()=>{
+            localStorage.removeItem(_draftKeyInst);
+            banner.style.display='none';
+          });
+        }
+      }
+    }
+  }catch(e){}
+  // ─────────────────────────────────────────────────────────
+
   const statusInstMap = {aguardando_agendamento:'Aguardando Agendamento', agendada:'Agendada', em_andamento:'Em andamento', concluida:'Concluída', cancelada:'Cancelada'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
@@ -4305,6 +4371,7 @@ function openInstalacaoModal(item=null){
     ]);
     const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
     await registrarHistorico('instalacoes', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
+    localStorage.removeItem(_draftKeyInst);
     toast('Salvo','success'); await loadAll(); closeModal(); renderPipeline();
   });
   $('#delInstBtn')?.addEventListener('click', async ()=>{
