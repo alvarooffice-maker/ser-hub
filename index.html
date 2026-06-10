@@ -4567,6 +4567,39 @@ function openHomologacaoModal(item=null){
 /* ============================================================
    POS VENDA MODAL
    ============================================================ */
+/* Cria um registro vazio (apenas dados básicos do cliente) numa das tabelas
+   do funil e vincula o id de volta ao registro de posvenda. Usado para
+   "destravar" clientes importados via CSV (sem histórico de funil), permitindo
+   ao time preencher Proposta/Vistoria/Contrato/Logística/Instalação/Homologação
+   depois, pelo modal de Pós Venda. */
+const POSVENDA_LINK_CFG = {
+  proposta:    { table:'propostas',   fk:'proposta_id',   open:()=>openPropostaModal,    extra:()=>({status:'em_aberto'}) },
+  vistoria:    { table:'vistorias',   fk:'vistoria_id',   open:()=>openVistoriaModal,    extra:()=>({status:'realizada'}) },
+  contrato:    { table:'contratos',   fk:'contrato_id',   open:()=>openContratoModal,    extra:()=>({status:'assinado'}) },
+  logistica:   { table:'logistica',   fk:'logistica_id',  open:()=>openLogisticaModal,   extra:()=>({status:'entregue'}) },
+  instalacao:  { table:'instalacoes', fk:'instalacao_id', open:()=>openInstalacaoModal,  extra:()=>({status:'concluida'}) },
+  homologacao: { table:'homologacoes',fk:'homologacao_id',open:()=>openHomologacaoModal, extra:()=>({etapa:'aprovada'}) },
+};
+async function criarRegistroVinculadoPosVenda(tipo, posItem){
+  const cfg = POSVENDA_LINK_CFG[tipo];
+  if(!cfg) return null;
+  const payload = {
+    nome: posItem.nome,
+    telefone: posItem.telefone,
+    vendedor: posItem.vendedor,
+    kwp: posItem.kwp,
+    criado_por: State.user?.id,
+    ...cfg.extra(),
+  };
+  const { data, error } = await supa.from(cfg.table).insert(payload).select('id').single();
+  if(error){ toast('Erro ao criar registro: '+error.message,'error'); return null; }
+  const { error: linkErr } = await supa.from('posvenda').update({ [cfg.fk]: data.id }).eq('id', posItem.id);
+  if(linkErr){ toast('Registro criado, mas erro ao vincular: '+linkErr.message,'error'); }
+  await registrarHistorico(cfg.table, data.id, 'criado', `Registro criado a partir do Pós Venda (cliente importado): ${posItem.nome||''}`);
+  await loadAll();
+  return data.id;
+}
+
 function openPosVendaModal(item=null){
   item = item || {};
   const linked = getLinkedDocs(item);
@@ -4578,6 +4611,7 @@ function openPosVendaModal(item=null){
   const contrato  = linked.contrato   || {};
   const logistica = linked.logistica  || {};
   const vistoria  = (State.vistorias||[]).find(v=>String(v.id)===String(contrato.vistoria_id)) || {};
+  const homologacao = (State.homologacoes||[]).find(h=>String(h.id)===String(item.homologacao_id)) || null;
   const instDate  = instalacao.data_instalacao;
 
   // Helpers de data
@@ -4669,6 +4703,27 @@ function openPosVendaModal(item=null){
           </div>
         </div>
 
+        ${(()=>{
+          const pendentes = [
+            !linked.proposta    && {key:'proposta',    icon:'📄', label:'Proposta'},
+            !linked.vistoria    && {key:'vistoria',    icon:'🔍', label:'Vistoria'},
+            !linked.contrato    && {key:'contrato',    icon:'✍️', label:'Contrato'},
+            !linked.logistica   && {key:'logistica',   icon:'📦', label:'Logística'},
+            !linked.instalacao  && {key:'instalacao',  icon:'🔧', label:'Instalação'},
+            !homologacao        && {key:'homologacao', icon:'⚡', label:'Homologação'},
+          ].filter(Boolean);
+          if(!pendentes.length) return '';
+          return `
+          <div class="section" style="margin-top:12px">
+            <div class="section-header"><h4>➕ Cadastros Pendentes</h4><span class="section-toggle">▼</span></div>
+            <div class="section-body" style="padding:10px 0 4px">
+              <p style="font-size:12px;color:var(--text-light);margin:0 0 8px">Cliente importado da base antiga — crie os registros abaixo para completar o histórico do funil:</p>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                ${pendentes.map(p=>`<button type="button" class="btn btn-secondary btn-sm" data-create-link="${p.key}">➕ ${p.icon} Criar ${p.label}</button>`).join('')}
+              </div>
+            </div>
+          </div>`;
+        })()}
         ${renderLinkedDocBtns(linked)}
         ${histSection()}
       </div>
@@ -4682,6 +4737,17 @@ function openPosVendaModal(item=null){
   const form = $('#pvForm');
   attachLinkedDocListeners(linked);
   carregarHistorico($('#histList'), 'posvenda', item.id);
+  $$('[data-create-link]').forEach(b=>b.addEventListener('click', async ()=>{
+    const tipo = b.dataset.createLink;
+    b.disabled = true; b.textContent = 'Criando...';
+    const newId = await criarRegistroVinculadoPosVenda(tipo, item);
+    if(!newId){ b.disabled = false; return; }
+    toast('Registro criado! Preencha os dados.','success');
+    const cfg = POSVENDA_LINK_CFG[tipo];
+    const novoItem = (State[cfg.table]||[]).find(x=>String(x.id)===String(newId));
+    closeModal();
+    cfg.open()(novoItem);
+  }));
   const statusPvMap = {ativo:'Ativo', inativo:'Inativo', manutencao:'Manutenção'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
