@@ -686,15 +686,39 @@ async function renderDashboard(){
   const vistHoje = (State.vistorias||[]).filter(v=>v.data_agendamento===td).length;
   const instHoje = instal.filter(i=>i.data_instalacao===td).length;
 
+  // Anos disponíveis para o seletor (a partir dos dados existentes + ano atual)
+  const anoAtual = new Date().getFullYear();
+  const anosSet = new Set([anoAtual]);
+  [...contratos, ...leads, ...(State.posvenda||[])].forEach(r=>{
+    const d = r.data_assinatura || r.criado_em || r.data_ativacao;
+    if(d){ const y = parseInt(String(d).slice(0,4)); if(!isNaN(y) && y>2000 && y<2100) anosSet.add(y); }
+  });
+  const anosDisponiveis = [...anosSet].sort((a,b)=>b-a);
+  const mesesNomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
   $('#content').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <span style="font-size:13px;color:var(--text-light);font-weight:500">Filtrar rankings por período:</span>
-      <div class="period-filter" id="periodFilter">
-        <div class="period-btn" data-p="dia">Hoje</div>
-        <div class="period-btn active" data-p="mes">Mês</div>
-        <div class="period-btn" data-p="trimestre">Trimestre</div>
-        <div class="period-btn" data-p="semestre">Semestre</div>
-        <div class="period-btn" data-p="ano">Ano</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="period-filter" id="periodFilter">
+          <div class="period-btn" data-p="dia">Hoje</div>
+          <div class="period-btn active" data-p="mes">Mês</div>
+          <div class="period-btn" data-p="trimestre">Trimestre</div>
+          <div class="period-btn" data-p="semestre">Semestre</div>
+          <div class="period-btn" data-p="ano">Ano</div>
+        </div>
+        <select id="dashMesSel" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit">
+          ${mesesNomes.map((m,i)=>`<option value="${i}">${m}</option>`).join('')}
+        </select>
+        <select id="dashTriSel" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit">
+          <option value="0">1º Trimestre</option>
+          <option value="1">2º Trimestre</option>
+          <option value="2">3º Trimestre</option>
+          <option value="3">4º Trimestre</option>
+        </select>
+        <select id="dashAnoSel" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit">
+          ${anosDisponiveis.map(a=>`<option value="${a}">${a}</option>`).join('')}
+        </select>
       </div>
     </div>
 
@@ -775,9 +799,47 @@ async function renderDashboard(){
   let dashPeriod = 'mes';
   let dashRankTab = 'vendedores';
   let salesChartInst = null;
+  let dashAno = anoAtual;
+  let dashMes = new Date().getMonth(); // 0-indexed
+  let dashTri = Math.floor(new Date().getMonth()/3); // 0-3
+
+  const pad2 = n => String(n).padStart(2,'0');
+  const lastDayOfMonth = (y,m) => new Date(y, m+1, 0).getDate();
+
+  // Calcula o range de datas considerando os seletores de mês/trimestre/ano
+  function getDashRange(){
+    if(dashPeriod==='mes'){
+      const y=dashAno, m=dashMes;
+      return [`${y}-${pad2(m+1)}-01`, `${y}-${pad2(m+1)}-${pad2(lastDayOfMonth(y,m))}`];
+    }
+    if(dashPeriod==='trimestre'){
+      const y=dashAno, sM=dashTri*3, eM=dashTri*3+2;
+      return [`${y}-${pad2(sM+1)}-01`, `${y}-${pad2(eM+1)}-${pad2(lastDayOfMonth(y,eM))}`];
+    }
+    if(dashPeriod==='ano'){
+      return [`${dashAno}-01-01`, `${dashAno}-12-31`];
+    }
+    return getPeriodRange(dashPeriod); // dia, semestre → relativo a hoje
+  }
+
+  // Mostra/esconde os seletores de mês/trimestre/ano conforme o período
+  function syncDashSelects(){
+    $('#dashMesSel').style.display = dashPeriod==='mes' ? 'inline-block' : 'none';
+    $('#dashTriSel').style.display = dashPeriod==='trimestre' ? 'inline-block' : 'none';
+    $('#dashAnoSel').style.display = (dashPeriod==='mes'||dashPeriod==='trimestre'||dashPeriod==='ano') ? 'inline-block' : 'none';
+    $('#dashMesSel').value = String(dashMes);
+    $('#dashTriSel').value = String(dashTri);
+    $('#dashAnoSel').value = String(dashAno);
+  }
 
   function renderChart(){
-    const periodLabels = {dia:'Últimos 7 dias',mes:'Últimos 6 meses',trimestre:'Últimos 6 meses',semestre:'Últimos 6 meses',ano:'Últimos 12 meses'};
+    const periodLabels = {
+      dia:'Últimos 7 dias',
+      mes:`${mesesNomes[dashMes]} de ${dashAno}`,
+      trimestre:`${dashTri+1}º Trimestre de ${dashAno}`,
+      semestre:'Últimos 6 meses',
+      ano:`Ano de ${dashAno}`
+    };
     $('#chartPeriodLabel').textContent = `(${periodLabels[dashPeriod]||''})`;
 
     const now = new Date();
@@ -792,12 +854,36 @@ async function renderDashboard(){
         labels.push(d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
         values.push(allContratos.filter(c=>c.status==='assinado'&&c.data_assinatura===key).reduce((s,c)=>s+(Number(c.valor)||0),0));
       }
+    } else if(dashPeriod === 'mes'){
+      // Dias do mês selecionado
+      const days = lastDayOfMonth(dashAno, dashMes);
+      for(let d=1; d<=days; d++){
+        const key = `${dashAno}-${pad2(dashMes+1)}-${pad2(d)}`;
+        labels.push(String(d));
+        values.push(allContratos.filter(c=>c.status==='assinado'&&c.data_assinatura===key).reduce((s,c)=>s+(Number(c.valor)||0),0));
+      }
+    } else if(dashPeriod === 'trimestre'){
+      // 3 meses do trimestre selecionado
+      for(let i=0;i<3;i++){
+        const m = dashTri*3+i;
+        const d = new Date(dashAno, m, 1);
+        const key = `${dashAno}-${pad2(m+1)}`;
+        labels.push(d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}));
+        values.push(allContratos.filter(c=>c.status==='assinado'&&(c.data_assinatura||'').startsWith(key)).reduce((s,c)=>s+(Number(c.valor)||0),0));
+      }
+    } else if(dashPeriod === 'ano'){
+      // 12 meses do ano selecionado
+      for(let m=0;m<12;m++){
+        const d = new Date(dashAno, m, 1);
+        const key = `${dashAno}-${pad2(m+1)}`;
+        labels.push(d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}));
+        values.push(allContratos.filter(c=>c.status==='assinado'&&(c.data_assinatura||'').startsWith(key)).reduce((s,c)=>s+(Number(c.valor)||0),0));
+      }
     } else {
-      // Últimos N meses
-      const n = dashPeriod==='ano' ? 12 : 6;
-      for(let i=n-1;i>=0;i--){
+      // Semestre → últimos 6 meses
+      for(let i=5;i>=0;i--){
         const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        const key = `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
         labels.push(d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}));
         values.push(allContratos.filter(c=>c.status==='assinado'&&(c.data_assinatura||'').startsWith(key)).reduce((s,c)=>s+(Number(c.valor)||0),0));
       }
@@ -838,8 +924,14 @@ async function renderDashboard(){
   }
 
   function renderRankings(){
-    const [startD, endD] = getPeriodRange(dashPeriod);
-    const periodLabels = {dia:'Hoje',mes:'Mês atual',trimestre:'Trimestre',semestre:'Semestre',ano:'Ano atual'};
+    const [startD, endD] = getDashRange();
+    const periodLabels = {
+      dia:'Hoje',
+      mes:`${mesesNomes[dashMes]} de ${dashAno}`,
+      trimestre:`${dashTri+1}º Trimestre de ${dashAno}`,
+      semestre:'Semestre',
+      ano:`Ano de ${dashAno}`
+    };
     $('#rankPeriodLabel').textContent = `(${periodLabels[dashPeriod]||dashPeriod})`;
 
     const contFiltrados = contratos.filter(c=>c.status==='assinado' && c.data_assinatura >= startD && c.data_assinatura <= endD);
@@ -872,6 +964,7 @@ async function renderDashboard(){
     }
   }
 
+  syncDashSelects();
   renderChart();
   renderRankings();
 
@@ -881,9 +974,24 @@ async function renderDashboard(){
       $$('.period-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       dashPeriod = btn.dataset.p;
+      syncDashSelects();
       renderChart();
       renderRankings();
     });
+  });
+
+  // Seletores de mês / trimestre / ano
+  $('#dashMesSel').addEventListener('change', e=>{
+    dashMes = Number(e.target.value);
+    renderChart(); renderRankings();
+  });
+  $('#dashTriSel').addEventListener('change', e=>{
+    dashTri = Number(e.target.value);
+    renderChart(); renderRankings();
+  });
+  $('#dashAnoSel').addEventListener('change', e=>{
+    dashAno = Number(e.target.value);
+    renderChart(); renderRankings();
   });
 
   // Tabs de ranking
@@ -1644,6 +1752,21 @@ function checkGuard(item, fromStage, toStage){
   return {ok:true};
 }
 
+// Envia um cliente para Remarketing quando proposta é recusada, contrato é
+// cancelado ou vistoria é reprovada. Evita duplicar registros pendentes.
+async function enviarParaRemarketing(item, motivo, msg){
+  const lead_id = item.lead_id || null;
+  if(!lead_id){ toast(msg||'Status atualizado','success'); return; }
+  const { data: jaExiste } = await supa.from('remarketing')
+    .select('id').eq('lead_id', lead_id).eq('status','pendente').maybeSingle();
+  if(jaExiste){ toast(msg||'Status atualizado','success'); return; }
+  await supa.from('remarketing').insert({
+    lead_id, nome:item.nome, telefone:item.telefone,
+    motivo_perda:motivo, status:'pendente', vendedor:item.vendedor, criado_por:State.user?.id
+  });
+  toast((msg?msg+' → ':'')+'Cliente enviado para Remarketing! ✓','success');
+}
+
 function buildTransitionPayload(item, fromStage, toStage){
   const lead_id = item.lead_id || (fromStage==='lead'?item.id:null);
   const base = { nome:item.nome, telefone:item.telefone, vendedor:item.vendedor, lead_id };
@@ -2351,6 +2474,10 @@ function openPropostaModal(item=null){
       const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
       await registrarHistorico('propostas', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
 
+      // Proposta recusada → envia cliente para Remarketing
+      if(data.status === 'recusada' && prevStatus !== 'recusada'){
+        await enviarParaRemarketing({...item,...data}, 'proposta_recusada', 'Proposta recusada');
+      } else
       // Proposta aceita → cria Vistoria automaticamente (se ainda não existir)
       if(data.status === 'aceita' && prevStatus !== 'aceita'){
         const jaExiste = (State.vistorias||[]).find(v => v.proposta_id === item.id);
@@ -2785,6 +2912,7 @@ function openVistoriaModal(item=null){
       aprovada_com_obra_e_sombreamento:'Aprovada c/ Obra e Sombreamento'
     };
     const eAprovado = v => ['aprovado','aprovado_com_obra','aprovado_com_sombreamento','aprovado_com_obra_e_sombreamento','aprovada','aprovada_com_obra','aprovada_com_sombreamento','aprovada_com_obra_e_sombreamento'].includes(v||'');
+    const eReprovado = v => ['reprovado','reprovada'].includes(v||'');
 
     if(isNew){
       data.criado_por = State.user?.id;
@@ -2816,6 +2944,9 @@ function openVistoriaModal(item=null){
         } else {
           toast('Vistoria salva','success');
         }
+      } else if(eReprovado(data.resultado) && !eReprovado(prevResultado)){
+        // Vistoria reprovada → envia cliente para Remarketing
+        await enviarParaRemarketing({...item,...data}, 'vistoria_reprovada', 'Vistoria reprovada');
       } else {
         toast('Vistoria salva','success');
       }
@@ -3084,6 +3215,7 @@ function openContratoModal(item=null){
       if(error) return toast(error.message,'error');
       await registrarHistorico('contratos', contCriado.id, 'criado', `Contrato criado: ${data.nome||''}`);
     } else {
+      const prevStatus = item.status;
       const { error } = await supa.from('contratos').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
       const mud = detectMudancas(item, data, [
@@ -3092,6 +3224,12 @@ function openContratoModal(item=null){
       ]);
       const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
       await registrarHistorico('contratos', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
+
+      // Contrato cancelado → envia cliente para Remarketing
+      if(data.status === 'cancelado' && prevStatus !== 'cancelado'){
+        await enviarParaRemarketing({...item,...data}, 'contrato_cancelado', 'Contrato cancelado');
+      }
+
       // Auto-avançar para Logística quando assinado
       if(data.status === 'assinado'){
         // Verifica no banco (não no State) para evitar duplicata por race condition
