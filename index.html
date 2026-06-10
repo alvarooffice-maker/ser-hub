@@ -716,6 +716,10 @@ async function renderDashboard(){
           <option value="2">3º Trimestre</option>
           <option value="3">4º Trimestre</option>
         </select>
+        <select id="dashSemSel" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit">
+          <option value="0">1º Semestre</option>
+          <option value="1">2º Semestre</option>
+        </select>
         <select id="dashAnoSel" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit">
           ${anosDisponiveis.map(a=>`<option value="${a}">${a}</option>`).join('')}
         </select>
@@ -802,11 +806,12 @@ async function renderDashboard(){
   let dashAno = anoAtual;
   let dashMes = new Date().getMonth(); // 0-indexed
   let dashTri = Math.floor(new Date().getMonth()/3); // 0-3
+  let dashSem = Math.floor(new Date().getMonth()/6); // 0-1
 
   const pad2 = n => String(n).padStart(2,'0');
   const lastDayOfMonth = (y,m) => new Date(y, m+1, 0).getDate();
 
-  // Calcula o range de datas considerando os seletores de mês/trimestre/ano
+  // Calcula o range de datas considerando os seletores de mês/trimestre/semestre/ano
   function getDashRange(){
     if(dashPeriod==='mes'){
       const y=dashAno, m=dashMes;
@@ -816,19 +821,25 @@ async function renderDashboard(){
       const y=dashAno, sM=dashTri*3, eM=dashTri*3+2;
       return [`${y}-${pad2(sM+1)}-01`, `${y}-${pad2(eM+1)}-${pad2(lastDayOfMonth(y,eM))}`];
     }
+    if(dashPeriod==='semestre'){
+      const y=dashAno, sM=dashSem*6, eM=dashSem*6+5;
+      return [`${y}-${pad2(sM+1)}-01`, `${y}-${pad2(eM+1)}-${pad2(lastDayOfMonth(y,eM))}`];
+    }
     if(dashPeriod==='ano'){
       return [`${dashAno}-01-01`, `${dashAno}-12-31`];
     }
-    return getPeriodRange(dashPeriod); // dia, semestre → relativo a hoje
+    return getPeriodRange(dashPeriod); // dia → relativo a hoje
   }
 
-  // Mostra/esconde os seletores de mês/trimestre/ano conforme o período
+  // Mostra/esconde os seletores de mês/trimestre/semestre/ano conforme o período
   function syncDashSelects(){
     $('#dashMesSel').style.display = dashPeriod==='mes' ? 'inline-block' : 'none';
     $('#dashTriSel').style.display = dashPeriod==='trimestre' ? 'inline-block' : 'none';
-    $('#dashAnoSel').style.display = (dashPeriod==='mes'||dashPeriod==='trimestre'||dashPeriod==='ano') ? 'inline-block' : 'none';
+    $('#dashSemSel').style.display = dashPeriod==='semestre' ? 'inline-block' : 'none';
+    $('#dashAnoSel').style.display = (dashPeriod==='mes'||dashPeriod==='trimestre'||dashPeriod==='semestre'||dashPeriod==='ano') ? 'inline-block' : 'none';
     $('#dashMesSel').value = String(dashMes);
     $('#dashTriSel').value = String(dashTri);
+    $('#dashSemSel').value = String(dashSem);
     $('#dashAnoSel').value = String(dashAno);
   }
 
@@ -837,7 +848,7 @@ async function renderDashboard(){
       dia:'Últimos 7 dias',
       mes:`${mesesNomes[dashMes]} de ${dashAno}`,
       trimestre:`${dashTri+1}º Trimestre de ${dashAno}`,
-      semestre:'Últimos 6 meses',
+      semestre:`${dashSem+1}º Semestre de ${dashAno}`,
       ano:`Ano de ${dashAno}`
     };
     $('#chartPeriodLabel').textContent = `(${periodLabels[dashPeriod]||''})`;
@@ -879,8 +890,17 @@ async function renderDashboard(){
         labels.push(d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}));
         values.push(allContratos.filter(c=>c.status==='assinado'&&(c.data_assinatura||'').startsWith(key)).reduce((s,c)=>s+(Number(c.valor)||0),0));
       }
+    } else if(dashPeriod === 'semestre'){
+      // 6 meses do semestre selecionado
+      for(let i=0;i<6;i++){
+        const m = dashSem*6+i;
+        const d = new Date(dashAno, m, 1);
+        const key = `${dashAno}-${pad2(m+1)}`;
+        labels.push(d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}));
+        values.push(allContratos.filter(c=>c.status==='assinado'&&(c.data_assinatura||'').startsWith(key)).reduce((s,c)=>s+(Number(c.valor)||0),0));
+      }
     } else {
-      // Semestre → últimos 6 meses
+      // fallback: últimos 6 meses
       for(let i=5;i>=0;i--){
         const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
         const key = `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
@@ -929,7 +949,7 @@ async function renderDashboard(){
       dia:'Hoje',
       mes:`${mesesNomes[dashMes]} de ${dashAno}`,
       trimestre:`${dashTri+1}º Trimestre de ${dashAno}`,
-      semestre:'Semestre',
+      semestre:`${dashSem+1}º Semestre de ${dashAno}`,
       ano:`Ano de ${dashAno}`
     };
     $('#rankPeriodLabel').textContent = `(${periodLabels[dashPeriod]||dashPeriod})`;
@@ -980,13 +1000,17 @@ async function renderDashboard(){
     });
   });
 
-  // Seletores de mês / trimestre / ano
+  // Seletores de mês / trimestre / semestre / ano
   $('#dashMesSel').addEventListener('change', e=>{
     dashMes = Number(e.target.value);
     renderChart(); renderRankings();
   });
   $('#dashTriSel').addEventListener('change', e=>{
     dashTri = Number(e.target.value);
+    renderChart(); renderRankings();
+  });
+  $('#dashSemSel').addEventListener('change', e=>{
+    dashSem = Number(e.target.value);
     renderChart(); renderRankings();
   });
   $('#dashAnoSel').addEventListener('change', e=>{
