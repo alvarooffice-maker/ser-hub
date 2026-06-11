@@ -1158,12 +1158,13 @@ async function renderVistoriadorKanban(){
   }
 
   $('#pageActions').innerHTML = '';
-  $('#content').innerHTML = `<div class="kanban" id="kanban">${VIST_COLS.map(buildCol).join('')}</div>`;
+  $('#content').innerHTML = `<div class="kanban" id="kanban">${VIST_COLS.map(buildCol).join('')}${renderExtraCols()}</div>`;
 
   // Clique abre modal de vistoria
   $$('.kanban-card[data-col]').forEach(card => {
     card.addEventListener('click', () => openStageModal('vistoria', card.dataset.id));
   });
+  attachExtraKanbanCols();
 }
 
 /* ============================================================
@@ -1219,11 +1220,12 @@ async function renderInstaladorKanban(){
   }
 
   $('#pageActions').innerHTML = '';
-  $('#content').innerHTML = `<div class="kanban" id="kanban">${INST_COLS.map(buildCol).join('')}</div>`;
+  $('#content').innerHTML = `<div class="kanban" id="kanban">${INST_COLS.map(buildCol).join('')}${renderExtraCols()}</div>`;
 
   $$('.kanban-card[data-col]').forEach(card => {
     card.addEventListener('click', () => openStageModal('instalacao', card.dataset.id));
   });
+  attachExtraKanbanCols();
 }
 
 /* ============================================================
@@ -1286,6 +1288,12 @@ async function renderHomologadorKanban(){
 
 function renderStageCol(stage){
   let items = filterByVendor(State[stage.dataKey]||[]);
+
+  // Atendimentos / App-Man: técnicos veem todos os registros, sem filtro
+  // por cadeia de funil (não fazem parte do pipeline de vendas).
+  if(['atendimentos','appman'].includes(stage.id)){
+    return renderStageColBody(stage, items);
+  }
 
   // ── tec_vistoria_instalacao: combina cadeia de vistoria + instalação ──────────
   if(userRole() === 'tec_vistoria_instalacao'){
@@ -1372,6 +1380,10 @@ function renderStageCol(stage){
     items = items.filter(i => (filtroIds[stage.id]||new Set()).has(i.id));
   }
 
+  return renderStageColBody(stage, items);
+}
+
+function renderStageColBody(stage, items){
   // ── Oculta itens já promovidos — igual para TODOS os perfis ──
   // Garante 1 card por cliente em cada coluna (aparece só na etapa mais avançada)
   if(stage.id === 'lead'){
@@ -1685,6 +1697,30 @@ function filterColCards(stageId, term){
   });
   const countEl = document.getElementById(`col-count-${stageId}`);
   if(countEl) countEl.textContent = t ? `${visible}/${cards.length}` : String(cards.length);
+}
+
+// Colunas de Atendimentos e App/Man, anexadas aos kanbans dos
+// técnicos (vistoriador/instalador) para acompanhamento de demandas.
+function renderExtraCols(){
+  return [STAGES.find(s=>s.id==='atendimentos'), STAGES.find(s=>s.id==='appman')]
+    .map(s=>renderStageCol(s)).join('');
+}
+function attachExtraKanbanCols(){
+  $$('.kanban-col[data-stage="atendimentos"] .kanban-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const item = (State.atendimentos||[]).find(x=>String(x.id)===String(card.dataset.id));
+      if(item) openAtendimentoModal(item);
+    });
+  });
+  $$('.kanban-col[data-stage="appman"] .kanban-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const item = (State.appman||[]).find(x=>String(x.id)===String(card.dataset.id));
+      if(item) openAppManModal(item);
+    });
+  });
+  $('#newAtendBtn')?.addEventListener('click', ()=> openAtendimentoModal());
+  $('#newAppManBtn')?.addEventListener('click', ()=> openAppManModal());
+  attachKanbanSearch();
 }
 
 function attachKanbanSearch(){
