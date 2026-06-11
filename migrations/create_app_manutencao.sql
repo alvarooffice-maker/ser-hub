@@ -28,6 +28,10 @@ CREATE POLICY "autenticados_appman" ON app_manutencao
 
 CREATE INDEX IF NOT EXISTS idx_app_manutencao_criado ON app_manutencao (criado_em DESC);
 
+-- Força o PostgREST a recarregar o cache de schema (resolve o erro
+-- "Could not find the table 'public.app_manutencao' in the schema cache")
+NOTIFY pgrst, 'reload schema';
+
 -- IMPORTANTE: criar também o bucket de Storage "app_manutencao" (público,
 -- igual ao bucket "atendimentos") no painel do Supabase, em
 -- Storage > New bucket, para permitir o upload de fotos do serviço.
