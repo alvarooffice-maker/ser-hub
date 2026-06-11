@@ -120,6 +120,12 @@ tbody tr:hover{background:#fafaf6}
 .kanban-col[data-stage="atendimentos"] .badge-cancelado,
 .kanban-col[data-stage="appman"] .badge-cancelado{background:#f8d7da;color:#842029}
 
+/* Tipo de serviço (Re-Serviço): cada tipo com uma cor própria */
+.kanban-col[data-stage="atendimentos"] .badge-retorno_tecnico{background:#cfe2ff;color:#084298}
+.kanban-col[data-stage="atendimentos"] .badge-sombreamento{background:#e2d6f3;color:#5e35b1}
+.kanban-col[data-stage="atendimentos"] .badge-goteira{background:#fef0c3;color:#996a00}
+.kanban-col[data-stage="atendimentos"] .badge-outros{background:#e2e3e5;color:#41464b}
+
 /* FORMS */
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
 .form-group{display:flex;flex-direction:column}
@@ -1085,7 +1091,7 @@ const STAGES = [
   { id:'instalacao', label:'Instalação', icon:'🔧', table:'instalacoes', dataKey:'instalacoes' },
   { id:'homologacao', label:'Homologação', icon:'📋', table:'homologacoes', dataKey:'homologacoes' },
   { id:'posvenda',     label:'Pós Venda',    icon:'⭐', table:'posvenda',     dataKey:'posvenda' },
-  { id:'atendimentos', label:'Atendimentos', icon:'🛠️', table:'atendimentos', dataKey:'atendimentos' },
+  { id:'atendimentos', label:'Re-Serviço', icon:'🛠️', table:'atendimentos', dataKey:'atendimentos' },
   { id:'appman', label:'App/Man', icon:'📱', table:'app_manutencao', dataKey:'appman' }
 ];
 
@@ -1446,7 +1452,7 @@ function renderStageColBody(stage, items){
 
   // Botão "+" para criar novo registro direto na coluna
   const addBtn = stage.id === 'atendimentos'
-    ? `<button class="col-search-btn" id="newAtendBtn" title="Novo Atendimento" style="font-size:16px;font-weight:700">＋</button>`
+    ? `<button class="col-search-btn" id="newAtendBtn" title="Novo Re-Serviço" style="font-size:16px;font-weight:700">＋</button>`
     : stage.id === 'appman'
     ? `<button class="col-search-btn" id="newAppManBtn" title="Novo App/Manutenção" style="font-size:16px;font-weight:700">＋</button>`
     : '';
@@ -1506,25 +1512,28 @@ function renderCard(item,stage){
     ? `<div style="font-size:10px;color:#6B21A8;font-style:italic;margin-top:3px">🔍 Clique → editar vistoria / instalação</div>`
     : '';
 
-  const tipoAtendMap = {retorno_tecnico:'Retorno Técnico',manutencao:'Manutenção',venda_bateria:'Venda de Bateria',venda_app:'Venda de App',venda_produto:'Venda de Produto',outro:'Outro'};
+  const tipoAtendMap = {retorno_tecnico:'Retorno Técnico',sombreamento:'Sombreamento',goteira:'Goteira',outros:'Outros'};
   const isAtend = stage.id === 'atendimentos';
   const isAppMan = stage.id === 'appman';
   const itensAppManMap = {configuracao:'Configuração',manutencao:'Manutenção',app_monitoramento:'App Monitoramento',vistoria_tecnica:'Vistoria Técnica'};
   const itensAtivos = isAppMan ? Object.entries(item.itens||{}).filter(([,v])=>v?.ativo).map(([k])=>itensAppManMap[k]||k) : [];
-  const meta1 = isAtend ? (tipoAtendMap[item.tipo]||item.tipo||'') : isAppMan ? (itensAtivos.join(', ')||'—') : (kwp || kwh || '');
+  const meta1 = isAtend ? '' : isAppMan ? (itensAtivos.join(', ')||'—') : (kwp || kwh || '');
   const meta2 = isAtend ? (item.responsavel||'') : isAppMan
     ? [item.valor_total!=null?fmtBRL(item.valor_total):'', item.tecnico_responsavel?'🔧 '+item.tecnico_responsavel:''].filter(Boolean).join(' · ')
     : (item.vendedor||'');
+  const tipoBadge = isAtend && item.tipo
+    ? `<span class="badge badge-${esc(item.tipo)}" title="${esc(item.tipo==='outros'&&item.tipo_obs?item.tipo_obs:'')}">${esc(tipoAtendMap[item.tipo]||item.tipo)}</span>`
+    : '';
 
   return `
     <div class="kanban-card" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.responsavel||item.vendedor||'')).toLowerCase()}">
       <div class="kanban-card-inner">
         <div class="name">${stage.icon} ${esc(item.nome||'—')}</div>
-        <div class="meta">${esc(meta1)}</div>
+        ${meta1?`<div class="meta">${esc(meta1)}</div>`:''}
         <div class="meta">${esc(meta2)}</div>
         ${flags}
         ${tecHint}
-        <div class="footer">${badge(stat)}</div>
+        <div class="footer">${tipoBadge}${badge(stat)}</div>
       </div>
     </div>`;
 }
@@ -3102,11 +3111,9 @@ function openAtendimentoModal(item=null){
   const tipoOpts = [
     ['','— selecione —'],
     ['retorno_tecnico','Retorno Técnico'],
-    ['manutencao','Manutenção'],
-    ['venda_bateria','Venda de Bateria'],
-    ['venda_app','Venda de App'],
-    ['venda_produto','Venda de Produto'],
-    ['outro','Outro']
+    ['sombreamento','Sombreamento'],
+    ['goteira','Goteira'],
+    ['outros','Outros']
   ];
   const statusOpts = [
     ['aberto','Aberto'],
@@ -3114,7 +3121,7 @@ function openAtendimentoModal(item=null){
     ['concluido','Concluído'],
     ['cancelado','Cancelado']
   ];
-  const tipoMap = {retorno_tecnico:'Retorno Técnico',manutencao:'Manutenção',venda_bateria:'Venda de Bateria',venda_app:'Venda de App',venda_produto:'Venda de Produto',outro:'Outro'};
+  const tipoMap = {retorno_tecnico:'Retorno Técnico',sombreamento:'Sombreamento',goteira:'Goteira',outros:'Outros'};
 
   const fotos = item.fotos || {};
   const docs  = item.docs  || {};
@@ -3122,14 +3129,17 @@ function openAtendimentoModal(item=null){
   const docKeys  = ['docs_atendimento'];
 
   openModal(`
-    <div class="modal-header"><h2>${isNew?'Novo Atendimento':'Atendimento'}</h2><button class="modal-close">×</button></div>
+    <div class="modal-header"><h2>${isNew?'Novo Re-Serviço':'Re-Serviço'}</h2><button class="modal-close">×</button></div>
     <form id="atendForm">
       <div class="modal-body">
-        <div class="section"><div class="section-header"><h4>🛠️ Dados do Atendimento</h4><span class="section-toggle">▼</span></div>
+        <div class="section"><div class="section-header"><h4>🛠️ Dados do Re-Serviço</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
             ${formField({label:'Cliente *',name:'nome',value:item.nome,required:true})}
             ${formField({label:'Telefone',name:'telefone',value:item.telefone})}
             ${formField({label:'Tipo de Serviço *',name:'tipo',type:'select',value:item.tipo||'',options:tipoOpts,required:true})}
+            <div id="campoTipoOutro" style="display:${item.tipo==='outros'?'':'none'}">
+              ${formField({label:'Especifique *',name:'tipo_obs',value:item.tipo_obs})}
+            </div>
             ${formField({label:'Data',name:'data_agendamento',type:'date',value:item.data_agendamento})}
             ${formField({label:'Hora',name:'hora_agendamento',type:'time',value:item.hora_agendamento})}
             ${formField({label:'Responsável',name:'responsavel',value:item.responsavel,datalist:DL_TECNICO})}
@@ -3157,12 +3167,22 @@ function openAtendimentoModal(item=null){
   [...fotoKeys,...docKeys].forEach(k=>{ allFiles[k]=(fotos[k]||docs[k]||[]).slice(); });
   attachFileUploads(form, allFiles);
 
+  const tipoSel = form.elements['tipo'];
+  const campoTipoOutro = $('#campoTipoOutro');
+  const toggleTipoOutro = ()=>{
+    const isOutros = tipoSel.value === 'outros';
+    campoTipoOutro.style.display = isOutros ? '' : 'none';
+    form.elements['tipo_obs'].required = isOutros;
+  };
+  tipoSel.addEventListener('change', toggleTipoOutro);
+  toggleTipoOutro();
+
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const raw = readForm(form);
     const data = {
       nome: raw.nome, telefone: raw.telefone,
-      tipo: raw.tipo, descricao: raw.descricao,
+      tipo: raw.tipo, tipo_obs: raw.tipo==='outros' ? raw.tipo_obs : null, descricao: raw.descricao,
       responsavel: raw.responsavel,
       data_agendamento: raw.data_agendamento || null,
       hora_agendamento: raw.hora_agendamento || null,
@@ -3177,8 +3197,8 @@ function openAtendimentoModal(item=null){
       data.criado_por = State.user?.id;
       const { data:criado, error } = await supa.from('atendimentos').insert(data).select('id').single();
       if(error) return toast(error.message,'error');
-      await registrarHistorico('atendimentos', criado.id, 'criado', `Atendimento criado: ${data.nome} — ${tipoMap[data.tipo]||data.tipo}`);
-      toast('Atendimento criado! ✓','success');
+      await registrarHistorico('atendimentos', criado.id, 'criado', `Re-Serviço criado: ${data.nome} — ${tipoMap[data.tipo]||data.tipo}`);
+      toast('Re-Serviço criado! ✓','success');
     } else {
       const { error } = await supa.from('atendimentos').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
@@ -3187,14 +3207,14 @@ function openAtendimentoModal(item=null){
       ]);
       const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
       await registrarHistorico('atendimentos', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
-      toast('Atendimento salvo! ✓','success');
+      toast('Re-Serviço salvo! ✓','success');
     }
     closeModal();
     if(State.route==='pipeline') renderPipeline(); else if(State.route==='vistoriador') renderVistoriadorKanban(); else if(State.route==='instalador') renderInstaladorKanban(); else if(State.route==='homologador') renderHomologadorKanban();
   });
 
   $('#delAtendBtn')?.addEventListener('click', async ()=>{
-    if(!await confirmDel('Excluir atendimento?')) return;
+    if(!await confirmDel('Excluir Re-Serviço?')) return;
     await supa.from('atendimentos').delete().eq('id',item.id);
     toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
   });
