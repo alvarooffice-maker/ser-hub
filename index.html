@@ -1490,7 +1490,9 @@ function renderCard(item,stage){
   const itensAppManMap = {configuracao:'Configuração',manutencao:'Manutenção',app_monitoramento:'App Monitoramento',vistoria_tecnica:'Vistoria Técnica'};
   const itensAtivos = isAppMan ? Object.entries(item.itens||{}).filter(([,v])=>v?.ativo).map(([k])=>itensAppManMap[k]||k) : [];
   const meta1 = isAtend ? (tipoAtendMap[item.tipo]||item.tipo||'') : isAppMan ? (itensAtivos.join(', ')||'—') : (kwp || kwh || '');
-  const meta2 = isAtend ? (item.responsavel||'') : isAppMan ? (item.valor_total!=null?fmtBRL(item.valor_total):(item.responsavel||'')) : (item.vendedor||'');
+  const meta2 = isAtend ? (item.responsavel||'') : isAppMan
+    ? [item.valor_total!=null?fmtBRL(item.valor_total):'', item.tecnico_responsavel?'🔧 '+item.tecnico_responsavel:''].filter(Boolean).join(' · ')
+    : (item.vendedor||'');
 
   return `
     <div class="kanban-card" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.responsavel||item.vendedor||'')).toLowerCase()}">
@@ -1547,6 +1549,20 @@ function stageFlags(item, stage){
       return `<span class="flag ${c}" title="${ordinal(i+1)} Contato: ${t.tipo} → ${res}">📞 ${ordinal(i+1)} ${t.tipo}</span>`;
     });
     return `<div class="card-flags">${flagsL.join('')}</div>`;
+  }
+
+  // ── CONTADOR DE PRÓXIMA MANUTENÇÃO PARA APP/MAN ───────────
+  if(sid === 'appman'){
+    if(!item.data_renovacao) return '';
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+    const t = new Date(item.data_renovacao+'T12:00:00'); t.setHours(0,0,0,0);
+    const diff = Math.round((t-today0)/86400000);
+    let c = 'countdown', txt;
+    if(diff < 0)       { c+=' urgent'; txt=`🔄 Vencida há ${Math.abs(diff)}d`; }
+    else if(diff===0)  { c+=' urgent'; txt='🔄 Renovar HOJE!'; }
+    else if(diff<=7)   { c+=' urgent'; txt=`🔄 Renovação em ${diff}d`; }
+    else               {               txt=`🔄 Renovação em ${diff}d`; }
+    return `<div class="card-flags"><span class="flag ${c}" title="Próxima renovação: ${item.data_renovacao}">${txt}</span></div>`;
   }
 
   if(!['contrato','logistica','instalacao','homologacao','posvenda'].includes(sid)) return '';
@@ -3172,6 +3188,7 @@ function openAppManModal(item=null){
             ${formField({label:'Cliente *',name:'nome',value:item.nome,required:true})}
             ${formField({label:'Telefone',name:'telefone',value:item.telefone})}
             ${formField({label:'Vendedor/Responsável',name:'responsavel',value:item.responsavel||State.profile?.nome||'',datalist:DL_TECNICO})}
+            ${formField({label:'Técnico (Manutenção/Vistoria)',name:'tecnico_responsavel',value:item.tecnico_responsavel,datalist:DL_TECNICO})}
             ${formField({label:'Status *',name:'status',type:'select',value:item.status||'aberto',options:statusOpts,required:true})}
             <div class="form-group full">
               <label>Itens vendidos</label>
@@ -3182,7 +3199,7 @@ function openAppManModal(item=null){
                 `).join('')}
               </div>
             </div>
-            ${formField({label:'Valor total da venda (R$)',name:'valor_total',type:'number',value:item.valor_total})}
+            ${formField({label:'Valor total da venda (R$)',name:'valor_total',type:'number',value:item.valor_total,readonly:true})}
             ${formField({label:'Data da venda',name:'data_venda',type:'date',value:item.data_venda})}
             ${formField({label:'Data de realização do serviço',name:'data_servico',type:'date',value:item.data_servico})}
             ${formField({label:'Data de renovação (manutenção de app)',name:'data_renovacao',type:'date',value:item.data_renovacao})}
@@ -3216,10 +3233,11 @@ function openAppManModal(item=null){
       const val = form.querySelector(`[data-am-valor="${key}"]`);
       if(chk?.checked) total += parseBR(val.value) || 0;
     });
-    if(total>0) valorTotalInput.value = fmtInputNum(total);
+    valorTotalInput.value = fmtInputNum(total);
   }
   $$('#amItens [data-am-check]', form).forEach(el=> el.addEventListener('change', recalcTotal));
   $$('#amItens [data-am-valor]', form).forEach(el=> el.addEventListener('input', recalcTotal));
+  recalcTotal();
 
   form.addEventListener('submit', async e=>{
     e.preventDefault();
@@ -3233,6 +3251,7 @@ function openAppManModal(item=null){
     const data = {
       nome: raw.nome, telefone: raw.telefone,
       responsavel: raw.responsavel,
+      tecnico_responsavel: raw.tecnico_responsavel,
       status: raw.status || 'aberto',
       itens: itensData,
       valor_total: raw.valor_total,
@@ -3253,7 +3272,7 @@ function openAppManModal(item=null){
       const { error } = await supa.from('app_manutencao').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
       const mud = detectMudancas(item, data, [
-        ['status','Status',null],['responsavel','Responsável',null],['valor_total','Valor Total',null]
+        ['status','Status',null],['responsavel','Responsável',null],['tecnico_responsavel','Técnico',null],['valor_total','Valor Total',null]
       ]);
       const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
       await registrarHistorico('app_manutencao', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');

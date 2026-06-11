@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS app_manutencao (
   nome             text        NOT NULL,
   telefone         text,
   responsavel      text,
+  tecnico_responsavel text,
   status           text        NOT NULL DEFAULT 'aberto',
   itens            jsonb       DEFAULT '{}',   -- {configuracao:{ativo,valor}, manutencao:{...}, app_monitoramento:{...}, vistoria_tecnica:{...}}
   valor_total      numeric,
@@ -16,6 +17,9 @@ CREATE TABLE IF NOT EXISTS app_manutencao (
   criado_em        timestamptz DEFAULT now(),
   atualizado_em    timestamptz
 );
+
+-- Caso a tabela já exista sem essa coluna (rodando a migration de novo)
+ALTER TABLE app_manutencao ADD COLUMN IF NOT EXISTS tecnico_responsavel text;
 
 ALTER TABLE app_manutencao ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "autenticados_appman" ON app_manutencao;
