@@ -3295,6 +3295,18 @@ function openAppManModal(item=null){
             ${fileUploadBlock('Fotos do Serviço','fotos_servico','app_manutencao',fotos.fotos_servico||[],true)}
           </div></div>
         </div>
+        <div class="section"><div class="section-header"><h4>📍 Endereço</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body"><div class="form-grid">
+            ${formField({label:'CEP',name:'cep',value:item.cep})}
+            ${formField({label:'Rua',name:'rua',value:item.rua})}
+            ${formField({label:'Número',name:'numero',value:item.numero})}
+            ${formField({label:'Complemento',name:'complemento',value:item.complemento})}
+            ${formField({label:'Bairro',name:'bairro',value:item.bairro})}
+            ${formField({label:'Cidade',name:'cidade',value:item.cidade})}
+            ${formField({label:'Estado',name:'estado',value:item.estado})}
+            ${formField({label:'Localização (Google Maps)',name:'gmap',value:item.gmap,placeholder:'Cole aqui o link do Google Maps',full:true})}
+          </div></div>
+        </div>
         ${!isNew ? histSection() : ''}
       </div>
       <div class="modal-footer">
@@ -3311,6 +3323,7 @@ function openAppManModal(item=null){
   const allFiles = {};
   fotoKeys.forEach(k=>{ allFiles[k]=(fotos[k]||[]).slice(); });
   attachFileUploads(form, allFiles);
+  attachCEP(form);
 
   // Soma automática do valor total a partir dos itens marcados
   const valorTotalInput = form.querySelector('[name="valor_total"]');
@@ -3347,6 +3360,8 @@ function openAppManModal(item=null){
       data_servico: raw.data_servico || null,
       data_renovacao: raw.data_renovacao || null,
       obs: raw.obs,
+      cep: raw.cep, rua: raw.rua, numero: raw.numero, complemento: raw.complemento,
+      bairro: raw.bairro, cidade: raw.cidade, estado: raw.estado, gmap: raw.gmap,
       fotos: pickFiles(allFiles, fotoKeys),
       atualizado_em: new Date().toISOString()
     };
