@@ -3277,6 +3277,14 @@ function openAppManModal(item=null){
     ['concluido','Concluído'],
     ['cancelado','Cancelado']
   ];
+  const formaPagamentoOpts = [
+    ['','— selecione —'],
+    ['dinheiro','Dinheiro'],
+    ['pix','Pix'],
+    ['cartao','Cartão'],
+    ['boleto','Boleto'],
+    ['transferencia','Transferência']
+  ];
 
   const itens = item.itens || {};
   const fotos = item.fotos || {};
@@ -3303,6 +3311,13 @@ function openAppManModal(item=null){
               </div>
             </div>
             ${formField({label:'Valor total da venda (R$)',name:'valor_total',type:'number',value:item.valor_total,readonly:true})}
+            ${formField({label:'Forma de Pagamento',name:'forma_pagamento',type:'select',value:item.forma_pagamento||'',options:formaPagamentoOpts})}
+            <div id="campoParcelado" style="display:${item.forma_pagamento==='cartao'?'':'none'}">
+              ${formField({label:'Parcelado?',name:'parcelado',type:'select',value:item.parcelado?'sim':'nao',options:[['nao','Não'],['sim','Sim']]})}
+            </div>
+            <div id="campoQtdParcelas" style="display:${item.forma_pagamento==='cartao'&&item.parcelado?'':'none'}">
+              ${formField({label:'Quantidade de Parcelas',name:'qtd_parcelas',type:'number',value:item.qtd_parcelas})}
+            </div>
             ${formField({label:'Data da venda',name:'data_venda',type:'date',value:item.data_venda})}
             ${formField({label:'Data de realização do serviço',name:'data_servico',type:'date',value:item.data_servico})}
             ${formField({label:'Data de renovação (manutenção de app)',name:'data_renovacao',type:'date',value:item.data_renovacao})}
@@ -3340,6 +3355,22 @@ function openAppManModal(item=null){
   attachFileUploads(form, allFiles);
   attachCEP(form);
 
+  // Forma de pagamento: exibe parcelamento apenas para cartão
+  const formaPagSel = form.elements['forma_pagamento'];
+  const parceladoSel = form.elements['parcelado'];
+  const campoParcelado = $('#campoParcelado');
+  const campoQtdParcelas = $('#campoQtdParcelas');
+  const togglePagamento = ()=>{
+    const isCartao = formaPagSel.value === 'cartao';
+    campoParcelado.style.display = isCartao ? '' : 'none';
+    const isParcelado = isCartao && parceladoSel.value === 'sim';
+    campoQtdParcelas.style.display = isParcelado ? '' : 'none';
+    form.elements['qtd_parcelas'].required = isParcelado;
+  };
+  formaPagSel.addEventListener('change', togglePagamento);
+  parceladoSel.addEventListener('change', togglePagamento);
+  togglePagamento();
+
   // Soma automática do valor total a partir dos itens marcados
   const valorTotalInput = form.querySelector('[name="valor_total"]');
   function recalcTotal(){
@@ -3371,6 +3402,9 @@ function openAppManModal(item=null){
       status: raw.status || 'aberto',
       itens: itensData,
       valor_total: raw.valor_total,
+      forma_pagamento: raw.forma_pagamento || null,
+      parcelado: raw.forma_pagamento==='cartao' && raw.parcelado==='sim',
+      qtd_parcelas: (raw.forma_pagamento==='cartao' && raw.parcelado==='sim' && raw.qtd_parcelas) ? Number(raw.qtd_parcelas) : null,
       data_venda: raw.data_venda || null,
       data_servico: raw.data_servico || null,
       data_renovacao: raw.data_renovacao || null,
