@@ -3172,6 +3172,18 @@ function openAtendimentoModal(item=null){
             ${fileUploadBlock('Fotos / Documentos','fotos_atendimento','atendimentos',fotos.fotos_atendimento||[],true)}
           </div></div>
         </div>
+        <div class="section"><div class="section-header"><h4>📍 Endereço</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body"><div class="form-grid">
+            ${formField({label:'CEP',name:'cep',value:item.cep})}
+            ${formField({label:'Rua',name:'rua',value:item.rua})}
+            ${formField({label:'Número',name:'numero',value:item.numero})}
+            ${formField({label:'Complemento',name:'complemento',value:item.complemento})}
+            ${formField({label:'Bairro',name:'bairro',value:item.bairro})}
+            ${formField({label:'Cidade',name:'cidade',value:item.cidade})}
+            ${formField({label:'Estado',name:'estado',value:item.estado})}
+            ${formField({label:'Localização (Google Maps)',name:'gmap',value:item.gmap,placeholder:'Cole aqui o link do Google Maps',full:true})}
+          </div></div>
+        </div>
         ${!isNew ? histSection() : ''}
       </div>
       <div class="modal-footer">
@@ -3188,6 +3200,7 @@ function openAtendimentoModal(item=null){
   const allFiles = {};
   [...fotoKeys,...docKeys].forEach(k=>{ allFiles[k]=(fotos[k]||docs[k]||[]).slice(); });
   attachFileUploads(form, allFiles);
+  attachCEP(form);
 
   const tipoSel = form.elements['tipo'];
   const campoTipoOutro = $('#campoTipoOutro');
@@ -3211,6 +3224,8 @@ function openAtendimentoModal(item=null){
       status: raw.status || 'aberto',
       valor: raw.valor ? Number(raw.valor) : null,
       obs: raw.obs,
+      cep: raw.cep, rua: raw.rua, numero: raw.numero, complemento: raw.complemento,
+      bairro: raw.bairro, cidade: raw.cidade, estado: raw.estado, gmap: raw.gmap,
       fotos: pickFiles(allFiles, fotoKeys),
       docs:  pickFiles(allFiles, docKeys),
       atualizado_em: new Date().toISOString()
