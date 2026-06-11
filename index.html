@@ -124,6 +124,7 @@ tbody tr:hover{background:#fafaf6}
 .kanban-col[data-stage="atendimentos"] .badge-retorno_tecnico{background:#cfe2ff;color:#084298}
 .kanban-col[data-stage="atendimentos"] .badge-sombreamento{background:#e2d6f3;color:#5e35b1}
 .kanban-col[data-stage="atendimentos"] .badge-goteira{background:#fef0c3;color:#996a00}
+.kanban-col[data-stage="atendimentos"] .badge-falta_de_energia{background:#f8d7da;color:#842029}
 .kanban-col[data-stage="atendimentos"] .badge-outros{background:#e2e3e5;color:#41464b}
 
 /* FORMS */
@@ -1512,7 +1513,7 @@ function renderCard(item,stage){
     ? `<div style="font-size:10px;color:#6B21A8;font-style:italic;margin-top:3px">🔍 Clique → editar vistoria / instalação</div>`
     : '';
 
-  const tipoAtendMap = {retorno_tecnico:'Retorno Técnico',sombreamento:'Sombreamento',goteira:'Goteira',outros:'Outros'};
+  const tipoAtendMap = {retorno_tecnico:'Retorno Técnico',sombreamento:'Sombreamento',goteira:'Goteira',falta_de_energia:'Falta de Energia',outros:'Outros'};
   const isAtend = stage.id === 'atendimentos';
   const isAppMan = stage.id === 'appman';
   const itensAppManMap = {configuracao:'Configuração',manutencao:'Manutenção',app_monitoramento:'App Monitoramento',vistoria_tecnica:'Vistoria Técnica'};
@@ -1604,9 +1605,9 @@ function stageFlags(item, stage){
   // ── Lookups da cadeia do funil ────────────────────────────
   const find = (arr, id) => id ? (arr||[]).find(x=>String(x.id)===String(id)) : null;
 
-  const contrato = find(State.contratos, item.contrato_id);
+  let contrato = find(State.contratos, item.contrato_id);
   // Fallback: vistoria via contrato (registros antigos sem vistoria_id direto)
-  const vistoria = find(State.vistorias, item.vistoria_id)
+  let vistoria = find(State.vistorias, item.vistoria_id)
                || (contrato ? find(State.vistorias, contrato.vistoria_id) : null);
 
   // Logística e Instalação: trace a cadeia conforme o estágio
@@ -1620,6 +1621,12 @@ function stageFlags(item, stage){
     const homolog = find(State.homologacoes, item.homologacao_id);
     instalacao = find(State.instalacoes, homolog?.instalacao_id);
     logistica  = find(State.logistica,   instalacao?.logistica_id);
+  }
+
+  // Contrato via cadeia logística → contrato (quando não vier direto no item)
+  if(!contrato && logistica){
+    contrato = find(State.contratos, logistica.contrato_id);
+    if(!vistoria) vistoria = find(State.vistorias, contrato?.vistoria_id);
   }
 
   // ── Cor da flag conforme o status ────────────────────────
@@ -1646,6 +1653,20 @@ function stageFlags(item, stage){
   if(['homologacao','posvenda'].includes(sid) && instalacao){
     const s = instalacao.status || '—';
     flags.push(`<span class="flag ${cls(s)}" title="Instalação: ${s}">🔧 ${s}</span>`);
+  }
+
+  // ── Contagem regressiva: prazo de 90 dias para homologação,
+  // a contar da data de assinatura do contrato ─────────────
+  if(sid === 'homologacao' && contrato?.data_assinatura){
+    const t = new Date(contrato.data_assinatura+'T12:00:00'); t.setHours(0,0,0,0);
+    t.setDate(t.getDate()+90);
+    const diff = Math.round((t-today)/86400000);
+    let c = 'countdown', txt;
+    if(diff < 0)       { c+=' urgent'; txt=`⏳ Prazo vencido há ${Math.abs(diff)}d`; }
+    else if(diff===0)  { c+=' urgent'; txt='⏳ Prazo vence HOJE!'; }
+    else if(diff<=15)  { c+=' urgent'; txt=`⏳ Prazo: ${diff}d`; }
+    else               {               txt=`⏳ Prazo: ${diff}d`; }
+    flags.push(`<span class="flag ${c}" title="Prazo contratual de 90 dias para homologação (assinatura: ${contrato.data_assinatura})">${txt}</span>`);
   }
 
   // ── Pós-venda: 5 contagens regressivas ───────────────────
@@ -3113,6 +3134,7 @@ function openAtendimentoModal(item=null){
     ['retorno_tecnico','Retorno Técnico'],
     ['sombreamento','Sombreamento'],
     ['goteira','Goteira'],
+    ['falta_de_energia','Falta de Energia'],
     ['outros','Outros']
   ];
   const statusOpts = [
@@ -3121,7 +3143,7 @@ function openAtendimentoModal(item=null){
     ['concluido','Concluído'],
     ['cancelado','Cancelado']
   ];
-  const tipoMap = {retorno_tecnico:'Retorno Técnico',sombreamento:'Sombreamento',goteira:'Goteira',outros:'Outros'};
+  const tipoMap = {retorno_tecnico:'Retorno Técnico',sombreamento:'Sombreamento',goteira:'Goteira',falta_de_energia:'Falta de Energia',outros:'Outros'};
 
   const fotos = item.fotos || {};
   const docs  = item.docs  || {};
