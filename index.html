@@ -2470,6 +2470,7 @@ function openPropostaModal(item=null){
   const isNew = !item;
   item = item || {};
   const statusOpts = [['em_aberto','Em aberto'],['enviada','Enviada'],['aceita','Aceita'],['recusada','Recusada']];
+  const motivoPerdaOpts = [['','— selecione —'],['sem_interesse','Sem interesse'],['sem_credito','Sem crédito'],['concorrente','Concorrente'],['sem_resposta','Sem resposta'],['vistoria_reprovada','Vistoria reprovada'],['oportunidade_futura','Oportunidade futura']];
 
   openModal(`
     <div class="modal-header"><h2>${isNew?'Nova Proposta':'Editar Proposta'}</h2><button class="modal-close">×</button></div>
@@ -2522,6 +2523,9 @@ function openPropostaModal(item=null){
             ${formField({label:'Valor',name:'valor',type:'number',value:item.valor,required:true})}
             ${formField({label:'Validade',name:'validade',type:'date',value:item.validade,readonly:true})}
             ${formField({label:'Status',name:'status',type:'select',value:item.status||'em_aberto',options:statusOpts})}
+            <div id="motivoPerdaPropWrap" style="display:${item.status==='recusada'?'':'none'}">
+              ${formField({label:'Motivo da recusa',name:'motivo_perda',type:'select',value:item.motivo_perda||'',options:motivoPerdaOpts})}
+            </div>
             ${formField({label:'Vendedor',name:'vendedor',value:item.vendedor || (isVend()?State.profile.nome:'')})}
             ${formField({label:'Tel. Vendedor',name:'vend_telefone',value:item.vend_telefone})}
             ${formField({label:'Email Vendedor',name:'vend_email',value:item.vend_email})}
@@ -2540,6 +2544,15 @@ function openPropostaModal(item=null){
 
   const form = $('#propForm');
   attachCEP(form);
+
+  // Exibe "Motivo da recusa" apenas quando status = recusada
+  const statusPropSel = form.elements['status'];
+  const motivoPerdaWrap = $('#motivoPerdaPropWrap');
+  const toggleMotivoPerda = ()=>{
+    motivoPerdaWrap.style.display = statusPropSel.value === 'recusada' ? '' : 'none';
+  };
+  statusPropSel.addEventListener('change', toggleMotivoPerda);
+
   // Validade automática (+7 dias) para novas propostas
   if(isNew && form.validade && !form.validade.value){
     const d = new Date(); d.setDate(d.getDate()+7);
@@ -2596,6 +2609,7 @@ function openPropostaModal(item=null){
       toast('Proposta criada','success');
     } else {
       const prevStatus = item.status;
+      if(data.status !== 'recusada') data.motivo_perda = null;
       const { error } = await supa.from('propostas').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
       const mud = detectMudancas(item, data, [
