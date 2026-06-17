@@ -6019,16 +6019,20 @@ function openComissaoModal(item=null){
 
   function recalc(){
     const raw = readForm(form);
-    const vc = Number(raw.valor_contrato)||0;
-    const vp = Number(raw.vend_pct)||0;
+    const vc  = Number(raw.valor_contrato)||0;
+    const vv  = Number(raw.valor_vendido)||0;
+    const vp  = Number(raw.vend_pct)||0;
     const vmp = Number(raw.vend_major_pct)||0;
-    const vend_val = vc * (vp/100) + vc*(vmp/100);
-    const sup_val = vc * ((Number(raw.sup_pct)||0)/100);
-    const sdr_val = raw.sdr_ativo ? vc*((Number(raw.sdr_pct)||0)/100) : 0;
-    const cap_val = raw.cap_ativo ? vc*((Number(raw.cap_pct)||0)/100) : 0;
-    const ind_val = raw.ind_ativo ? vc*((Number(raw.ind_pct)||0)/100) : 0;
+    const sup_val  = vc * ((Number(raw.sup_pct)||0)/100);
+    const sdr_val  = raw.sdr_ativo ? vc*((Number(raw.sdr_pct)||0)/100) : 0;
+    const cap_val  = raw.cap_ativo ? vc*((Number(raw.cap_pct)||0)/100) : 0;
+    const ind_val  = raw.ind_ativo ? vc*((Number(raw.ind_pct)||0)/100) : 0;
     const obra_val = raw.obra_ativo ? (Number(raw.obra_val)||0) : 0;
     const pres_val = raw.pres_ativo ? (Number(raw.pres_val)||0) : 0;
+    // Majorado: (valor_vendido − valor_referencia − obra − presente − indicador) × % majorado, mínimo R$ 0
+    const base_major = vv - vc - obra_val - pres_val - ind_val;
+    const major_val  = Math.max(0, base_major) * (vmp/100);
+    const vend_val   = vc * (vp/100) + major_val;
     const total = vend_val + sup_val + sdr_val + cap_val + ind_val + obra_val + pres_val;
     const lucro = vc - total;
     $('#comPreview').innerHTML = `
