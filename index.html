@@ -552,6 +552,7 @@ async function confirmDel(msg='Confirma exclusão?'){ return confirm(msg); }
 function isAdmin(){ return State.profile?.perfil === 'admin'; }
 function isVend(){ return State.profile?.perfil === 'vendedor'; }
 function userRole(){ return State.profile?.perfil; }
+function canVerFinanceiro(){ return ['admin','supervisor','financeiro'].includes(State.profile?.perfil); }
 
 function filterByVendor(arr, key='vendedor'){
   if(!isVend()) return arr;
@@ -3630,7 +3631,7 @@ function openContratoModal(item=null){
         ${!isNew?`<button type="button" class="btn btn-secondary" id="clickSignBtn">📝 ClickSign</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-secondary" id="vizContBtn">👁️ Ver Contrato</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-secondary" id="dlContBtn">🖨️ PDF</button>`:''}
-        ${!isNew?`<button type="button" class="btn btn-secondary" id="projFinBtn">💰 Financeiro</button>`:''}
+        ${!isNew&&canVerFinanceiro()?`<button type="button" class="btn btn-secondary" id="projFinBtn">💰 Financeiro</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-danger" id="delContBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
@@ -5387,7 +5388,7 @@ function openPosVendaModal(item=null){
         ${histSection()}
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" id="pvProjFinBtn">💰 Financeiro</button>
+        ${canVerFinanceiro()?`<button type="button" class="btn btn-secondary" id="pvProjFinBtn">💰 Financeiro</button>`:''}
         ${isAdmin()?`<button type="button" class="btn btn-danger" id="delPvBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
@@ -6349,6 +6350,7 @@ function openDespesaModal(item=null, opts={}){
    PROJETO FINANCEIRO
    ============================================================ */
 async function openProjetoFinanceiroModal(contratoId, nomeCliente){
+  if(!canVerFinanceiro()){ toast('Acesso restrito','error'); return; }
   if(!contratoId){ toast('Contrato não encontrado para este projeto','error'); return; }
   await Promise.all([loadTable('financeiro_receitas'), loadTable('financeiro_despesas')]);
 
