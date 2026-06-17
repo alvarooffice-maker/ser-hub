@@ -5852,36 +5852,45 @@ function openComissaoModal(item=null){
   item = item || {};
   const statusOpts = [['pendente','Pendente'],['aprovada','Aprovada'],['paga','Paga'],['cancelada','Cancelada']];
 
+  // Listas por perfil vindas de State.perfis
+  const perfisAtivos = (State.perfis||[]).filter(p=>p.ativo!==false && p.nome);
+  const nomesPorPerfil = perfil => ['',  ...perfisAtivos.filter(p=>p.perfil===perfil).map(p=>p.nome)];
+  const selectOpts    = perfil => nomesPorPerfil(perfil).map(n=>n?[n,n]:['','— selecione —']);
+
+  // Contratos assinados para busca de cliente e auto-preenchimento de valor
+  const contratosAssinados = (State.contratos||[]).filter(c=>c.status==='assinado');
+  const clientesDL = [...new Set(contratosAssinados.map(c=>c.nome).filter(Boolean))];
+
   openModal(`
     <div class="modal-header"><h2>${isNew?'Nova Comissão':'Editar Comissão'}</h2><button class="modal-close">×</button></div>
     <form id="comForm">
       <div class="modal-body">
         <div class="form-grid">
-          ${formField({label:'Cliente',name:'nome',value:item.nome,required:true,datalist:[...new Set((State.contratos||[]).filter(c=>c.status==='assinado').map(c=>c.nome).filter(Boolean))]})}
+          ${formField({label:'Cliente',name:'nome',value:item.nome,required:true,datalist:clientesDL})}
           ${formField({label:'Valor Referência',name:'valor_contrato',type:'number',value:item.valor_contrato,required:true})}
-          ${formField({label:'Valor Vendido',name:'valor_vendido',type:'number',value:item.valor_vendido})}
+          ${formField({label:'Valor Vendido',name:'valor_vendido',type:'number',value:item.valor_vendido,readonly:true})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
         </div>
         <div class="section"><div class="section-header"><h4>Vendedor</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
-            ${formField({label:'Nome',name:'vend_nome',value:item.vend_nome})}
+            ${formField({label:'Nome',name:'vend_nome',type:'select',value:item.vend_nome||'',options:selectOpts('vendedor')})}
             ${formField({label:'%',name:'vend_pct',type:'number',value:item.vend_pct})}
             ${formField({label:'% Major',name:'vend_major_pct',type:'number',value:item.vend_major_pct})}
           </div></div>
         </div>
         <div class="section"><div class="section-header"><h4>Supervisor</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
-            ${formField({label:'Nome',name:'sup_nome',value:item.sup_nome})}
+            ${formField({label:'Nome',name:'sup_nome',type:'select',value:item.sup_nome||'',options:selectOpts('supervisor')})}
             ${formField({label:'%',name:'sup_pct',type:'number',value:item.sup_pct})}
           </div></div>
         </div>
         <div class="section collapsed"><div class="section-header"><h4>SDR / Captador / Indicador</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
             ${formField({label:'SDR ativo',name:'sdr_ativo',type:'toggle',value:item.sdr_ativo})}
-            ${formField({label:'SDR nome',name:'sdr_nome',value:item.sdr_nome})}
+            ${formField({label:'SDR nome',name:'sdr_nome',type:'select',value:item.sdr_nome||'',options:selectOpts('sdr')})}
             ${formField({label:'SDR %',name:'sdr_pct',type:'number',value:item.sdr_pct})}
             ${formField({label:'Captador ativo',name:'cap_ativo',type:'toggle',value:item.cap_ativo})}
-            ${formField({label:'Captador nome',name:'cap_nome',value:item.cap_nome})}
+            ${formField({label:'Captador nome',name:'cap_nome',type:'select',value:item.cap_nome||'',options:selectOpts('captador')})}
             ${formField({label:'Captador %',name:'cap_pct',type:'number',value:item.cap_pct})}
             ${formField({label:'Indicador ativo',name:'ind_ativo',type:'toggle',value:item.ind_ativo})}
             ${formField({label:'Indicador nome',name:'ind_nome',value:item.ind_nome})}
@@ -5907,6 +5916,27 @@ function openComissaoModal(item=null){
   `,'lg');
 
   const form = $('#comForm');
+
+  // Auto-preenche Valor Vendido com o valor do contrato ao digitar/selecionar o cliente
+  form.elements['nome'].addEventListener('change', ()=>{
+    const nomeDigitado = form.elements['nome'].value.trim().toLowerCase();
+    const contrato = contratosAssinados.find(c=>(c.nome||'').toLowerCase()===nomeDigitado);
+    if(contrato?.valor){
+      form.elements['valor_contrato'].value = fmtInputNum(contrato.valor);
+      form.elements['valor_vendido'].value  = fmtInputNum(contrato.valor);
+      recalc();
+    }
+  });
+  form.elements['nome'].addEventListener('input', ()=>{
+    const nomeDigitado = form.elements['nome'].value.trim().toLowerCase();
+    const contrato = contratosAssinados.find(c=>(c.nome||'').toLowerCase()===nomeDigitado);
+    if(contrato?.valor){
+      form.elements['valor_contrato'].value = fmtInputNum(contrato.valor);
+      form.elements['valor_vendido'].value  = fmtInputNum(contrato.valor);
+      recalc();
+    }
+  });
+
   function recalc(){
     const raw = readForm(form);
     const vc = Number(raw.valor_contrato)||0;
