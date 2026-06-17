@@ -7346,6 +7346,22 @@ async function renderClientes(){
   attachCliClick();
 }
 
+function openClientModalByNome(nome){
+  if(!nome) return;
+  const key = nome.toLowerCase().trim();
+  const find = (arr, nomeFn) => (arr||[]).find(x=>(nomeFn(x)||'').toLowerCase().trim()===key);
+  const n = x=>x.nome;
+  // Pipeline do mais avançado ao menos avançado
+  const pv  = find(State.posvenda,    n); if(pv)  return openPosvendaModal(pv);
+  const hom = find(State.homologacoes,n); if(hom) return openHomologacaoModal(hom);
+  const ins = find(State.instalacoes, n); if(ins) return openInstalacaoModal(ins);
+  const log = find(State.logistica,   n); if(log) return openLogisticaModal(log);
+  const con = find(State.contratos,   n); if(con) return openContratoModal(con);
+  const vis = find(State.vistorias,   n); if(vis) return openVistoriaModal(vis);
+  const pro = find(State.propostas,   n); if(pro) return openPropostaModal(pro);
+  const lea = find(State.leads,       n); if(lea) return openLeadModal(lea);
+}
+
 /* ============================================================
    CALENDÁRIO
    ============================================================ */
@@ -7408,77 +7424,84 @@ function collectCalEvents(from, to){
     });
   }
 
-  // 2. INSTALAÇÕES
+  // 2. INSTALAÇÕES — oculta se já concluída ou cancelada
   if(s.instalacao){
     (State.instalacoes||[]).forEach(i=>{
       if(!inRange(i.data_instalacao)) return;
-      events.push({date:i.data_instalacao, label:`🔧 ${i.nome||'—'}`, type:'instalacao', item:i, modal:'instalacao'});
+      if(['concluida','cancelada'].includes(i.status)) return;
+      events.push({date:i.data_instalacao, label:`🔧 ${i.nome||'—'}`, type:'instalacao', item:i, nome:i.nome});
     });
   }
 
-  // 3. ENTREGAS
+  // 3. ENTREGAS — oculta se já entregue ou cancelada
   if(s.entrega){
     (State.logistica||[]).forEach(l=>{
       if(!inRange(l.data_prevista_entrega)) return;
-      events.push({date:l.data_prevista_entrega, label:`📦 ${l.nome||'—'}`, type:'entrega', item:l, modal:'logistica'});
+      if(['entregue','cancelada','cancelado'].includes(l.status)) return;
+      events.push({date:l.data_prevista_entrega, label:`📦 ${l.nome||'—'}`, type:'entrega', item:l, nome:l.nome});
     });
   }
 
-  // 4. VISTORIAS
+  // 4. VISTORIAS — oculta se já realizada ou cancelada
   if(s.vistoria){
     (State.vistorias||[]).forEach(v=>{
       if(!inRange(v.data_agendamento)) return;
-      events.push({date:v.data_agendamento, label:`🔍 ${v.nome||'—'}`, type:'vistoria', item:v, modal:'vistoria'});
+      if(['realizada','cancelada'].includes(v.status) || ['realizada','aprovada'].includes(v.resultado)) return;
+      events.push({date:v.data_agendamento, label:`🔍 ${v.nome||'—'}`, type:'vistoria', item:v, nome:v.nome});
     });
   }
 
-  // 5. PRAZO HOMOLOGAÇÃO — data_assinatura contrato + 90 dias
+  // 5. PRAZO HOMOLOGAÇÃO — oculta se homologação já aprovada ou concluída
   if(s.homologacao){
     (State.homologacoes||[]).forEach(hom=>{
+      if(/aprovada|concluida|conclu/.test(hom.etapa||'')) return;
       const inst = (State.instalacoes||[]).find(i=>i.id===hom.instalacao_id);
       const log  = inst ? (State.logistica||[]).find(l=>l.id===inst.logistica_id) : null;
       const cont = log  ? (State.contratos||[]).find(c=>c.id===log.contrato_id)   : null;
       const dt = cont?.data_assinatura ? calAddDays(cont.data_assinatura, 90) : null;
       if(!inRange(dt)) return;
-      events.push({date:dt, label:`⏳ Hom. ${hom.nome||cont?.nome||'—'}`, type:'homologacao', item:hom, modal:'homologacao'});
+      events.push({date:dt, label:`⏳ Hom. ${hom.nome||cont?.nome||'—'}`, type:'homologacao', item:hom, nome:hom.nome||cont?.nome});
     });
   }
 
-  // 6-9. PÓS-VENDA: manutenção +300d, acolhimento +5d, gratidão +30d, embaixador +90d
+  // 6-9. PÓS-VENDA — oculta flags se posvenda inativo/cancelado
   (State.posvenda||[]).forEach(pv=>{
+    if(pv.status === 'inativo') return;
     const inst = findInst(pv);
     const instDate = inst?.data_instalacao;
     if(s.manutencao){
       const dt = calAddDays(instDate, 300);
-      if(inRange(dt)) events.push({date:dt, label:`🛡️ ${pv.nome||'—'}`, type:'manutencao', item:pv, modal:'posvenda'});
+      if(inRange(dt)) events.push({date:dt, label:`🛡️ ${pv.nome||'—'}`, type:'manutencao', item:pv, nome:pv.nome});
     }
     if(s.acolhimento){
       const dt = calAddDays(instDate, 5);
-      if(inRange(dt)) events.push({date:dt, label:`🤝 ${pv.nome||'—'}`, type:'acolhimento', item:pv, modal:'posvenda'});
+      if(inRange(dt)) events.push({date:dt, label:`🤝 ${pv.nome||'—'}`, type:'acolhimento', item:pv, nome:pv.nome});
     }
     if(s.gratidao){
       const dt = calAddDays(instDate, 30);
-      if(inRange(dt)) events.push({date:dt, label:`💛 ${pv.nome||'—'}`, type:'gratidao', item:pv, modal:'posvenda'});
+      if(inRange(dt)) events.push({date:dt, label:`💛 ${pv.nome||'—'}`, type:'gratidao', item:pv, nome:pv.nome});
     }
     if(s.embaixador){
       const dt = calAddDays(instDate, 90);
-      if(inRange(dt)) events.push({date:dt, label:`🌟 ${pv.nome||'—'}`, type:'embaixador', item:pv, modal:'posvenda'});
+      if(inRange(dt)) events.push({date:dt, label:`🌟 ${pv.nome||'—'}`, type:'embaixador', item:pv, nome:pv.nome});
     }
   });
 
-  // 10. RENOVAÇÃO APP
+  // 10. RENOVAÇÃO APP — oculta se concluído ou cancelado
   if(s.renovacao){
     (State.appman||[]).forEach(a=>{
       if(!inRange(a.data_renovacao)) return;
-      events.push({date:a.data_renovacao, label:`🔄 ${a.nome||'—'}`, type:'renovacao', item:a, modal:'appman'});
+      if(['concluido','cancelado'].includes(a.status)) return;
+      events.push({date:a.data_renovacao, label:`🔄 ${a.nome||'—'}`, type:'renovacao', item:a, nome:a.nome});
     });
   }
 
-  // 11. RE-SERVIÇO
+  // 11. RE-SERVIÇO — oculta se concluído ou cancelado
   if(s.reservico){
     (State.atendimentos||[]).forEach(a=>{
       if(!inRange(a.data_agendamento)) return;
-      events.push({date:a.data_agendamento, label:`🛠️ ${a.nome||'—'}`, type:'reservico', item:a, modal:'atend'});
+      if(['concluido','cancelado'].includes(a.status)) return;
+      events.push({date:a.data_agendamento, label:`🛠️ ${a.nome||'—'}`, type:'reservico', item:a, nome:a.nome});
     });
   }
 
@@ -7490,7 +7513,7 @@ function calEventHtml(ev, limit=null){
   const eventsForDay = ev;
   const shown = limit ? eventsForDay.slice(0,limit) : eventsForDay;
   const hidden = limit ? eventsForDay.slice(limit) : [];
-  let html = shown.map(e=>`<div class="cal-event ce-${e.type}" data-cal-modal="${e.modal}" data-cal-id="${e.item?.id||''}" title="${esc(e.label)}">${esc(e.label)}</div>`).join('');
+  let html = shown.map(e=>`<div class="cal-event ce-${e.type}" data-cal-nome="${esc(e.nome||e.item?.nome||'')}" title="${esc(e.label)}">${esc(e.label)}</div>`).join('');
   if(hidden.length) html += `<div class="cal-more">+${hidden.length} mais</div>`;
   return html;
 }
@@ -7649,21 +7672,9 @@ function attachCalEvents(){
     });
   });
 
-  // Event click → open modal
+  // Event click → abre o modal da etapa mais avançada do cliente
   $$('.cal-event').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      const modal = el.dataset.calModal;
-      const id    = el.dataset.calId;
-      const find  = (arr,i) => (arr||[]).find(x=>String(x.id)===String(i));
-      if(modal==='lead')        { const it=find(State.leads,id);         if(it) openLeadModal(it); }
-      else if(modal==='vistoria')   { const it=find(State.vistorias,id);     if(it) openVistoriaModal(it); }
-      else if(modal==='instalacao') { const it=find(State.instalacoes,id);   if(it) openInstalacaoModal(it); }
-      else if(modal==='logistica')  { const it=find(State.logistica,id);     if(it) openLogisticaModal(it); }
-      else if(modal==='homologacao'){ const it=find(State.homologacoes,id);  if(it) openHomologacaoModal(it); }
-      else if(modal==='posvenda')   { const it=find(State.posvenda,id);      if(it) openPosvendaModal(it); }
-      else if(modal==='appman')     { const it=find(State.appman,id);        if(it) openAppManModal(it); }
-      else if(modal==='atend')      { const it=find(State.atendimentos,id);  if(it) openAtendimentoModal(it); }
-    });
+    el.addEventListener('click', ()=> openClientModalByNome(el.dataset.calNome));
   });
 }
 
