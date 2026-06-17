@@ -356,6 +356,58 @@ tbody tr:hover{background:#fafaf6}
 .preview-box{background:#fafaf6;border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:10px}
 .preview-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--border);font-size:13px}
 .preview-row:last-child{border-bottom:none;font-weight:700;color:var(--primary);font-size:15px;padding-top:10px}
+
+/* CALENDÁRIO */
+.cal-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.cal-nav{display:flex;align-items:center;gap:6px}
+.cal-nav button{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:5px 11px;cursor:pointer;font-size:14px}
+.cal-nav button:hover{background:var(--bg)}
+.cal-period{font-size:15px;font-weight:600;color:var(--text);min-width:180px;text-align:center}
+.cal-view-toggle{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.cal-view-toggle button{padding:5px 14px;background:var(--card);border:none;cursor:pointer;font-size:13px;color:var(--text-light)}
+.cal-view-toggle button.active{background:var(--primary);color:#fff}
+.cal-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.cal-filter-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:2px solid transparent;user-select:none;opacity:.55;transition:opacity .15s,border-color .15s}
+.cal-filter-chip.on{opacity:1;border-color:currentColor}
+.cal-filter-chip.fc-aniversario{background:#fce4ec;color:#c2185b}
+.cal-filter-chip.fc-instalacao{background:#e3f2fd;color:#1565c0}
+.cal-filter-chip.fc-entrega{background:#fff3e0;color:#e65100}
+.cal-filter-chip.fc-vistoria{background:#f3e5f5;color:#6a1b9a}
+.cal-filter-chip.fc-homologacao{background:#fce4ec;color:#b71c1c}
+.cal-filter-chip.fc-manutencao{background:#e0f2f1;color:#00695c}
+.cal-filter-chip.fc-acolhimento{background:#e8f5e9;color:#2e7d32}
+.cal-filter-chip.fc-gratidao{background:#fffde7;color:#f57f17}
+.cal-filter-chip.fc-embaixador{background:#fff8e1;color:#ff8f00}
+.cal-filter-chip.fc-renovacao{background:#e0f7fa;color:#00838f}
+.cal-filter-chip.fc-reservico{background:#e8eaf6;color:#283593}
+.cal-grid-month{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-dow{text-align:center;font-size:11px;font-weight:700;color:var(--text-light);padding:6px 0;text-transform:uppercase}
+.cal-cell{background:var(--card);border:1px solid var(--border);border-radius:6px;min-height:90px;padding:5px;display:flex;flex-direction:column;gap:3px}
+.cal-cell.other-month{background:#f7f5fa88}
+.cal-cell.today{border-color:var(--primary);border-width:2px}
+.cal-day-num{font-size:12px;font-weight:700;color:var(--text-light);margin-bottom:3px}
+.cal-cell.today .cal-day-num{color:var(--primary)}
+.cal-event{font-size:11px;font-weight:600;padding:2px 6px;border-radius:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.4}
+.cal-event:hover{filter:brightness(.92)}
+.cal-event.ce-aniversario{background:#fce4ec;color:#c2185b}
+.cal-event.ce-instalacao{background:#e3f2fd;color:#1565c0}
+.cal-event.ce-entrega{background:#fff3e0;color:#e65100}
+.cal-event.ce-vistoria{background:#f3e5f5;color:#6a1b9a}
+.cal-event.ce-homologacao{background:#fce4ec;color:#b71c1c}
+.cal-event.ce-manutencao{background:#e0f2f1;color:#00695c}
+.cal-event.ce-acolhimento{background:#e8f5e9;color:#2e7d32}
+.cal-event.ce-gratidao{background:#fffde7;color:#f57f17}
+.cal-event.ce-embaixador{background:#fff8e1;color:#ff8f00}
+.cal-event.ce-renovacao{background:#e0f7fa;color:#00838f}
+.cal-event.ce-reservico{background:#e8eaf6;color:#283593}
+.cal-grid-week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-week-col{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;min-height:160px;display:flex;flex-direction:column;gap:4px}
+.cal-week-col.today{border-color:var(--primary);border-width:2px}
+.cal-week-header{text-align:center;margin-bottom:6px}
+.cal-week-dow{font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase}
+.cal-week-date{font-size:20px;font-weight:700;color:var(--text)}
+.cal-week-col.today .cal-week-date{color:var(--primary)}
+.cal-more{font-size:10px;color:var(--text-light);cursor:pointer;padding:2px 6px}
 </style>
 </head>
 <body>
@@ -554,6 +606,7 @@ function renderUser(){
    ============================================================ */
 const ROUTES = [
   { id:'dashboard', label:'Dashboard', icon:'📊' },
+  { id:'calendario', label:'Calendário', icon:'📅' },
   { id:'pipeline', label:'Pipeline', icon:'🏠' },
   { id:'vistoriador', label:'Minhas Vistorias', icon:'🔍' },
   { id:'instalador', label:'Minhas Instalações', icon:'🔧' },
@@ -571,11 +624,11 @@ function visibleRoutes(){
   const role = userRole();
   return ROUTES.filter(r=>{
     if(r.adminOnly && !['admin','supervisor'].includes(role)) return false;
-    if(role==='financeiro') return ['dashboard','comissoes','financeiro'].includes(r.id);
-    if(role==='vendedor') return ['dashboard','pipeline','remarketing','baterias','disparador'].includes(r.id);
-    if(role==='tec_vistoria') return ['dashboard','vistoriador'].includes(r.id);
-    if(role==='tec_instalacao') return ['dashboard','instalador'].includes(r.id);
-    if(role==='tec_homologacao') return ['dashboard','homologador'].includes(r.id);
+    if(role==='financeiro') return ['dashboard','calendario','comissoes','financeiro'].includes(r.id);
+    if(role==='vendedor') return ['dashboard','calendario','pipeline','remarketing','baterias','disparador'].includes(r.id);
+    if(role==='tec_vistoria') return ['dashboard','calendario','vistoriador'].includes(r.id);
+    if(role==='tec_instalacao') return ['dashboard','calendario','instalador'].includes(r.id);
+    if(role==='tec_homologacao') return ['dashboard','calendario','homologador'].includes(r.id);
     if(['vistoriador','instalador','homologador'].includes(r.id)) return false; // oculto para outros perfis
     return true;
   });
@@ -607,6 +660,7 @@ function navigate(route){
   document.querySelector('.content').style.overflow = ['pipeline','vistoriador','instalador','homologador'].includes(route) ? 'hidden' : '';
   switch(route){
     case 'dashboard': renderDashboard(); break;
+    case 'calendario': renderCalendario(); break;
     case 'pipeline': renderPipeline(); break;
     case 'vistoriador': renderVistoriadorKanban(); break;
     case 'instalador': renderInstaladorKanban(); break;
@@ -7142,6 +7196,327 @@ function renderDisparador(){
       window.open(waLinkDp(fillCopy(grp.opts[+t.dataset.dpwa].m)),'_blank');
       return;
     }
+  });
+}
+
+/* ============================================================
+   CALENDÁRIO
+   ============================================================ */
+const CAL_FILTERS = [
+  { key:'aniversario',  label:'🎂 Aniversários',       cls:'fc-aniversario'  },
+  { key:'instalacao',   label:'🔧 Instalações',         cls:'fc-instalacao'   },
+  { key:'entrega',      label:'📦 Entregas',             cls:'fc-entrega'      },
+  { key:'vistoria',     label:'🔍 Vistorias',            cls:'fc-vistoria'     },
+  { key:'homologacao',  label:'⏳ Prazo Homologação',   cls:'fc-homologacao'  },
+  { key:'manutencao',   label:'🛡️ Manutenção',          cls:'fc-manutencao'   },
+  { key:'acolhimento',  label:'🤝 Acolhimento',          cls:'fc-acolhimento'  },
+  { key:'gratidao',     label:'💛 Gratidão',             cls:'fc-gratidao'     },
+  { key:'embaixador',   label:'🌟 Embaixador',           cls:'fc-embaixador'   },
+  { key:'renovacao',    label:'🔄 Renovação App',        cls:'fc-renovacao'    },
+  { key:'reservico',    label:'🛠️ Re-Serviço',           cls:'fc-reservico'    },
+];
+
+let _calState = {
+  view: 'month',   // 'month' | 'week'
+  anchor: null,    // Date — 1st day of current period
+  filters: Object.fromEntries(CAL_FILTERS.map(f=>[f.key, true]))
+};
+
+function calAddDays(dateStr, n){
+  if(!dateStr) return null;
+  const d = new Date(dateStr+'T12:00:00');
+  d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+
+function calIsoDate(d){ return d.toISOString().slice(0,10); }
+
+function collectCalEvents(from, to){
+  const events = []; // {date, label, type, item, modal}
+  const s = _calState.filters;
+  const inRange = dt => dt && dt >= from && dt <= to;
+
+  // helper: posvenda linked chain
+  const findInst = pv => {
+    const hom = (State.homologacoes||[]).find(h=>h.id===pv.homologacao_id);
+    return hom ? (State.instalacoes||[]).find(i=>i.id===hom.instalacao_id) : null;
+  };
+  const findLead = pv => (State.leads||[]).find(l=>l.id===pv.lead_id);
+
+  // 1. ANIVERSÁRIOS — leads.nascimento (recorrente anual)
+  if(s.aniversario){
+    const fromD = new Date(from+'T12:00:00');
+    const toD   = new Date(to+'T12:00:00');
+    (State.leads||[]).forEach(lead=>{
+      if(!lead.nascimento) return;
+      const bday = new Date(lead.nascimento+'T12:00:00');
+      // tenta os anos do intervalo
+      for(let yr = fromD.getFullYear(); yr <= toD.getFullYear()+1; yr++){
+        const candidate = new Date(yr, bday.getMonth(), bday.getDate());
+        const iso = calIsoDate(candidate);
+        if(iso >= from && iso <= to){
+          events.push({date:iso, label:`🎂 ${lead.nome||'—'}`, type:'aniversario', item:lead, modal:'lead'});
+        }
+      }
+    });
+  }
+
+  // 2. INSTALAÇÕES
+  if(s.instalacao){
+    (State.instalacoes||[]).forEach(i=>{
+      if(!inRange(i.data_instalacao)) return;
+      events.push({date:i.data_instalacao, label:`🔧 ${i.nome||'—'}`, type:'instalacao', item:i, modal:'instalacao'});
+    });
+  }
+
+  // 3. ENTREGAS
+  if(s.entrega){
+    (State.logistica||[]).forEach(l=>{
+      if(!inRange(l.data_prevista_entrega)) return;
+      events.push({date:l.data_prevista_entrega, label:`📦 ${l.nome||'—'}`, type:'entrega', item:l, modal:'logistica'});
+    });
+  }
+
+  // 4. VISTORIAS
+  if(s.vistoria){
+    (State.vistorias||[]).forEach(v=>{
+      if(!inRange(v.data_agendamento)) return;
+      events.push({date:v.data_agendamento, label:`🔍 ${v.nome||'—'}`, type:'vistoria', item:v, modal:'vistoria'});
+    });
+  }
+
+  // 5. PRAZO HOMOLOGAÇÃO — data_assinatura contrato + 90 dias
+  if(s.homologacao){
+    (State.homologacoes||[]).forEach(hom=>{
+      const inst = (State.instalacoes||[]).find(i=>i.id===hom.instalacao_id);
+      const log  = inst ? (State.logistica||[]).find(l=>l.id===inst.logistica_id) : null;
+      const cont = log  ? (State.contratos||[]).find(c=>c.id===log.contrato_id)   : null;
+      const dt = cont?.data_assinatura ? calAddDays(cont.data_assinatura, 90) : null;
+      if(!inRange(dt)) return;
+      events.push({date:dt, label:`⏳ Hom. ${hom.nome||cont?.nome||'—'}`, type:'homologacao', item:hom, modal:'homologacao'});
+    });
+  }
+
+  // 6-9. PÓS-VENDA: manutenção +300d, acolhimento +5d, gratidão +30d, embaixador +90d
+  (State.posvenda||[]).forEach(pv=>{
+    const inst = findInst(pv);
+    const instDate = inst?.data_instalacao;
+    if(s.manutencao){
+      const dt = calAddDays(instDate, 300);
+      if(inRange(dt)) events.push({date:dt, label:`🛡️ ${pv.nome||'—'}`, type:'manutencao', item:pv, modal:'posvenda'});
+    }
+    if(s.acolhimento){
+      const dt = calAddDays(instDate, 5);
+      if(inRange(dt)) events.push({date:dt, label:`🤝 ${pv.nome||'—'}`, type:'acolhimento', item:pv, modal:'posvenda'});
+    }
+    if(s.gratidao){
+      const dt = calAddDays(instDate, 30);
+      if(inRange(dt)) events.push({date:dt, label:`💛 ${pv.nome||'—'}`, type:'gratidao', item:pv, modal:'posvenda'});
+    }
+    if(s.embaixador){
+      const dt = calAddDays(instDate, 90);
+      if(inRange(dt)) events.push({date:dt, label:`🌟 ${pv.nome||'—'}`, type:'embaixador', item:pv, modal:'posvenda'});
+    }
+  });
+
+  // 10. RENOVAÇÃO APP
+  if(s.renovacao){
+    (State.appman||[]).forEach(a=>{
+      if(!inRange(a.data_renovacao)) return;
+      events.push({date:a.data_renovacao, label:`🔄 ${a.nome||'—'}`, type:'renovacao', item:a, modal:'appman'});
+    });
+  }
+
+  // 11. RE-SERVIÇO
+  if(s.reservico){
+    (State.atendimentos||[]).forEach(a=>{
+      if(!inRange(a.data_agendamento)) return;
+      events.push({date:a.data_agendamento, label:`🛠️ ${a.nome||'—'}`, type:'reservico', item:a, modal:'atend'});
+    });
+  }
+
+  events.sort((a,b)=>a.date.localeCompare(b.date));
+  return events;
+}
+
+function calEventHtml(ev, limit=null){
+  const eventsForDay = ev;
+  const shown = limit ? eventsForDay.slice(0,limit) : eventsForDay;
+  const hidden = limit ? eventsForDay.slice(limit) : [];
+  let html = shown.map(e=>`<div class="cal-event ce-${e.type}" data-cal-modal="${e.modal}" data-cal-id="${e.item?.id||''}" title="${esc(e.label)}">${esc(e.label)}</div>`).join('');
+  if(hidden.length) html += `<div class="cal-more">+${hidden.length} mais</div>`;
+  return html;
+}
+
+function renderCalendario(){
+  const content = $('#content');
+  if(!_calState.anchor){
+    const now = new Date();
+    _calState.anchor = new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+  content.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  loadAll().then(()=>{
+    content.innerHTML = buildCalHTML();
+    attachCalEvents();
+  });
+}
+
+function buildCalHTML(){
+  const { view, anchor, filters } = _calState;
+  const today = calIsoDate(new Date());
+
+  // Period label
+  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let periodLabel, from, to, cells;
+
+  if(view === 'month'){
+    periodLabel = `${MESES[anchor.getMonth()]} ${anchor.getFullYear()}`;
+    from = calIsoDate(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
+    to   = calIsoDate(new Date(anchor.getFullYear(), anchor.getMonth()+1, 0));
+    // pad to full weeks
+    const firstCell = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    firstCell.setDate(firstCell.getDate() - firstCell.getDay());
+    const lastCell  = new Date(anchor.getFullYear(), anchor.getMonth()+1, 0);
+    lastCell.setDate(lastCell.getDate() + (6 - lastCell.getDay()));
+    const fromExt = calIsoDate(firstCell);
+    const toExt   = calIsoDate(lastCell);
+    const events  = collectCalEvents(fromExt, toExt);
+    const evByDay = {};
+    events.forEach(e=>{ (evByDay[e.date]||(evByDay[e.date]=[])).push(e); });
+
+    let gridHtml = DIAS.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+    let cur = new Date(firstCell);
+    while(calIsoDate(cur) <= toExt){
+      const iso = calIsoDate(cur);
+      const isToday = iso === today;
+      const isOther = cur.getMonth() !== anchor.getMonth();
+      const dayEvs  = evByDay[iso]||[];
+      gridHtml += `<div class="cal-cell${isToday?' today':''}${isOther?' other-month':''}">
+        <div class="cal-day-num">${cur.getDate()}</div>
+        ${calEventHtml(dayEvs, 3)}
+      </div>`;
+      cur.setDate(cur.getDate()+1);
+    }
+    cells = `<div class="cal-grid-month">${gridHtml}</div>`;
+
+  } else {
+    // WEEK view — anchor is always Mon of current week
+    const mon = new Date(anchor);
+    const sun = new Date(mon); sun.setDate(sun.getDate()+6);
+    from = calIsoDate(mon); to = calIsoDate(sun);
+    const startM = mon.getMonth(); const startY = mon.getFullYear();
+    const endM   = sun.getMonth(); const endY   = sun.getFullYear();
+    if(startM === endM) periodLabel = `${startY === endY ? '' : startY+' · '}${MESES[startM]} ${startY}`;
+    else periodLabel = `${MESES[startM]}${startY!==endY?' '+startY:''} – ${MESES[endM]} ${endY}`;
+
+    const events  = collectCalEvents(from, to);
+    const evByDay = {};
+    events.forEach(e=>{ (evByDay[e.date]||(evByDay[e.date]=[])).push(e); });
+
+    let cols = '';
+    for(let i=0;i<7;i++){
+      const d = new Date(mon); d.setDate(d.getDate()+i);
+      const iso = calIsoDate(d);
+      const isToday = iso === today;
+      const dayEvs  = evByDay[iso]||[];
+      cols += `<div class="cal-week-col${isToday?' today':''}">
+        <div class="cal-week-header">
+          <div class="cal-week-dow">${DIAS[d.getDay()]}</div>
+          <div class="cal-week-date">${d.getDate()}</div>
+        </div>
+        ${calEventHtml(dayEvs)}
+      </div>`;
+    }
+    cells = `<div class="cal-grid-week">${cols}</div>`;
+  }
+
+  const filterChips = CAL_FILTERS.map(f=>`
+    <span class="cal-filter-chip ${f.cls}${filters[f.key]?' on':''}" data-cal-filter="${f.key}">${f.label}</span>
+  `).join('');
+
+  return `
+    <div class="cal-toolbar">
+      <div class="cal-nav">
+        <button id="calPrev">◀</button>
+        <span class="cal-period">${esc(periodLabel)}</span>
+        <button id="calNext">▶</button>
+        <button id="calToday" style="margin-left:4px;font-size:12px">Hoje</button>
+      </div>
+      <div class="cal-view-toggle">
+        <button id="calViewMonth" class="${view==='month'?'active':''}">Mês</button>
+        <button id="calViewWeek"  class="${view==='week' ?'active':''}">Semana</button>
+      </div>
+    </div>
+    <div class="cal-filters">${filterChips}</div>
+    ${cells}
+  `;
+}
+
+function attachCalEvents(){
+  // Nav
+  $('#calPrev')?.addEventListener('click', ()=>{
+    if(_calState.view==='month') _calState.anchor = new Date(_calState.anchor.getFullYear(), _calState.anchor.getMonth()-1, 1);
+    else { _calState.anchor.setDate(_calState.anchor.getDate()-7); }
+    $('#content').innerHTML = buildCalHTML(); attachCalEvents();
+  });
+  $('#calNext')?.addEventListener('click', ()=>{
+    if(_calState.view==='month') _calState.anchor = new Date(_calState.anchor.getFullYear(), _calState.anchor.getMonth()+1, 1);
+    else { _calState.anchor.setDate(_calState.anchor.getDate()+7); }
+    $('#content').innerHTML = buildCalHTML(); attachCalEvents();
+  });
+  $('#calToday')?.addEventListener('click', ()=>{
+    const now = new Date();
+    if(_calState.view==='month') _calState.anchor = new Date(now.getFullYear(), now.getMonth(), 1);
+    else {
+      const mon = new Date(now); mon.setDate(now.getDate()-now.getDay()+1);
+      _calState.anchor = mon;
+    }
+    $('#content').innerHTML = buildCalHTML(); attachCalEvents();
+  });
+
+  // View toggle
+  $('#calViewMonth')?.addEventListener('click', ()=>{
+    if(_calState.view==='month') return;
+    _calState.view='month';
+    const a = _calState.anchor;
+    _calState.anchor = new Date(a.getFullYear(), a.getMonth(), 1);
+    $('#content').innerHTML = buildCalHTML(); attachCalEvents();
+  });
+  $('#calViewWeek')?.addEventListener('click', ()=>{
+    if(_calState.view==='week') return;
+    _calState.view='week';
+    const now = new Date();
+    const mon = new Date(now); mon.setDate(now.getDate()-now.getDay()+1);
+    _calState.anchor = mon;
+    $('#content').innerHTML = buildCalHTML(); attachCalEvents();
+  });
+
+  // Filter chips
+  $$('.cal-filter-chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const k = chip.dataset.calFilter;
+      _calState.filters[k] = !_calState.filters[k];
+      chip.classList.toggle('on', _calState.filters[k]);
+      $('#content').innerHTML = buildCalHTML(); attachCalEvents();
+    });
+  });
+
+  // Event click → open modal
+  $$('.cal-event').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const modal = el.dataset.calModal;
+      const id    = el.dataset.calId;
+      const find  = (arr,i) => (arr||[]).find(x=>String(x.id)===String(i));
+      if(modal==='lead')        { const it=find(State.leads,id);         if(it) openLeadModal(it); }
+      else if(modal==='vistoria')   { const it=find(State.vistorias,id);     if(it) openVistoriaModal(it); }
+      else if(modal==='instalacao') { const it=find(State.instalacoes,id);   if(it) openInstalacaoModal(it); }
+      else if(modal==='logistica')  { const it=find(State.logistica,id);     if(it) openLogisticaModal(it); }
+      else if(modal==='homologacao'){ const it=find(State.homologacoes,id);  if(it) openHomologacaoModal(it); }
+      else if(modal==='posvenda')   { const it=find(State.posvenda,id);      if(it) openPosvendaModal(it); }
+      else if(modal==='appman')     { const it=find(State.appman,id);        if(it) openAppManModal(it); }
+      else if(modal==='atend')      { const it=find(State.atendimentos,id);  if(it) openAtendimentoModal(it); }
+    });
   });
 }
 
