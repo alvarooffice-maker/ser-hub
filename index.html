@@ -3630,6 +3630,7 @@ function openContratoModal(item=null){
         ${!isNew?`<button type="button" class="btn btn-secondary" id="clickSignBtn">📝 ClickSign</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-secondary" id="vizContBtn">👁️ Ver Contrato</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-secondary" id="dlContBtn">🖨️ PDF</button>`:''}
+        ${!isNew?`<button type="button" class="btn btn-secondary" id="projFinBtn">💰 Financeiro</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-danger" id="delContBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
@@ -3704,6 +3705,7 @@ function openContratoModal(item=null){
 
   $('#vizContBtn')?.addEventListener('click', ()=> abrirContratoJanela(item, false));
   $('#dlContBtn')?.addEventListener('click',  ()=> abrirContratoJanela(item, true));
+  $('#projFinBtn')?.addEventListener('click', ()=> openProjetoFinanceiroModal(item.id, item.nome||item.cliente||''));
 
   if(!isNew) attachLinkedDocListeners(linked);
 
@@ -5385,6 +5387,7 @@ function openPosVendaModal(item=null){
         ${histSection()}
       </div>
       <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="pvProjFinBtn">💰 Financeiro</button>
         ${isAdmin()?`<button type="button" class="btn btn-danger" id="delPvBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
@@ -5392,6 +5395,8 @@ function openPosVendaModal(item=null){
     </form>
   `);
   const form = $('#pvForm');
+  const pvContrato = linked.contrato || {};
+  $('#pvProjFinBtn')?.addEventListener('click', ()=> openProjetoFinanceiroModal(pvContrato.id, item.nome||''));
   attachLinkedDocListeners(linked);
   carregarHistorico($('#histList'), 'posvenda', item.id);
   $$('[data-create-link]').forEach(b=>b.addEventListener('click', async ()=>{
@@ -6251,16 +6256,18 @@ async function renderFinanceiro(){
   }
 }
 
-function openReceitaModal(item=null){
+function openReceitaModal(item=null, opts={}){
   const isNew = !item;
   item = item || {};
+  const { contratoId=null, onSave=null } = opts;
   const catOpts = [['venda','Venda'],['financiamento','Financiamento'],['servico','Serviço'],['repasse','Repasse'],['outro','Outro']];
   const statusOpts = [['pendente','Pendente'],['recebido','Recebido'],['cancelado','Cancelado']];
   openModal(`
     <div class="modal-header"><h2>${isNew?'Nova Receita':'Editar Receita'}</h2><button class="modal-close">×</button></div>
     <form id="recForm"><div class="modal-body"><div class="form-grid">
       ${formField({label:'Descrição',name:'descricao',value:item.descricao,required:true,full:true})}
-      ${formField({label:'Valor',name:'valor',type:'number',value:item.valor,required:true})}
+      ${formField({label:'Valor (R$)',name:'valor',type:'number',value:item.valor,required:true})}
+      ${formField({label:'Recebedor / Origem',name:'recebedor',value:item.recebedor,placeholder:'Ex: cliente, distribuidora…',full:true})}
       ${formField({label:'Data',name:'data_recebimento',type:'date',value:item.data_recebimento})}
       ${formField({label:'Categoria',name:'categoria',type:'select',value:item.categoria||'venda',options:catOpts})}
       ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
@@ -6277,22 +6284,34 @@ function openReceitaModal(item=null){
     e.preventDefault();
     const data = readForm(form);
     data.valor = Number(data.valor)||0;
+    if(contratoId) data.contrato_id = contratoId;
     if(isNew){ data.criado_por = State.user?.id; await supa.from('financeiro_receitas').insert(data); }
     else await supa.from('financeiro_receitas').update(data).eq('id',item.id);
-    toast('Salvo','success'); closeModal(); renderFinanceiro();
+    await loadTable('financeiro_receitas');
+    toast('Salvo','success');
+    closeModal();
+    if(onSave) onSave(); else renderFinanceiro();
   });
-  $('#delRec')?.addEventListener('click', async ()=>{ if(!await confirmDel('Excluir?')) return; await supa.from('financeiro_receitas').delete().eq('id',item.id); closeModal(); renderFinanceiro(); });
+  $('#delRec')?.addEventListener('click', async ()=>{
+    if(!await confirmDel('Excluir?')) return;
+    await supa.from('financeiro_receitas').delete().eq('id',item.id);
+    await loadTable('financeiro_receitas');
+    closeModal();
+    if(onSave) onSave(); else renderFinanceiro();
+  });
 }
-function openDespesaModal(item=null){
+function openDespesaModal(item=null, opts={}){
   const isNew = !item;
   item = item || {};
-  const catOpts = [['equipamentos','Equipamentos'],['mao_de_obra','Mão de obra'],['homologacao','Homologação'],['comissao','Comissão'],['outro','Outro']];
+  const { contratoId=null, onSave=null } = opts;
+  const catOpts = [['equipamentos','Equipamentos'],['mao_de_obra','Mão de obra'],['homologacao','Homologação'],['comissao','Comissão'],['vistoria','Vistoria'],['outro','Outro']];
   const statusOpts = [['pendente','Pendente'],['pago','Pago'],['cancelado','Cancelado']];
   openModal(`
     <div class="modal-header"><h2>${isNew?'Nova Despesa':'Editar Despesa'}</h2><button class="modal-close">×</button></div>
     <form id="despForm"><div class="modal-body"><div class="form-grid">
       ${formField({label:'Descrição',name:'descricao',value:item.descricao,required:true,full:true})}
-      ${formField({label:'Valor',name:'valor',type:'number',value:item.valor,required:true})}
+      ${formField({label:'Valor (R$)',name:'valor',type:'number',value:item.valor,required:true})}
+      ${formField({label:'Recebedor / Fornecedor',name:'recebedor',value:item.recebedor,placeholder:'Ex: nome do técnico, empresa…',full:true})}
       ${formField({label:'Data',name:'data_pagamento',type:'date',value:item.data_pagamento})}
       ${formField({label:'Categoria',name:'categoria',type:'select',value:item.categoria||'outro',options:catOpts})}
       ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
@@ -6309,11 +6328,119 @@ function openDespesaModal(item=null){
     e.preventDefault();
     const data = readForm(form);
     data.valor = Number(data.valor)||0;
+    if(contratoId) data.contrato_id = contratoId;
     if(isNew){ data.criado_por = State.user?.id; await supa.from('financeiro_despesas').insert(data); }
     else await supa.from('financeiro_despesas').update(data).eq('id',item.id);
-    toast('Salvo','success'); closeModal(); renderFinanceiro();
+    await loadTable('financeiro_despesas');
+    toast('Salvo','success');
+    closeModal();
+    if(onSave) onSave(); else renderFinanceiro();
   });
-  $('#delDesp')?.addEventListener('click', async ()=>{ if(!await confirmDel('Excluir?')) return; await supa.from('financeiro_despesas').delete().eq('id',item.id); closeModal(); renderFinanceiro(); });
+  $('#delDesp')?.addEventListener('click', async ()=>{
+    if(!await confirmDel('Excluir?')) return;
+    await supa.from('financeiro_despesas').delete().eq('id',item.id);
+    await loadTable('financeiro_despesas');
+    closeModal();
+    if(onSave) onSave(); else renderFinanceiro();
+  });
+}
+
+/* ============================================================
+   PROJETO FINANCEIRO
+   ============================================================ */
+async function openProjetoFinanceiroModal(contratoId, nomeCliente){
+  if(!contratoId){ toast('Contrato não encontrado para este projeto','error'); return; }
+  await Promise.all([loadTable('financeiro_receitas'), loadTable('financeiro_despesas')]);
+
+  function render(){
+    const rec  = (State.receitas||[]).filter(r=>String(r.contrato_id)===String(contratoId));
+    const desp = (State.despesas||[]).filter(d=>String(d.contrato_id)===String(contratoId));
+    const totalRec  = rec.reduce((s,r)=>s+(Number(r.valor)||0),0);
+    const totalDesp = desp.reduce((s,d)=>s+(Number(d.valor)||0),0);
+    const margem    = totalRec - totalDesp;
+    const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const statusBadge = s => {
+      const m = {pendente:'badge-pendente',recebido:'badge-ativo',pago:'badge-ativo',cancelado:'badge-cancelado'};
+      const l = {pendente:'Pendente',recebido:'Recebido',pago:'Pago',cancelado:'Cancelado'};
+      return `<span class="badge ${m[s]||''}">${l[s]||s}</span>`;
+    };
+    const rowRec = r=>`<tr data-proj-rec="${r.id}">
+      <td>${esc(r.descricao||'')}</td>
+      <td>${esc(r.categoria||'')}</td>
+      <td style="text-align:right;font-weight:600;color:#16a34a">${fR(r.valor)}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td><button class="btn btn-sm btn-secondary" data-edit-rec="${r.id}">✏️</button></td>
+    </tr>`;
+    const rowDesp = d=>`<tr data-proj-desp="${d.id}">
+      <td>${esc(d.descricao||'')}</td>
+      <td>${esc(d.categoria||'')}</td>
+      <td style="text-align:right;font-weight:600;color:#dc2626">${fR(d.valor)}</td>
+      <td>${statusBadge(d.status)}</td>
+      <td><button class="btn btn-sm btn-secondary" data-edit-desp="${d.id}">✏️</button></td>
+    </tr>`;
+    const margemColor = margem>=0?'#16a34a':'#dc2626';
+
+    openModal(`
+      <div class="modal-header">
+        <h2>💰 Financeiro — ${esc(nomeCliente)}</h2>
+        <button class="modal-close">×</button>
+      </div>
+      <div class="modal-body" style="padding:16px 22px">
+        <!-- Resumo -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:11px;color:#166534;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Receita Total</div>
+            <div style="font-size:20px;font-weight:700;color:#16a34a;margin-top:4px">${fR(totalRec)}</div>
+          </div>
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:11px;color:#991b1b;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Despesa Total</div>
+            <div style="font-size:20px;font-weight:700;color:#dc2626;margin-top:4px">${fR(totalDesp)}</div>
+          </div>
+          <div style="background:${margem>=0?'#f0fdf4':'#fef2f2'};border:1px solid ${margem>=0?'#bbf7d0':'#fecaca'};border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:11px;color:${margemColor};font-weight:600;text-transform:uppercase;letter-spacing:.5px">Margem</div>
+            <div style="font-size:20px;font-weight:700;color:${margemColor};margin-top:4px">${fR(margem)}</div>
+          </div>
+        </div>
+
+        <!-- Receitas -->
+        <div style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <h4 style="margin:0;color:#166534">📈 Receitas</h4>
+            <button class="btn btn-sm btn-primary" id="projAddRec">+ Receita</button>
+          </div>
+          ${rec.length ? `<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>${rec.map(rowRec).join('')}</tbody></table></div>` : `<p style="color:var(--text-light);font-size:13px;margin:0">Nenhuma receita lançada.</p>`}
+        </div>
+
+        <!-- Despesas -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <h4 style="margin:0;color:#991b1b">📉 Despesas</h4>
+            <button class="btn btn-sm btn-primary" id="projAddDesp">+ Despesa</button>
+          </div>
+          ${desp.length ? `<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>${desp.map(rowDesp).join('')}</tbody></table></div>` : `<p style="color:var(--text-light);font-size:13px;margin:0">Nenhuma despesa lançada.</p>`}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary modal-close">Fechar</button>
+      </div>
+    `,'lg');
+
+    $('#projAddRec')?.addEventListener('click', ()=>{
+      openReceitaModal(null, { contratoId, onSave: ()=> openProjetoFinanceiroModal(contratoId, nomeCliente) });
+    });
+    $('#projAddDesp')?.addEventListener('click', ()=>{
+      openDespesaModal(null, { contratoId, onSave: ()=> openProjetoFinanceiroModal(contratoId, nomeCliente) });
+    });
+    $$('[data-edit-rec]').forEach(b=>{
+      const item = (State.receitas||[]).find(r=>String(r.id)===b.dataset.editRec);
+      b.addEventListener('click', ()=> openReceitaModal(item, { contratoId, onSave: ()=> openProjetoFinanceiroModal(contratoId, nomeCliente) }));
+    });
+    $$('[data-edit-desp]').forEach(b=>{
+      const item = (State.despesas||[]).find(d=>String(d.id)===b.dataset.editDesp);
+      b.addEventListener('click', ()=> openDespesaModal(item, { contratoId, onSave: ()=> openProjetoFinanceiroModal(contratoId, nomeCliente) }));
+    });
+  }
+  render();
 }
 
 /* ============================================================
