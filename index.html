@@ -4786,6 +4786,9 @@ function openLogisticaModal(item=null){
     const acao = mud.some(m=>m.startsWith('Status')) ? 'status' : 'atualizado';
     await registrarHistorico('logistica', item.id, acao, mud.length ? mud.join(' | ') : 'Dados atualizados');
 
+    // Sincroniza repasse com Financeiro > Receitas
+    await sincronizarReceitaRepasse(item.id, data);
+
     // Auto-avanço para Instalação quando marcado como comprado
     if(data.status === 'comprado'){
       const { data: instExist } = await supa.from('instalacoes').select('id').eq('logistica_id', item.id).maybeSingle();
@@ -6090,6 +6093,29 @@ function openComissaoModal(item=null){
   });
 }
 
+async function sincronizarReceitaRepasse(logisticaId, log){
+  if(!log.valor_repasse || Number(log.valor_repasse) <= 0){
+    // Se não há repasse, remove eventual receita anterior vinculada
+    await supa.from('financeiro_receitas').delete().eq('logistica_id', logisticaId);
+    return;
+  }
+  const receita = {
+    descricao: `Repasse – ${log.distribuidora||log.nome||''}`,
+    valor: Number(log.valor_repasse),
+    categoria: 'repasse',
+    status: 'pendente',
+    logistica_id: logisticaId
+  };
+  const { data: existente } = await supa.from('financeiro_receitas')
+    .select('id').eq('logistica_id', logisticaId).maybeSingle();
+  if(existente){
+    await supa.from('financeiro_receitas').update(receita).eq('id', existente.id);
+  } else {
+    receita.criado_por = State.user?.id;
+    await supa.from('financeiro_receitas').insert(receita);
+  }
+}
+
 async function sincronizarDespesaComissao(comissaoId, com){
   const statusMap = { pendente:'pendente', aprovada:'pendente', paga:'pago', cancelada:'cancelado' };
   const despesa = {
@@ -6228,7 +6254,7 @@ async function renderFinanceiro(){
 function openReceitaModal(item=null){
   const isNew = !item;
   item = item || {};
-  const catOpts = [['venda','Venda'],['financiamento','Financiamento'],['servico','Serviço'],['outro','Outro']];
+  const catOpts = [['venda','Venda'],['financiamento','Financiamento'],['servico','Serviço'],['repasse','Repasse'],['outro','Outro']];
   const statusOpts = [['pendente','Pendente'],['recebido','Recebido'],['cancelado','Cancelado']];
   openModal(`
     <div class="modal-header"><h2>${isNew?'Nova Receita':'Editar Receita'}</h2><button class="modal-close">×</button></div>
