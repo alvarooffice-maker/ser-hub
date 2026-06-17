@@ -134,7 +134,8 @@ tbody tr:hover{background:#fafaf6}
 .form-group label{font-size:12px;font-weight:500;color:var(--text-light);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px}
 .form-group input,.form-group select,.form-group textarea{padding:9px 11px;border:1px solid var(--border);border-radius:7px;background:#fff;outline:none;transition:border .15s;font-size:13.5px;width:100%}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--primary)}
-.form-group input[readonly]{background:#f5f4f0;color:var(--text-light)}
+.form-group input[readonly]{background:#f5f4f0;color:var(--text)}
+.form-group input[readonly]:not([data-numtype]){color:var(--text-light)}
 .form-group textarea{resize:vertical;min-height:60px}
 .toggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:6px 0}
 .toggle input{width:40px;height:22px;appearance:none;background:#ccc;border-radius:11px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
@@ -5960,7 +5961,7 @@ function openComissaoModal(item=null){
         <div class="form-grid">
           ${formField({label:'Cliente',name:'nome',value:item.nome,required:true,datalist:clientesDL})}
           ${formField({label:'Valor Referência',name:'valor_contrato',type:'number',value:item.valor_contrato,required:true})}
-          ${formField({label:'Valor Vendido',name:'valor_vendido',type:'number',value:item.valor_vendido})}
+          ${formField({label:'Valor Vendido (R$)',name:'valor_vendido',type:'number',value:item.valor_vendido,readonly:true})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
         </div>
         <div class="section"><div class="section-header"><h4>Vendedor</h4><span class="section-toggle">▼</span></div>
