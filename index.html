@@ -357,6 +357,30 @@ tbody tr:hover{background:#fafaf6}
 .preview-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--border);font-size:13px}
 .preview-row:last-child{border-bottom:none;font-weight:700;color:var(--primary);font-size:15px;padding-top:10px}
 
+/* CLIENTES */
+.cli-search-wrap{position:relative;margin-bottom:16px}
+.cli-search-wrap input{width:100%;padding:10px 14px 10px 38px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);box-sizing:border-box}
+.cli-search-wrap::before{content:'🔍';position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none}
+.cli-count{font-size:12px;color:var(--text-light);margin-bottom:10px}
+.cli-list{display:flex;flex-direction:column;gap:8px}
+.cli-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:box-shadow .15s,border-color .15s}
+.cli-card:hover{box-shadow:var(--shadow);border-color:var(--primary-light)}
+.cli-avatar{width:42px;height:42px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;flex-shrink:0}
+.cli-info{flex:1;min-width:0}
+.cli-name{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cli-sub{font-size:12px;color:var(--text-light);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
+.cli-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.cli-stage{font-size:11px;font-weight:700;padding:3px 9px;border-radius:12px;background:var(--primary);color:#fff;white-space:nowrap}
+.cli-stage.cs-lead{background:#9333ea}
+.cli-stage.cs-proposta{background:#2980b9}
+.cli-stage.cs-vistoria{background:#8e44ad}
+.cli-stage.cs-contrato{background:#27ae60}
+.cli-stage.cs-logistica{background:#e67e22}
+.cli-stage.cs-instalacao{background:#1565c0}
+.cli-stage.cs-homologacao{background:#c0392b}
+.cli-stage.cs-posvenda{background:#f39c12}
+.cli-empty{text-align:center;padding:48px 20px;color:var(--text-light);font-size:14px}
+
 /* CALENDÁRIO */
 .cal-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
 .cal-nav{display:flex;align-items:center;gap:6px}
@@ -607,6 +631,7 @@ function renderUser(){
 const ROUTES = [
   { id:'dashboard', label:'Dashboard', icon:'📊' },
   { id:'calendario', label:'Calendário', icon:'📅' },
+  { id:'clientes', label:'Clientes', icon:'👤' },
   { id:'pipeline', label:'Pipeline', icon:'🏠' },
   { id:'vistoriador', label:'Minhas Vistorias', icon:'🔍' },
   { id:'instalador', label:'Minhas Instalações', icon:'🔧' },
@@ -624,11 +649,11 @@ function visibleRoutes(){
   const role = userRole();
   return ROUTES.filter(r=>{
     if(r.adminOnly && !['admin','supervisor'].includes(role)) return false;
-    if(role==='financeiro') return ['dashboard','calendario','comissoes','financeiro'].includes(r.id);
-    if(role==='vendedor') return ['dashboard','calendario','pipeline','remarketing','baterias','disparador'].includes(r.id);
-    if(role==='tec_vistoria') return ['dashboard','calendario','vistoriador'].includes(r.id);
-    if(role==='tec_instalacao') return ['dashboard','calendario','instalador'].includes(r.id);
-    if(role==='tec_homologacao') return ['dashboard','calendario','homologador'].includes(r.id);
+    if(role==='financeiro') return ['dashboard','calendario','clientes','comissoes','financeiro'].includes(r.id);
+    if(role==='vendedor') return ['dashboard','calendario','clientes','pipeline','remarketing','baterias','disparador'].includes(r.id);
+    if(role==='tec_vistoria') return ['dashboard','calendario','clientes','vistoriador'].includes(r.id);
+    if(role==='tec_instalacao') return ['dashboard','calendario','clientes','instalador'].includes(r.id);
+    if(role==='tec_homologacao') return ['dashboard','calendario','clientes','homologador'].includes(r.id);
     if(['vistoriador','instalador','homologador'].includes(r.id)) return false; // oculto para outros perfis
     return true;
   });
@@ -661,6 +686,7 @@ function navigate(route){
   switch(route){
     case 'dashboard': renderDashboard(); break;
     case 'calendario': renderCalendario(); break;
+    case 'clientes': renderClientes(); break;
     case 'pipeline': renderPipeline(); break;
     case 'vistoriador': renderVistoriadorKanban(); break;
     case 'instalador': renderInstaladorKanban(); break;
@@ -7197,6 +7223,127 @@ function renderDisparador(){
       return;
     }
   });
+}
+
+/* ============================================================
+   CLIENTES
+   ============================================================ */
+async function renderClientes(){
+  await loadAll();
+
+  const uid   = State.user?.id;
+  const uNome = (State.profile?.nome||'').toLowerCase().trim();
+  const role  = userRole();
+  const isPriv = ['admin','supervisor'].includes(role);
+
+  // Pipeline do mais avançado ao menos avançado
+  const PIPELINE = [
+    { key:'posvenda',     label:'Pós Venda',    icon:'⭐', cls:'cs-posvenda',    arr:()=>State.posvenda,     modal:'posvenda'    },
+    { key:'homologacao',  label:'Homologação',  icon:'📋', cls:'cs-homologacao', arr:()=>State.homologacoes, modal:'homologacao'  },
+    { key:'instalacao',   label:'Instalação',   icon:'🔧', cls:'cs-instalacao',  arr:()=>State.instalacoes,  modal:'instalacao'   },
+    { key:'logistica',    label:'Logística',    icon:'📦', cls:'cs-logistica',   arr:()=>State.logistica,    modal:'logistica'    },
+    { key:'contrato',     label:'Contrato',     icon:'✍️', cls:'cs-contrato',    arr:()=>State.contratos,    modal:'contrato'     },
+    { key:'vistoria',     label:'Vistoria',     icon:'🔍', cls:'cs-vistoria',    arr:()=>State.vistorias,    modal:'vistoria'     },
+    { key:'proposta',     label:'Proposta',     icon:'📄', cls:'cs-proposta',    arr:()=>State.propostas,    modal:'proposta'     },
+    { key:'lead',         label:'Lead',         icon:'🎯', cls:'cs-lead',        arr:()=>State.leads,        modal:'lead'         },
+  ];
+
+  // Coleta clientes únicos pela etapa mais avançada
+  const seen = new Map(); // normalizedName → client entry
+
+  function userCanSee(it){
+    if(isPriv) return true;
+    if(it.criado_por && it.criado_por === uid) return true;
+    const vend = (it.vendedor||'').toLowerCase().trim();
+    const tec  = (it.tecnico||'').toLowerCase().trim();
+    const resp = (it.responsavel||'').toLowerCase().trim();
+    return vend === uNome || tec === uNome || resp === uNome;
+  }
+
+  PIPELINE.forEach(stage=>{
+    (stage.arr()||[]).forEach(it=>{
+      if(!it.nome) return;
+      if(!userCanSee(it)) return;
+      const key = it.nome.toLowerCase().trim();
+      if(!seen.has(key)){
+        seen.set(key, { ...it, _stage: stage });
+      }
+    });
+  });
+
+  const clients = [...seen.values()].sort((a,b)=>(a.nome||'').localeCompare(b.nome||'', 'pt'));
+
+  function initials(nome){ return nome.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+
+  function renderList(list){
+    if(!list.length) return `<div class="cli-empty">Nenhum cliente encontrado.</div>`;
+    return list.map(c=>{
+      const st = c._stage;
+      const tel = c.telefone || '—';
+      const cidade = c.cidade || '';
+      const vend   = c.vendedor || c.responsavel || '';
+      const status = c.status || c.etapa || c.resultado || '';
+      return `
+        <div class="cli-card" data-cli-modal="${st.modal}" data-cli-id="${c.id}">
+          <div class="cli-avatar">${esc(initials(c.nome))}</div>
+          <div class="cli-info">
+            <div class="cli-name">${esc(c.nome)}</div>
+            <div class="cli-sub">
+              ${tel !== '—' ? `<span>📞 ${esc(tel)}</span>` : ''}
+              ${cidade ? `<span>📍 ${esc(cidade)}</span>` : ''}
+              ${vend   ? `<span>👤 ${esc(vend)}</span>`   : ''}
+            </div>
+          </div>
+          <div class="cli-right">
+            <span class="cli-stage ${st.cls}">${st.icon} ${st.label}</span>
+            ${status ? `<span class="badge badge-${esc(status)}">${esc(status.replace(/_/g,' '))}</span>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  $('#content').innerHTML = `
+    <div class="cli-search-wrap">
+      <input type="text" id="cliSearch" placeholder="Buscar por nome, telefone ou cidade..." autocomplete="off">
+    </div>
+    <div class="cli-count" id="cliCount">${clients.length} cliente${clients.length!==1?'s':''}</div>
+    <div class="cli-list" id="cliList">${renderList(clients)}</div>
+  `;
+
+  // Search
+  $('#cliSearch').addEventListener('input', e=>{
+    const term = e.target.value.toLowerCase().trim();
+    const filtered = term
+      ? clients.filter(c =>
+          (c.nome||'').toLowerCase().includes(term) ||
+          (c.telefone||'').includes(term) ||
+          (c.cidade||'').toLowerCase().includes(term) ||
+          (c.vendedor||'').toLowerCase().includes(term)
+        )
+      : clients;
+    $('#cliList').innerHTML  = renderList(filtered);
+    $('#cliCount').textContent = `${filtered.length} cliente${filtered.length!==1?'s':''}${term?' encontrado'+( filtered.length!==1?'s':''):''}`;
+    attachCliClick();
+  });
+
+  function attachCliClick(){
+    $$('.cli-card').forEach(card=>{
+      card.addEventListener('click', ()=>{
+        const modal = card.dataset.cliModal;
+        const id    = card.dataset.cliId;
+        const find  = arr => (arr||[]).find(x=>String(x.id)===String(id));
+        if(modal==='lead')        openLeadModal(find(State.leads));
+        else if(modal==='proposta')    openPropostaModal(find(State.propostas));
+        else if(modal==='vistoria')    openVistoriaModal(find(State.vistorias));
+        else if(modal==='contrato')    openContratoModal(find(State.contratos));
+        else if(modal==='logistica')   openLogisticaModal(find(State.logistica));
+        else if(modal==='instalacao')  openInstalacaoModal(find(State.instalacoes));
+        else if(modal==='homologacao') openHomologacaoModal(find(State.homologacoes));
+        else if(modal==='posvenda')    openPosvendaModal(find(State.posvenda));
+      });
+    });
+  }
+  attachCliClick();
 }
 
 /* ============================================================
