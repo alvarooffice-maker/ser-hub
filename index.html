@@ -5975,19 +5975,42 @@ function openComissaoModal(item=null){
     ['valor_contrato','valor_vendido','vend_pct','vend_major_pct','sup_pct','sdr_pct','cap_pct','ind_pct','obra_val','pres_val'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     if(isNew){
       data.criado_por = State.user?.id;
-      const { error } = await supa.from('comissoes').insert(data);
+      const { data: criada, error } = await supa.from('comissoes').insert(data).select('id').single();
       if(error) return toast(error.message,'error');
+      await sincronizarDespesaComissao(criada.id, data);
     } else {
       const { error } = await supa.from('comissoes').update(data).eq('id',item.id);
       if(error) return toast(error.message,'error');
+      await sincronizarDespesaComissao(item.id, data);
     }
     toast('Salvo','success'); closeModal(); renderComissoes();
   });
   $('#delComBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir comissão?')) return;
+    await supa.from('financeiro_despesas').delete().eq('comissao_id', item.id);
     await supa.from('comissoes').delete().eq('id',item.id);
     toast('Excluído','success'); closeModal(); renderComissoes();
   });
+}
+
+async function sincronizarDespesaComissao(comissaoId, com){
+  const statusMap = { pendente:'pendente', aprovada:'pendente', paga:'pago', cancelada:'cancelado' };
+  const despesa = {
+    descricao: `Comissão – ${com.nome||''}`,
+    valor: Number(com.total_saidas)||0,
+    categoria: 'comissao',
+    status: statusMap[com.status] || 'pendente',
+    comissao_id: comissaoId,
+    obs: com.vend_nome ? `Vendedor: ${com.vend_nome}` : null
+  };
+  const { data: existente } = await supa.from('financeiro_despesas')
+    .select('id').eq('comissao_id', comissaoId).maybeSingle();
+  if(existente){
+    await supa.from('financeiro_despesas').update(despesa).eq('id', existente.id);
+  } else {
+    despesa.criado_por = State.user?.id;
+    await supa.from('financeiro_despesas').insert(despesa);
+  }
 }
 
 /* ============================================================
