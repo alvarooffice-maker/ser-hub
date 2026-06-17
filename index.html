@@ -641,7 +641,7 @@ const ROUTES = [
   { id:'remarketing', label:'Remarketing', icon:'🔁' },
   { id:'baterias', label:'Calculadora de Baterias', icon:'🔋' },
   { id:'disparador', label:'Disparador de Mensagens', icon:'💬' },
-  { id:'comissoes', label:'Comissões', icon:'💰', section:'GESTÃO' },
+  { id:'custo_projeto', label:'Custo por Projeto', icon:'💰', section:'GESTÃO' },
   { id:'financeiro', label:'Financeiro', icon:'📈', section:'GESTÃO' },
   { id:'cadastros', label:'Cadastros', icon:'👥', section:'GESTÃO' },
   { id:'usuarios', label:'Usuários', icon:'🔐', section:'GESTÃO', adminOnly:true }
@@ -651,7 +651,7 @@ function visibleRoutes(){
   const role = userRole();
   return ROUTES.filter(r=>{
     if(r.adminOnly && !['admin','supervisor'].includes(role)) return false;
-    if(role==='financeiro') return ['dashboard','calendario','clientes','comissoes','financeiro'].includes(r.id);
+    if(role==='financeiro') return ['dashboard','calendario','clientes','custo_projeto','financeiro'].includes(r.id);
     if(role==='vendedor') return ['dashboard','calendario','clientes','pipeline','remarketing','baterias','disparador'].includes(r.id);
     if(role==='tec_vistoria') return ['dashboard','calendario','clientes','vistoriador'].includes(r.id);
     if(role==='tec_instalacao') return ['dashboard','calendario','clientes','instalador'].includes(r.id);
@@ -696,7 +696,7 @@ function navigate(route){
     case 'remarketing': renderRemarketing(); break;
     case 'baterias': renderBaterias(); break;
     case 'disparador': renderDisparador(); break;
-    case 'comissoes': renderComissoes(); break;
+    case 'custo_projeto': renderCustoPorProjeto(); break;
     case 'financeiro': renderFinanceiro(); break;
     case 'cadastros': renderCadastros(); break;
     case 'usuarios': renderUsuarios(); break;
@@ -5923,35 +5923,54 @@ table.kit tr.total td{font-weight:700;color:#4B0082;border-top:2px solid #6B21A8
 /* ============================================================
    COMISSOES
    ============================================================ */
-async function renderComissoes(){
-  await Promise.all([loadTable('comissoes'), loadTable('contratos')]);
-  let items = State.comissoes;
-  if(isVend()) items = items.filter(c => (c.vend_nome||'').toLowerCase() === (State.profile.nome||'').toLowerCase());
-  $('#pageActions').innerHTML = `<button class="btn btn-primary" id="newCom">+ Nova Comissão</button>`;
-  $('#newCom').addEventListener('click', ()=> openComissaoModal());
+async function renderCustoPorProjeto(){
+  await Promise.all([loadTable('comissoes'), loadTable('contratos'), loadTable('financeiro_despesas'), loadTable('financeiro_receitas')]);
+  const contratos = (State.contratos||[]).filter(c=>c.status==='assinado');
+  const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  $('#pageActions').innerHTML = '';
   $('#content').innerHTML = `
     <div class="card"><div class="table-wrap"><table>
-      <thead><tr><th>Cliente</th><th>Valor Referência</th><th>Vendedor</th><th>Comissão Vend.</th><th>Lucro Líquido</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Cliente</th><th>Valor Contrato</th><th>Total Custos</th><th>Receita</th><th>Margem</th><th></th></tr></thead>
       <tbody>
-        ${items.length?items.map(c=>`
-          <tr>
-            <td>${esc(c.nome||'')}</td>
-            <td>${fmtBRL(c.valor_contrato)}</td>
-            <td>${esc(c.vend_nome||'')}</td>
-            <td>${fmtBRL(c.vend_val)}</td>
-            <td>${fmtBRL(c.lucro_liquido)}</td>
-            <td>${badge(c.status)}</td>
-            <td class="row-actions"><button class="btn btn-sm btn-secondary" data-com="${c.id}">Editar</button></td>
-          </tr>`).join(''):`<tr><td colspan="7" class="empty">Nenhuma comissão.</td></tr>`}
+        ${contratos.length ? contratos.map(c=>{
+          const desp = (State.despesas||[]).filter(d=>String(d.contrato_id)===String(c.id));
+          const rec  = (State.receitas||[]).filter(r=>String(r.contrato_id)===String(c.id));
+          const com  = (State.comissoes||[]).find(x=>(x.nome||'').toLowerCase().trim()===(c.nome||'').toLowerCase().trim());
+          const totalDesp = desp.reduce((s,d)=>s+(Number(d.valor)||0),0) + (com ? Number(com.total_saidas)||0 : 0);
+          const totalRec  = rec.reduce((s,r)=>s+(Number(r.valor)||0),0) || Number(c.valor)||0;
+          const margem    = totalRec - totalDesp;
+          const mColor    = margem>=0?'#16a34a':'#dc2626';
+          return `<tr style="cursor:pointer" data-proj-id="${c.id}" data-proj-nome="${esc(c.nome||'')}">
+            <td><strong>${esc(c.nome||'')}</strong></td>
+            <td>${fR(c.valor)}</td>
+            <td style="color:#dc2626">${fR(totalDesp)}</td>
+            <td style="color:#16a34a">${fR(totalRec)}</td>
+            <td style="color:${mColor};font-weight:700">${fR(margem)}</td>
+            <td><button class="btn btn-sm btn-primary" data-abrir="${c.id}">Abrir</button></td>
+          </tr>`;
+        }).join('') : `<tr><td colspan="6" class="empty">Nenhum contrato assinado.</td></tr>`}
       </tbody>
     </table></div></div>
   `;
-  $$('[data-com]').forEach(b=>b.addEventListener('click', ()=> openComissaoModal(items.find(x=>String(x.id)===b.dataset.com))));
+  $$('[data-abrir]').forEach(b=>{
+    const c = contratos.find(x=>String(x.id)===b.dataset.abrir);
+    b.addEventListener('click', e=>{ e.stopPropagation(); openProjetoFinanceiroModal(c.id, c.nome||''); });
+  });
+  $$('[data-proj-id]').forEach(tr=>{
+    tr.addEventListener('click', ()=>{
+      const c = contratos.find(x=>String(x.id)===tr.dataset.projId);
+      if(c) openProjetoFinanceiroModal(c.id, c.nome||'');
+    });
+  });
 }
 
-function openComissaoModal(item=null){
+async function renderComissoes(){ renderCustoPorProjeto(); }
+
+function openComissaoModal(item=null, nomePreenchido=null){
   const isNew = !item;
   item = item || {};
+  if(nomePreenchido && isNew) item = { ...item, nome: nomePreenchido };
   const statusOpts = [['pendente','Pendente'],['aprovada','Aprovada'],['paga','Paga'],['cancelada','Cancelada']];
 
   // Listas por perfil vindas de State.perfis
@@ -6304,17 +6323,22 @@ function openReceitaModal(item=null, opts={}){
 function openDespesaModal(item=null, opts={}){
   const isNew = !item;
   item = item || {};
-  const { contratoId=null, onSave=null } = opts;
-  const catOpts = [['equipamentos','Equipamentos'],['mao_de_obra','Mão de obra'],['homologacao','Homologação'],['comissao','Comissão'],['vistoria','Vistoria'],['outro','Outro']];
+  const { contratoId=null, onSave=null, categoriaFixa=null } = opts;
+  const catLabels = {kit:'Kit / Equipamentos',equipamentos:'Equipamentos',mao_de_obra:'Mão de obra',homologacao:'Homologação',comissao:'Comissão',vistoria:'Vistoria',instalacao:'Instalação',maquininha:'Maquininha (taxas)',extras:'Extras',outro:'Outro'};
+  const catOpts = [['kit','Kit / Equipamentos'],['equipamentos','Equipamentos'],['mao_de_obra','Mão de obra'],['vistoria','Vistoria'],['instalacao','Instalação'],['homologacao','Homologação'],['comissao','Comissão'],['maquininha','Maquininha (taxas)'],['extras','Extras'],['outro','Outro']];
+  const catAtual = categoriaFixa || item.categoria || 'outro';
   const statusOpts = [['pendente','Pendente'],['pago','Pago'],['cancelado','Cancelado']];
+  const tituloModal = categoriaFixa ? `${isNew?'Lançar':'Editar'} — ${catLabels[categoriaFixa]||categoriaFixa}` : (isNew?'Nova Despesa':'Editar Despesa');
   openModal(`
-    <div class="modal-header"><h2>${isNew?'Nova Despesa':'Editar Despesa'}</h2><button class="modal-close">×</button></div>
+    <div class="modal-header"><h2>${tituloModal}</h2><button class="modal-close">×</button></div>
     <form id="despForm"><div class="modal-body"><div class="form-grid">
       ${formField({label:'Descrição',name:'descricao',value:item.descricao,required:true,full:true})}
       ${formField({label:'Valor (R$)',name:'valor',type:'number',value:item.valor,required:true})}
       ${formField({label:'Recebedor / Fornecedor',name:'recebedor',value:item.recebedor,placeholder:'Ex: nome do técnico, empresa…',full:true})}
       ${formField({label:'Data',name:'data_pagamento',type:'date',value:item.data_pagamento})}
-      ${formField({label:'Categoria',name:'categoria',type:'select',value:item.categoria||'outro',options:catOpts})}
+      ${categoriaFixa
+        ? `<input type="hidden" name="categoria" value="${esc(categoriaFixa)}">`
+        : formField({label:'Categoria',name:'categoria',type:'select',value:catAtual,options:catOpts})}
       ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
       ${formField({label:'Obs',name:'obs',type:'textarea',value:item.obs,full:true})}
     </div></div>
@@ -6352,97 +6376,121 @@ function openDespesaModal(item=null, opts={}){
 async function openProjetoFinanceiroModal(contratoId, nomeCliente){
   if(!canVerFinanceiro()){ toast('Acesso restrito','error'); return; }
   if(!contratoId){ toast('Contrato não encontrado para este projeto','error'); return; }
-  await Promise.all([loadTable('financeiro_receitas'), loadTable('financeiro_despesas')]);
+  await Promise.all([loadTable('financeiro_receitas'), loadTable('financeiro_despesas'), loadTable('comissoes'), loadTable('contratos')]);
 
-  function render(){
-    const rec  = (State.receitas||[]).filter(r=>String(r.contrato_id)===String(contratoId));
-    const desp = (State.despesas||[]).filter(d=>String(d.contrato_id)===String(contratoId));
-    const totalRec  = rec.reduce((s,r)=>s+(Number(r.valor)||0),0);
-    const totalDesp = desp.reduce((s,d)=>s+(Number(d.valor)||0),0);
-    const margem    = totalRec - totalDesp;
-    const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-    const statusBadge = s => {
-      const m = {pendente:'badge-pendente',recebido:'badge-ativo',pago:'badge-ativo',cancelado:'badge-cancelado'};
-      const l = {pendente:'Pendente',recebido:'Recebido',pago:'Pago',cancelado:'Cancelado'};
-      return `<span class="badge ${m[s]||''}">${l[s]||s}</span>`;
-    };
-    const rowRec = r=>`<tr data-proj-rec="${r.id}">
-      <td>${esc(r.descricao||'')}</td>
-      <td>${esc(r.categoria||'')}</td>
-      <td style="text-align:right;font-weight:600;color:#16a34a">${fR(r.valor)}</td>
-      <td>${statusBadge(r.status)}</td>
-      <td><button class="btn btn-sm btn-secondary" data-edit-rec="${r.id}">✏️</button></td>
-    </tr>`;
-    const rowDesp = d=>`<tr data-proj-desp="${d.id}">
-      <td>${esc(d.descricao||'')}</td>
-      <td>${esc(d.categoria||'')}</td>
-      <td style="text-align:right;font-weight:600;color:#dc2626">${fR(d.valor)}</td>
-      <td>${statusBadge(d.status)}</td>
-      <td><button class="btn btn-sm btn-secondary" data-edit-desp="${d.id}">✏️</button></td>
-    </tr>`;
-    const margemColor = margem>=0?'#16a34a':'#dc2626';
+  const voltar = ()=> openProjetoFinanceiroModal(contratoId, nomeCliente);
+  const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const stBadge = s=>{ const m={pendente:'badge-pendente',recebido:'badge-ativo',pago:'badge-ativo',cancelado:'badge-cancelado'}; const l={pendente:'Pendente',recebido:'Recebido',pago:'Pago',cancelado:'Cancelado'}; return `<span class="badge ${m[s]||''}">${l[s]||s}</span>`; };
 
-    openModal(`
-      <div class="modal-header">
-        <h2>💰 Financeiro — ${esc(nomeCliente)}</h2>
-        <button class="modal-close">×</button>
+  const contrato = (State.contratos||[]).find(c=>String(c.id)===String(contratoId));
+  const valorContrato = Number(contrato?.valor)||0;
+
+  // Receitas do projeto (contrato_id) + valor do contrato como base
+  const rec   = (State.receitas||[]).filter(r=>String(r.contrato_id)===String(contratoId));
+  const totalRec = rec.length ? rec.reduce((s,r)=>s+(Number(r.valor)||0),0) : valorContrato;
+
+  // Despesas por categoria
+  const despAll = (State.despesas||[]).filter(d=>String(d.contrato_id)===String(contratoId));
+  const despPor = cat => despAll.filter(d=>d.categoria===cat);
+
+  // Comissão vinculada pelo nome do cliente
+  const comissao = (State.comissoes||[]).find(x=>(x.nome||'').toLowerCase().trim()===(nomeCliente||'').toLowerCase().trim());
+  const totalCom = comissao ? Number(comissao.total_saidas)||0 : 0;
+
+  const totalDesp = despAll.reduce((s,d)=>s+(Number(d.valor)||0),0) + totalCom;
+  const margem    = totalRec - totalDesp;
+  const mColor    = margem>=0?'#16a34a':'#dc2626';
+
+  // Helper: renderiza linha de despesa
+  const rowDesp = (d,cat)=>`<tr>
+    <td>${esc(d.descricao||'')}</td>
+    <td>${esc(d.recebedor||'')}</td>
+    <td style="text-align:right;font-weight:600;color:#dc2626">${fR(d.valor)}</td>
+    <td>${stBadge(d.status)}</td>
+    <td><button class="btn btn-sm btn-secondary" data-ed="${d.id}" data-cat="${cat}">✏️</button></td>
+  </tr>`;
+
+  // Helper: bloco de seção de custo
+  const secDesp = (id, icon, label, cat, itens)=>`
+    <div style="margin-bottom:18px" id="sec-${id}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <h4 style="margin:0;font-size:14px">${icon} ${label}</h4>
+        <button class="btn btn-sm btn-secondary" data-add-cat="${cat}">+ Lançar</button>
       </div>
-      <div class="modal-body" style="padding:16px 22px">
-        <!-- Resumo -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
-          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;text-align:center">
-            <div style="font-size:11px;color:#166534;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Receita Total</div>
-            <div style="font-size:20px;font-weight:700;color:#16a34a;margin-top:4px">${fR(totalRec)}</div>
-          </div>
-          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px;text-align:center">
-            <div style="font-size:11px;color:#991b1b;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Despesa Total</div>
-            <div style="font-size:20px;font-weight:700;color:#dc2626;margin-top:4px">${fR(totalDesp)}</div>
-          </div>
-          <div style="background:${margem>=0?'#f0fdf4':'#fef2f2'};border:1px solid ${margem>=0?'#bbf7d0':'#fecaca'};border-radius:10px;padding:14px;text-align:center">
-            <div style="font-size:11px;color:${margemColor};font-weight:600;text-transform:uppercase;letter-spacing:.5px">Margem</div>
-            <div style="font-size:20px;font-weight:700;color:${margemColor};margin-top:4px">${fR(margem)}</div>
-          </div>
-        </div>
+      ${itens.length
+        ? `<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Recebedor</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>${itens.map(d=>rowDesp(d,cat)).join('')}</tbody></table></div>`
+        : `<p style="color:var(--text-light);font-size:12px;margin:0 0 4px">Nenhum lançamento.</p>`}
+    </div>`;
 
-        <!-- Receitas -->
-        <div style="margin-bottom:20px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <h4 style="margin:0;color:#166534">📈 Receitas</h4>
-            <button class="btn btn-sm btn-primary" id="projAddRec">+ Receita</button>
-          </div>
-          ${rec.length ? `<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>${rec.map(rowRec).join('')}</tbody></table></div>` : `<p style="color:var(--text-light);font-size:13px;margin:0">Nenhuma receita lançada.</p>`}
+  openModal(`
+    <div class="modal-header">
+      <h2>💰 ${esc(nomeCliente)}</h2>
+      <button class="modal-close">×</button>
+    </div>
+    <div class="modal-body" style="padding:16px 22px">
+      <!-- Resumo -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:#166534;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Receita</div>
+          <div style="font-size:18px;font-weight:700;color:#16a34a;margin-top:4px">${fR(totalRec)}</div>
         </div>
-
-        <!-- Despesas -->
-        <div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <h4 style="margin:0;color:#991b1b">📉 Despesas</h4>
-            <button class="btn btn-sm btn-primary" id="projAddDesp">+ Despesa</button>
-          </div>
-          ${desp.length ? `<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>${desp.map(rowDesp).join('')}</tbody></table></div>` : `<p style="color:var(--text-light);font-size:13px;margin:0">Nenhuma despesa lançada.</p>`}
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Custos</div>
+          <div style="font-size:18px;font-weight:700;color:#dc2626;margin-top:4px">${fR(totalDesp)}</div>
+        </div>
+        <div style="background:${margem>=0?'#f0fdf4':'#fef2f2'};border:1px solid ${margem>=0?'#bbf7d0':'#fecaca'};border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:${mColor};font-weight:700;text-transform:uppercase;letter-spacing:.5px">Margem</div>
+          <div style="font-size:18px;font-weight:700;color:${mColor};margin-top:4px">${fR(margem)}</div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary modal-close">Fechar</button>
-      </div>
-    `,'lg');
 
-    $('#projAddRec')?.addEventListener('click', ()=>{
-      openReceitaModal(null, { contratoId, onSave: ()=> openProjetoFinanceiroModal(contratoId, nomeCliente) });
-    });
-    $('#projAddDesp')?.addEventListener('click', ()=>{
-      openDespesaModal(null, { contratoId, onSave: ()=> openProjetoFinanceiroModal(contratoId, nomeCliente) });
-    });
-    $$('[data-edit-rec]').forEach(b=>{
-      const item = (State.receitas||[]).find(r=>String(r.id)===b.dataset.editRec);
-      b.addEventListener('click', ()=> openReceitaModal(item, { contratoId, onSave: ()=> openProjetoFinanceiroModal(contratoId, nomeCliente) }));
-    });
-    $$('[data-edit-desp]').forEach(b=>{
-      const item = (State.despesas||[]).find(d=>String(d.id)===b.dataset.editDesp);
-      b.addEventListener('click', ()=> openDespesaModal(item, { contratoId, onSave: ()=> openProjetoFinanceiroModal(contratoId, nomeCliente) }));
-    });
-  }
-  render();
+      <!-- Seções de custo -->
+      ${secDesp('kit','📦','Kit / Equipamentos','kit', despPor('kit'))}
+
+      <!-- Comissões -->
+      <div style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <h4 style="margin:0;font-size:14px">🤝 Comissões</h4>
+          <button class="btn btn-sm btn-secondary" id="projComBtn">${comissao?'✏️ Editar':'+ Lançar'}</button>
+        </div>
+        ${comissao ? `
+          <div class="table-wrap"><table><thead><tr><th>Vendedor</th><th>Total saídas</th><th>Lucro líquido</th><th>Status</th></tr></thead><tbody>
+            <tr>
+              <td>${esc(comissao.vend_nome||'—')}</td>
+              <td style="color:#dc2626;font-weight:600">${fR(comissao.total_saidas)}</td>
+              <td style="color:#16a34a;font-weight:600">${fR(comissao.lucro_liquido)}</td>
+              <td>${stBadge(comissao.status)}</td>
+            </tr>
+          </tbody></table></div>` : `<p style="color:var(--text-light);font-size:12px;margin:0 0 4px">Nenhuma comissão lançada.</p>`}
+      </div>
+
+      ${secDesp('vist','🔍','Vistoria','vistoria', despPor('vistoria'))}
+      ${secDesp('inst','🔧','Instalação','instalacao', despPor('instalacao'))}
+      ${secDesp('hom','📋','Homologação','homologacao', despPor('homologacao'))}
+      ${secDesp('maq','💳','Maquininha (taxas)','maquininha', despPor('maquininha'))}
+      ${secDesp('ext','➕','Extras','extras', despPor('extras'))}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary modal-close">Fechar</button>
+    </div>
+  `,'lg');
+
+  // Comissão
+  $('#projComBtn')?.addEventListener('click', ()=>{
+    if(comissao) openComissaoModal(comissao);
+    else openComissaoModal(null, nomeCliente);
+  });
+
+  // Botões + Lançar por categoria
+  $$('[data-add-cat]').forEach(b=>{
+    b.addEventListener('click', ()=> openDespesaModal(null,{ contratoId, categoriaFixa: b.dataset.addCat, onSave: voltar }));
+  });
+
+  // Editar despesa existente
+  $$('[data-ed]').forEach(b=>{
+    const item = despAll.find(d=>String(d.id)===b.dataset.ed);
+    b.addEventListener('click', ()=> openDespesaModal(item,{ contratoId, categoriaFixa: b.dataset.cat, onSave: voltar }));
+  });
 }
 
 /* ============================================================
