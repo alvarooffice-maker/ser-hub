@@ -5948,7 +5948,7 @@ function openComissaoModal(item=null){
         <div class="form-grid">
           ${formField({label:'Cliente',name:'nome',value:item.nome,required:true,datalist:clientesDL})}
           ${formField({label:'Valor Referência',name:'valor_contrato',type:'number',value:item.valor_contrato,required:true})}
-          ${formField({label:'Valor Vendido',name:'valor_vendido',type:'number',value:item.valor_vendido,readonly:true})}
+          ${formField({label:'Valor Vendido',name:'valor_vendido',type:'number',value:item.valor_vendido})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
         </div>
         <div class="section"><div class="section-header"><h4>Vendedor</h4><span class="section-toggle">▼</span></div>
