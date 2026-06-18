@@ -6354,8 +6354,10 @@ function openDespesaModal(item=null, opts={}){
     const data = readForm(form);
     data.valor = Number(data.valor)||0;
     if(contratoId) data.contrato_id = contratoId;
-    if(isNew){ data.criado_por = State.user?.id; await supa.from('financeiro_despesas').insert(data); }
-    else await supa.from('financeiro_despesas').update(data).eq('id',item.id);
+    let err;
+    if(isNew){ data.criado_por = State.user?.id; ({ error:err } = await supa.from('financeiro_despesas').insert(data)); }
+    else ({ error:err } = await supa.from('financeiro_despesas').update(data).eq('id',item.id));
+    if(err){ toast(err.message,'error'); return; }
     await loadTable('financeiro_despesas');
     toast('Salvo','success');
     closeModal();
@@ -6363,7 +6365,8 @@ function openDespesaModal(item=null, opts={}){
   });
   $('#delDesp')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir?')) return;
-    await supa.from('financeiro_despesas').delete().eq('id',item.id);
+    const { error:err } = await supa.from('financeiro_despesas').delete().eq('id',item.id);
+    if(err){ toast(err.message,'error'); return; }
     await loadTable('financeiro_despesas');
     closeModal();
     if(onSave) onSave(); else renderFinanceiro();
