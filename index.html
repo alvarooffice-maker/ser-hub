@@ -6404,26 +6404,33 @@ async function openProjetoFinanceiroModal(contratoId, nomeCliente){
   const margem    = totalRec - totalDesp;
   const mColor    = margem>=0?'#16a34a':'#dc2626';
 
+  // % sobre receita
+  const pct = v => totalRec > 0 ? `<span style="font-size:11px;color:var(--text-light);margin-left:4px">${((Number(v)||0)/totalRec*100).toFixed(1)}%</span>` : '';
+
   // Helper: renderiza linha de despesa
   const rowDesp = (d,cat)=>`<tr>
     <td>${esc(d.descricao||'')}</td>
     <td>${esc(d.recebedor||'')}</td>
-    <td style="text-align:right;font-weight:600;color:#dc2626">${fR(d.valor)}</td>
+    <td style="text-align:right;font-weight:600;color:#dc2626;white-space:nowrap">${fR(d.valor)}${pct(d.valor)}</td>
     <td>${stBadge(d.status)}</td>
     <td><button class="btn btn-sm btn-secondary" data-ed="${d.id}" data-cat="${cat}">✏️</button></td>
   </tr>`;
 
   // Helper: bloco de seção de custo
-  const secDesp = (id, icon, label, cat, itens)=>`
-    <div style="margin-bottom:18px" id="sec-${id}">
+  const totalSec = itens => itens.reduce((s,d)=>s+(Number(d.valor)||0),0);
+  const secDesp = (id, icon, label, cat, itens)=>{
+    const tot = totalSec(itens);
+    const cabeca = tot>0 ? `<span style="font-size:12px;color:#dc2626;font-weight:600">${fR(tot)}${pct(tot)}</span>` : '';
+    return `<div style="margin-bottom:18px" id="sec-${id}">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <h4 style="margin:0;font-size:14px">${icon} ${label}</h4>
+        <h4 style="margin:0;font-size:14px">${icon} ${label} ${cabeca}</h4>
         <button class="btn btn-sm btn-secondary" data-add-cat="${cat}">+ Lançar</button>
       </div>
       ${itens.length
-        ? `<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Recebedor</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>${itens.map(d=>rowDesp(d,cat)).join('')}</tbody></table></div>`
+        ? `<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Recebedor</th><th>Valor / %</th><th>Status</th><th></th></tr></thead><tbody>${itens.map(d=>rowDesp(d,cat)).join('')}</tbody></table></div>`
         : `<p style="color:var(--text-light);font-size:12px;margin:0 0 4px">Nenhum lançamento.</p>`}
     </div>`;
+  };
 
   openModal(`
     <div class="modal-header">
@@ -6432,20 +6439,47 @@ async function openProjetoFinanceiroModal(contratoId, nomeCliente){
     </div>
     <div class="modal-body" style="padding:16px 22px">
       <!-- Resumo -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;text-align:center">
           <div style="font-size:10px;color:#166534;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Receita</div>
           <div style="font-size:18px;font-weight:700;color:#16a34a;margin-top:4px">${fR(totalRec)}</div>
         </div>
         <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;text-align:center">
           <div style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Custos</div>
-          <div style="font-size:18px;font-weight:700;color:#dc2626;margin-top:4px">${fR(totalDesp)}</div>
+          <div style="font-size:18px;font-weight:700;color:#dc2626;margin-top:4px">${fR(totalDesp)} ${pct(totalDesp)}</div>
         </div>
         <div style="background:${margem>=0?'#f0fdf4':'#fef2f2'};border:1px solid ${margem>=0?'#bbf7d0':'#fecaca'};border-radius:10px;padding:12px;text-align:center">
           <div style="font-size:10px;color:${mColor};font-weight:700;text-transform:uppercase;letter-spacing:.5px">Margem</div>
-          <div style="font-size:18px;font-weight:700;color:${mColor};margin-top:4px">${fR(margem)}</div>
+          <div style="font-size:18px;font-weight:700;color:${mColor};margin-top:4px">${fR(margem)} ${pct(margem)}</div>
         </div>
       </div>
+      <!-- Barra de composição dos custos -->
+      ${(()=>{
+        const segs = [
+          { label:'Kit',         val: despPor('kit').reduce((s,d)=>s+(Number(d.valor)||0),0),        cor:'#7c3aed' },
+          { label:'Comissões',   val: totalCom,                                                       cor:'#db2777' },
+          { label:'Vistoria',    val: despPor('vistoria').reduce((s,d)=>s+(Number(d.valor)||0),0),   cor:'#0891b2' },
+          { label:'Instalação',  val: despPor('instalacao').reduce((s,d)=>s+(Number(d.valor)||0),0), cor:'#d97706' },
+          { label:'Homologação', val: despPor('homologacao').reduce((s,d)=>s+(Number(d.valor)||0),0),cor:'#059669' },
+          { label:'Maquininha',  val: despPor('maquininha').reduce((s,d)=>s+(Number(d.valor)||0),0), cor:'#64748b' },
+          { label:'Extras',      val: despPor('extras').reduce((s,d)=>s+(Number(d.valor)||0),0),     cor:'#92400e' },
+        ].filter(s=>s.val>0);
+        const margemSeg = { label:'Margem', val: Math.max(0,margem), cor:'#16a34a' };
+        const allSegs = [...segs, margemSeg].filter(s=>s.val>0);
+        const base = totalRec > 0 ? totalRec : 1;
+        if(!segs.length) return '';
+        return `<div style="margin-bottom:20px">
+          <div style="display:flex;border-radius:8px;overflow:hidden;height:24px;gap:1px">
+            ${allSegs.map(s=>`<div title="${s.label}: ${fR(s.val)} (${(s.val/base*100).toFixed(1)}%)" style="background:${s.cor};flex:${s.val/base};min-width:2px"></div>`).join('')}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+            ${allSegs.map(s=>`<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text)">
+              <span style="width:10px;height:10px;border-radius:2px;background:${s.cor};flex-shrink:0"></span>
+              ${esc(s.label)} <strong>${(s.val/base*100).toFixed(1)}%</strong>
+            </span>`).join('')}
+          </div>
+        </div>`;
+      })()}
 
       <!-- Seções de custo -->
       ${secDesp('kit','📦','Kit / Equipamentos','kit', despPor('kit'))}
@@ -6465,13 +6499,19 @@ async function openProjetoFinanceiroModal(contratoId, nomeCliente){
           if(comissao.ind_ativo && Number(comissao.ind_val))  linhas.push([comissao.ind_nome||'Indicador','Indicador',comissao.ind_val]);
           if(comissao.obra_ativo && Number(comissao.obra_val)) linhas.push(['Obra','Obra',comissao.obra_val]);
           if(comissao.pres_ativo && Number(comissao.pres_val)) linhas.push(['Presente','Presente',comissao.pres_val]);
-          return `<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Tipo</th><th>Valor</th><th>Status</th></tr></thead><tbody>
+          const totalComLinhas = linhas.reduce((s,[,,v])=>s+(Number(v)||0),0);
+          return `<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Tipo</th><th>Valor / %</th><th>Status</th></tr></thead><tbody>
             ${linhas.map(([nome,tipo,val])=>`<tr>
               <td>${esc(nome)}</td>
               <td style="color:var(--text-light);font-size:12px">${esc(tipo)}</td>
-              <td style="color:#dc2626;font-weight:600">${fR(val)}</td>
+              <td style="color:#dc2626;font-weight:600;white-space:nowrap">${fR(val)}${pct(val)}</td>
               <td>${stBadge(comissao.status)}</td>
             </tr>`).join('')}
+            <tr style="border-top:2px solid var(--border)">
+              <td colspan="2" style="font-weight:600;font-size:12px;color:var(--text-light)">Total comissões</td>
+              <td style="color:#dc2626;font-weight:700;white-space:nowrap">${fR(totalComLinhas)}${pct(totalComLinhas)}</td>
+              <td></td>
+            </tr>
           </tbody></table></div>`;
         })() : `<p style="color:var(--text-light);font-size:12px;margin:0 0 4px">Nenhuma comissão lançada.</p>`}
       </div>
