@@ -6456,15 +6456,24 @@ async function openProjetoFinanceiroModal(contratoId, nomeCliente){
           <h4 style="margin:0;font-size:14px">🤝 Comissões</h4>
           <button class="btn btn-sm btn-secondary" id="projComBtn">${comissao?'✏️ Editar':'+ Lançar'}</button>
         </div>
-        ${comissao ? `
-          <div class="table-wrap"><table><thead><tr><th>Vendedor</th><th>Total saídas</th><th>Lucro líquido</th><th>Status</th></tr></thead><tbody>
-            <tr>
-              <td>${esc(comissao.vend_nome||'—')}</td>
-              <td style="color:#dc2626;font-weight:600">${fR(comissao.total_saidas)}</td>
-              <td style="color:#16a34a;font-weight:600">${fR(comissao.lucro_liquido)}</td>
+        ${comissao ? (()=>{
+          const linhas = [];
+          if(Number(comissao.vend_val))  linhas.push([comissao.vend_nome||'Vendedor','Vendedor',comissao.vend_val]);
+          if(Number(comissao.sup_val))   linhas.push([comissao.sup_nome||'Supervisor','Supervisor',comissao.sup_val]);
+          if(comissao.sdr_ativo && Number(comissao.sdr_val))  linhas.push([comissao.sdr_nome||'SDR','SDR',comissao.sdr_val]);
+          if(comissao.cap_ativo && Number(comissao.cap_val))  linhas.push([comissao.cap_nome||'Captador','Captador',comissao.cap_val]);
+          if(comissao.ind_ativo && Number(comissao.ind_val))  linhas.push([comissao.ind_nome||'Indicador','Indicador',comissao.ind_val]);
+          if(comissao.obra_ativo && Number(comissao.obra_val)) linhas.push(['Obra','Obra',comissao.obra_val]);
+          if(comissao.pres_ativo && Number(comissao.pres_val)) linhas.push(['Presente','Presente',comissao.pres_val]);
+          return `<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Tipo</th><th>Valor</th><th>Status</th></tr></thead><tbody>
+            ${linhas.map(([nome,tipo,val])=>`<tr>
+              <td>${esc(nome)}</td>
+              <td style="color:var(--text-light);font-size:12px">${esc(tipo)}</td>
+              <td style="color:#dc2626;font-weight:600">${fR(val)}</td>
               <td>${stBadge(comissao.status)}</td>
-            </tr>
-          </tbody></table></div>` : `<p style="color:var(--text-light);font-size:12px;margin:0 0 4px">Nenhuma comissão lançada.</p>`}
+            </tr>`).join('')}
+          </tbody></table></div>`;
+        })() : `<p style="color:var(--text-light);font-size:12px;margin:0 0 4px">Nenhuma comissão lançada.</p>`}
       </div>
 
       ${secDesp('vist','🔍','Vistoria','vistoria', despPor('vistoria'))}
