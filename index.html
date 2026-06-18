@@ -6015,7 +6015,7 @@ function openComissaoModal(item=null, nomePreenchido=null){
             ${formField({label:'Captador %',name:'cap_pct',type:'number',value:item.cap_pct})}
             ${formField({label:'Indicador ativo',name:'ind_ativo',type:'toggle',value:item.ind_ativo})}
             ${formField({label:'Indicador nome',name:'ind_nome',value:item.ind_nome})}
-            ${formField({label:'Indicador %',name:'ind_pct',type:'number',value:item.ind_pct})}
+            ${formField({label:'Indicador R$',name:'ind_val',type:'number',value:item.ind_val})}
           </div></div>
         </div>
         <div class="section collapsed"><div class="section-header"><h4>Obra / Presente</h4><span class="section-toggle">▼</span></div>
@@ -6067,7 +6067,7 @@ function openComissaoModal(item=null, nomePreenchido=null){
     const sup_val  = vc * ((Number(raw.sup_pct)||0)/100);
     const sdr_val  = raw.sdr_ativo ? vc*((Number(raw.sdr_pct)||0)/100) : 0;
     const cap_val  = raw.cap_ativo ? vc*((Number(raw.cap_pct)||0)/100) : 0;
-    const ind_val  = raw.ind_ativo ? vc*((Number(raw.ind_pct)||0)/100) : 0;
+    const ind_val  = raw.ind_ativo ? (Number(raw.ind_val)||0) : 0;
     const obra_val = raw.obra_ativo ? (Number(raw.obra_val)||0) : 0;
     const pres_val = raw.pres_ativo ? (Number(raw.pres_val)||0) : 0;
     // Majorado: (valor_vendido − valor_referencia − obra − presente − indicador) × % majorado, mínimo R$ 0
@@ -6097,7 +6097,7 @@ function openComissaoModal(item=null, nomePreenchido=null){
     const data = readForm(form);
     const calc = recalc();
     Object.assign(data, calc);
-    ['valor_contrato','valor_vendido','vend_pct','vend_major_pct','sup_pct','sdr_pct','cap_pct','ind_pct','obra_val','pres_val'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
+    ['valor_contrato','valor_vendido','vend_pct','vend_major_pct','sup_pct','sdr_pct','cap_pct','ind_val','obra_val','pres_val'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     if(isNew){
       data.criado_por = State.user?.id;
       const { data: criada, error } = await supa.from('comissoes').insert(data).select('id').single();
