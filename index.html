@@ -6501,9 +6501,15 @@ async function openProjetoFinanceiroModal(contratoId, nomeCliente){
           <button class="btn btn-sm btn-secondary" id="projComBtn">${comissao?'✏️ Editar':'+ Lançar'}</button>
         </div>
         ${comissao ? (()=>{
-          // Calcula base e majorado a partir dos campos salvos (funciona mesmo para comissões antigas)
-          const _vend_base = Number(comissao.vend_base) || (Number(comissao.valor_contrato||0) * (Number(comissao.vend_pct)||0) / 100);
-          const _major_val = Number(comissao.major_val) || Math.max(0, Number(comissao.vend_val||0) - _vend_base);
+          // Recalcula do zero com todos os campos — igual ao recalc() do modal
+          const _vc       = Number(comissao.valor_contrato||0);
+          const _vv       = Number(comissao.valor_vendido||0) || _vc;
+          const _obra     = comissao.obra_ativo ? Number(comissao.obra_val||0) : 0;
+          const _pres     = comissao.pres_ativo ? Number(comissao.pres_val||0) : 0;
+          const _ind      = comissao.ind_ativo  ? Number(comissao.ind_val||0)  : 0;
+          const _vend_base = _vc * (Number(comissao.vend_pct)||0) / 100;
+          const _base_maj  = _vv - _vc - _obra - _pres - _ind;
+          const _major_val = Math.max(0, _base_maj) * (Number(comissao.vend_major_pct)||0) / 100;
           const linhas = [];
           if(_vend_base) linhas.push([comissao.vend_nome||'Vendedor','Comissão Vendedor',_vend_base]);
           if(_major_val) linhas.push([comissao.vend_nome||'Vendedor','Majorado',_major_val]);
