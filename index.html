@@ -6493,10 +6493,12 @@ async function openProjetoFinanceiroModal(contratoId, nomeCliente){
           <button class="btn btn-sm btn-secondary" id="projComBtn">${comissao?'✏️ Editar':'+ Lançar'}</button>
         </div>
         ${comissao ? (()=>{
+          // Calcula base e majorado a partir dos campos salvos (funciona mesmo para comissões antigas)
+          const _vend_base = Number(comissao.vend_base) || (Number(comissao.valor_contrato||0) * (Number(comissao.vend_pct)||0) / 100);
+          const _major_val = Number(comissao.major_val) || Math.max(0, Number(comissao.vend_val||0) - _vend_base);
           const linhas = [];
-          if(Number(comissao.vend_base)) linhas.push([comissao.vend_nome||'Vendedor','Comissão Vendedor',comissao.vend_base]);
-          if(Number(comissao.major_val)) linhas.push([comissao.vend_nome||'Vendedor','Majorado',comissao.major_val]);
-          if(!Number(comissao.vend_base) && Number(comissao.vend_val)) linhas.push([comissao.vend_nome||'Vendedor','Vendedor',comissao.vend_val]);
+          if(_vend_base) linhas.push([comissao.vend_nome||'Vendedor','Comissão Vendedor',_vend_base]);
+          if(_major_val) linhas.push([comissao.vend_nome||'Vendedor','Majorado',_major_val]);
           if(Number(comissao.sup_val))   linhas.push([comissao.sup_nome||'Supervisor','Supervisor',comissao.sup_val]);
           if(comissao.sdr_ativo && Number(comissao.sdr_val))  linhas.push([comissao.sdr_nome||'SDR','SDR',comissao.sdr_val]);
           if(comissao.cap_ativo && Number(comissao.cap_val))  linhas.push([comissao.cap_nome||'Captador','Captador',comissao.cap_val]);
