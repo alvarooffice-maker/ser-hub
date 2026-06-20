@@ -6038,15 +6038,23 @@ function openComissaoModal(item=null, nomePreenchido=null){
 
   const form = $('#comForm');
 
-  // Auto-preenche Valor Vendido com o valor do contrato ao digitar/selecionar o cliente
-  form.elements['nome'].addEventListener('change', ()=>{
-    const nomeDigitado = form.elements['nome'].value.trim().toLowerCase();
-    const contrato = contratosAssinados.find(c=>(c.nome||'').toLowerCase()===nomeDigitado);
+  const autoFillContrato = (nome) => {
+    const contrato = contratosAssinados.find(c=>(c.nome||'').toLowerCase()===nome.trim().toLowerCase());
     if(contrato?.valor){
       form.elements['valor_contrato'].value = fmtInputNum(contrato.valor);
       form.elements['valor_vendido'].value  = fmtInputNum(contrato.valor);
       recalc();
     }
+  };
+
+  // Se editando e valor_vendido está zerado, tenta preencher automaticamente do contrato
+  if(!isNew && !(Number(item.valor_vendido))){
+    autoFillContrato(item.nome||'');
+  }
+
+  // Auto-preenche Valor Vendido com o valor do contrato ao digitar/selecionar o cliente
+  form.elements['nome'].addEventListener('change', ()=>{
+    autoFillContrato(form.elements['nome'].value);
   });
   form.elements['nome'].addEventListener('input', ()=>{
     const nomeDigitado = form.elements['nome'].value.trim().toLowerCase();
