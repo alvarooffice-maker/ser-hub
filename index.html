@@ -6073,11 +6073,13 @@ function openComissaoModal(item=null, nomePreenchido=null){
     // Majorado: (valor_vendido − valor_referencia − obra − presente − indicador) × % majorado, mínimo R$ 0
     const base_major = vv - vc - obra_val - pres_val - ind_val;
     const major_val  = Math.max(0, base_major) * (vmp/100);
-    const vend_val   = vc * (vp/100) + major_val;
+    const vend_base  = vc * (vp/100);
+    const vend_val   = vend_base + major_val;
     const total = vend_val + sup_val + sdr_val + cap_val + ind_val + obra_val + pres_val;
     const lucro = vc - total;
     $('#comPreview').innerHTML = `
-      <div class="preview-row"><span>Vendedor</span><span>${fmtBRL(vend_val)}</span></div>
+      <div class="preview-row"><span>Comissão Vendedor</span><span>${fmtBRL(vend_base)}</span></div>
+      ${major_val>0?`<div class="preview-row"><span>Majorado Vendedor</span><span>${fmtBRL(major_val)}</span></div>`:''}
       <div class="preview-row"><span>Supervisor</span><span>${fmtBRL(sup_val)}</span></div>
       <div class="preview-row"><span>SDR</span><span>${fmtBRL(sdr_val)}</span></div>
       <div class="preview-row"><span>Captador</span><span>${fmtBRL(cap_val)}</span></div>
@@ -6087,7 +6089,7 @@ function openComissaoModal(item=null, nomePreenchido=null){
       <div class="preview-row"><span>Total saídas</span><span>${fmtBRL(total)}</span></div>
       <div class="preview-row"><span>Lucro Líquido</span><span>${fmtBRL(lucro)}</span></div>
     `;
-    return { vend_val, sup_val, sdr_val, cap_val, ind_val, total_saidas:total, lucro_liquido:lucro };
+    return { vend_val, vend_base, major_val, sup_val, sdr_val, cap_val, ind_val, total_saidas:total, lucro_liquido:lucro };
   }
   form.addEventListener('input', recalc);
   recalc();
@@ -6097,7 +6099,7 @@ function openComissaoModal(item=null, nomePreenchido=null){
     const data = readForm(form);
     const calc = recalc();
     Object.assign(data, calc);
-    ['valor_contrato','valor_vendido','vend_pct','vend_major_pct','sup_pct','sdr_pct','cap_pct','ind_val','obra_val','pres_val'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
+    ['valor_contrato','valor_vendido','vend_pct','vend_major_pct','vend_base','major_val','sup_pct','sdr_pct','cap_pct','ind_val','obra_val','pres_val'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     if(isNew){
       data.criado_por = State.user?.id;
       const { data: criada, error } = await supa.from('comissoes').insert(data).select('id').single();
@@ -6492,7 +6494,9 @@ async function openProjetoFinanceiroModal(contratoId, nomeCliente){
         </div>
         ${comissao ? (()=>{
           const linhas = [];
-          if(Number(comissao.vend_val))  linhas.push([comissao.vend_nome||'Vendedor','Vendedor',comissao.vend_val]);
+          if(Number(comissao.vend_base)) linhas.push([comissao.vend_nome||'Vendedor','Comissão Vendedor',comissao.vend_base]);
+          if(Number(comissao.major_val)) linhas.push([comissao.vend_nome||'Vendedor','Majorado',comissao.major_val]);
+          if(!Number(comissao.vend_base) && Number(comissao.vend_val)) linhas.push([comissao.vend_nome||'Vendedor','Vendedor',comissao.vend_val]);
           if(Number(comissao.sup_val))   linhas.push([comissao.sup_nome||'Supervisor','Supervisor',comissao.sup_val]);
           if(comissao.sdr_ativo && Number(comissao.sdr_val))  linhas.push([comissao.sdr_nome||'SDR','SDR',comissao.sdr_val]);
           if(comissao.cap_ativo && Number(comissao.cap_val))  linhas.push([comissao.cap_nome||'Captador','Captador',comissao.cap_val]);
