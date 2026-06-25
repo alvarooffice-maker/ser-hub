@@ -2189,6 +2189,19 @@ function openModal(html, size=''){
   $$('.section-header',root).forEach(h=>{
     h.addEventListener('click', ()=> h.parentElement.classList.toggle('collapsed'));
   });
+  // Evita duplo-clique / duplo-envio: bloqueia um segundo submit do mesmo
+  // formulário dentro de 2s e desabilita o botão de salvar nesse intervalo.
+  // Roda antes dos listeners de submit específicos de cada modal, pois é
+  // registrado primeiro (mesma ordem de execução na mesma fase do evento).
+  $$('form', root).forEach(form=>{
+    form.addEventListener('submit', (e)=>{
+      if(form._submitting){ e.preventDefault(); e.stopImmediatePropagation(); return; }
+      form._submitting = true;
+      const btn = form.querySelector('button[type="submit"]');
+      if(btn) btn.disabled = true;
+      setTimeout(()=>{ form._submitting = false; if(btn) btn.disabled = false; }, 2000);
+    });
+  });
   return root;
 }
 function closeModal(){ $('#modalRoot').classList.remove('active'); $('#modalRoot').innerHTML=''; }
