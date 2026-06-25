@@ -1482,7 +1482,36 @@ function renderStageCol(stage){
   return renderStageColBody(stage, items);
 }
 
+// Ordem do funil, do menos ao mais avançado. Usado para ocultar cards de
+// clientes importados sem cadeia de FKs — quando o mesmo nome já existe
+// numa etapa mais avançada, o card da etapa atual é escondido.
+const FUNIL_ORDEM = ['lead','proposta','vistoria','contrato','logistica','instalacao','homologacao','posvenda'];
+const FUNIL_STATE_KEY = { lead:'leads', proposta:'propostas', vistoria:'vistorias', contrato:'contratos', logistica:'logistica', instalacao:'instalacoes', homologacao:'homologacoes', posvenda:'posvenda' };
+function nomesEmEtapasMaisAvancadas(stageId){
+  const idx = FUNIL_ORDEM.indexOf(stageId);
+  const nomes = new Set();
+  if(idx === -1) return nomes;
+  for(let i=idx+1;i<FUNIL_ORDEM.length;i++){
+    const key = FUNIL_STATE_KEY[FUNIL_ORDEM[i]];
+    (State[key]||[]).forEach(it=>{
+      const n = (it.nome||'').toLowerCase().trim();
+      if(n) nomes.add(n);
+    });
+  }
+  return nomes;
+}
+
 function renderStageColBody(stage, items){
+  // ── Oculta cards de clientes (por nome) que já têm registro numa etapa
+  // mais avançada do funil — cobre clientes importados sem cadeia de FKs,
+  // que o filtro de "promovidos" abaixo (baseado em FK) não detecta.
+  if(FUNIL_ORDEM.includes(stage.id) && stage.id !== 'posvenda'){
+    const nomesAvancados = nomesEmEtapasMaisAvancadas(stage.id);
+    if(nomesAvancados.size){
+      items = items.filter(it => !nomesAvancados.has((it.nome||'').toLowerCase().trim()));
+    }
+  }
+
   // ── Oculta itens enviados para Remarketing (pendente de reativação) ──
   // Vale para lead/proposta/vistoria/contrato, que são os estágios que
   // alimentam o Remarketing quando perdido/recusada/reprovada/cancelado.
