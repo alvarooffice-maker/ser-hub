@@ -1483,6 +1483,21 @@ function renderStageCol(stage){
 }
 
 function renderStageColBody(stage, items){
+  // ── Oculta itens enviados para Remarketing (pendente de reativação) ──
+  // Vale para lead/proposta/vistoria/contrato, que são os estágios que
+  // alimentam o Remarketing quando perdido/recusada/reprovada/cancelado.
+  if(['lead','proposta','vistoria','contrato'].includes(stage.id)){
+    const leadIdsRemarketing = new Set(
+      (State.remarketing||[]).filter(r=>r.status==='pendente').map(r=>r.lead_id).filter(Boolean)
+    );
+    if(leadIdsRemarketing.size){
+      items = items.filter(it=>{
+        const leadId = stage.id==='lead' ? it.id : it.lead_id;
+        return !leadIdsRemarketing.has(leadId);
+      });
+    }
+  }
+
   // ── Oculta itens já promovidos — igual para TODOS os perfis ──
   // Garante 1 card por cliente em cada coluna (aparece só na etapa mais avançada)
   if(stage.id === 'lead'){
@@ -2048,6 +2063,23 @@ function getLinkedDocs(item){
                   || (contrato   ? _f(State.propostas,  contrato.proposta_id)   : null)
                   || (vistoria   ? _f(State.propostas,  vistoria.proposta_id)   : null);
   return { proposta, vistoria, contrato, logistica, instalacao };
+}
+
+/* Igual a getLinkedDocs, mas com fallback por nome do cliente — usado no
+   Pós Venda para clientes importados sem cadeia de FKs, evitando que o
+   sistema deixe de detectar registros já existentes (e crie duplicados). */
+function getLinkedDocsByNome(item){
+  const base = getLinkedDocs(item);
+  const nome = (item.nome||'').toLowerCase().trim();
+  if(!nome) return base;
+  const byNome = (arr) => (arr||[]).find(x=>(x.nome||'').toLowerCase().trim()===nome) || null;
+  return {
+    proposta:   base.proposta   || byNome(State.propostas),
+    vistoria:   base.vistoria   || byNome(State.vistorias),
+    contrato:   base.contrato   || byNome(State.contratos),
+    logistica:  base.logistica  || byNome(State.logistica),
+    instalacao: base.instalacao || byNome(State.instalacoes),
+  };
 }
 
 /* Renderiza barra de documentos vinculados dentro do modal-body.
@@ -5243,6 +5275,19 @@ const POSVENDA_LINK_CFG = {
 async function criarRegistroVinculadoPosVenda(tipo, posItem){
   const cfg = POSVENDA_LINK_CFG[tipo];
   if(!cfg) return null;
+
+  // Evita duplicar: se já existe um registro com o mesmo nome (cliente
+  // importado sem cadeia de FKs), apenas vincula em vez de criar outro.
+  const nome = (posItem.nome||'').toLowerCase().trim();
+  const existente = nome ? (State[cfg.table]||[]).find(x=>(x.nome||'').toLowerCase().trim()===nome) : null;
+  if(existente){
+    const { error: linkErr } = await supa.from('posvenda').update({ [cfg.fk]: existente.id }).eq('id', posItem.id);
+    if(linkErr){ toast('Erro ao vincular registro existente: '+linkErr.message,'error'); return null; }
+    toast('Registro existente encontrado e vinculado! ✓','success');
+    await loadAll();
+    return existente.id;
+  }
+
   const payload = {
     nome: posItem.nome,
     telefone: posItem.telefone,
@@ -5262,7 +5307,7 @@ async function criarRegistroVinculadoPosVenda(tipo, posItem){
 
 function openPosVendaModal(item=null){
   item = item || {};
-  const linked = getLinkedDocs(item);
+  const linked = getLinkedDocsByNome(item);
   const statusOpts = [['ativo','Ativo'],['inativo','Inativo'],['manutencao','Manutenção']];
 
   // Resolve dados vinculados
@@ -5271,7 +5316,10 @@ function openPosVendaModal(item=null){
   const contrato  = linked.contrato   || {};
   const logistica = linked.logistica  || {};
   const vistoria  = (State.vistorias||[]).find(v=>String(v.id)===String(contrato.vistoria_id)) || {};
-  const homologacao = (State.homologacoes||[]).find(h=>String(h.id)===String(item.homologacao_id)) || null;
+  const nomeKey = (item.nome||'').toLowerCase().trim();
+  const homologacao = (State.homologacoes||[]).find(h=>String(h.id)===String(item.homologacao_id))
+                    || (nomeKey ? (State.homologacoes||[]).find(h=>(h.nome||'').toLowerCase().trim()===nomeKey) : null)
+                    || null;
   const instDate  = instalacao.data_instalacao;
 
   // Helpers de data
