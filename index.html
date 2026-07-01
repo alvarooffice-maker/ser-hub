@@ -2114,7 +2114,7 @@ function getLinkedDocsByNome(item){
 /* Renderiza barra de documentos vinculados dentro do modal-body.
    Cada doc: [✏️ Editar X]  +  [🖨️ PDF] (quando disponível). */
 function renderLinkedDocBtns(linked){
-  const { proposta, vistoria, contrato, logistica, instalacao } = linked;
+  const { proposta, vistoria, contrato, logistica, instalacao, homologacao } = linked;
   const role = userRole();
   const all = [];
   if(proposta)  all.push({icon:'📄', label:'Proposta',   editId:'lnkPropEditBtn',  pdfId:'lnkPropDlBtn',  allowed:['admin','supervisor','vendedor','financeiro']});
@@ -2122,6 +2122,7 @@ function renderLinkedDocBtns(linked){
   if(contrato)  all.push({icon:'✍️', label:'Contrato',   editId:'lnkContEditBtn',  pdfId:'lnkContDlBtn',  allowed:['admin','supervisor','vendedor','financeiro']});
   if(logistica) all.push({icon:'📦', label:'Logística',  editId:'lnkLogEditBtn',   pdfId:null,            allowed:['admin','supervisor','vendedor','financeiro','tec_instalacao']});
   if(instalacao)all.push({icon:'🔧', label:'Instalação', editId:'lnkInstEditBtn',  pdfId:null,            allowed:['admin','supervisor','vendedor','financeiro','tec_instalacao','tec_homologacao']});
+  if(homologacao)all.push({icon:'⚡', label:'Homologação',editId:'lnkHomEditBtn',  pdfId:null,            allowed:['admin','supervisor','vendedor','financeiro','tec_homologacao']});
   const items = all.filter(it => !it.allowed || it.allowed.includes(role));
   if(!items.length) return '';
   return `
@@ -2136,7 +2137,7 @@ function renderLinkedDocBtns(linked){
 }
 
 function attachLinkedDocListeners(linked){
-  const { proposta, vistoria, contrato, logistica, instalacao } = linked;
+  const { proposta, vistoria, contrato, logistica, instalacao, homologacao } = linked;
   if(proposta){
     $('#lnkPropEditBtn')?.addEventListener('click', ()=>{ closeModal(); openPropostaModal(proposta); });
     $('#lnkPropDlBtn')?.addEventListener('click',   ()=> abrirPropostaJanela(proposta, true));
@@ -2154,6 +2155,9 @@ function attachLinkedDocListeners(linked){
   }
   if(instalacao){
     $('#lnkInstEditBtn')?.addEventListener('click', ()=>{ closeModal(); openInstalacaoModal(instalacao); });
+  }
+  if(homologacao){
+    $('#lnkHomEditBtn')?.addEventListener('click', ()=>{ closeModal(); openHomologacaoModal(homologacao); });
   }
 }
 
@@ -5474,7 +5478,7 @@ function openPosVendaModal(item=null){
             </div>
           </div>`;
         })()}
-        ${renderLinkedDocBtns(linked)}
+        ${renderLinkedDocBtns({...linked, homologacao})}
         ${histSection()}
       </div>
       <div class="modal-footer">
@@ -5488,7 +5492,7 @@ function openPosVendaModal(item=null){
   const form = $('#pvForm');
   const pvContrato = linked.contrato || {};
   $('#pvProjFinBtn')?.addEventListener('click', ()=> openProjetoFinanceiroModal(pvContrato.id, item.nome||''));
-  attachLinkedDocListeners(linked);
+  attachLinkedDocListeners({...linked, homologacao});
   carregarHistorico($('#histList'), 'posvenda', item.id);
   $$('[data-create-link]').forEach(b=>b.addEventListener('click', async ()=>{
     const tipo = b.dataset.createLink;
