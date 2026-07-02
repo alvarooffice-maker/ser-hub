@@ -1508,7 +1508,11 @@ function renderStageColBody(stage, items){
   if(FUNIL_ORDEM.includes(stage.id) && stage.id !== 'posvenda'){
     const nomesAvancados = nomesEmEtapasMaisAvancadas(stage.id);
     if(nomesAvancados.size){
-      items = items.filter(it => !nomesAvancados.has((it.nome||'').toLowerCase().trim()));
+      items = items.filter(it => {
+        // Lead com "projeto" preenchido = segundo projeto do cliente → nunca esconder por nome
+        if(stage.id === 'lead' && (it.projeto||'').trim()) return true;
+        return !nomesAvancados.has((it.nome||'').toLowerCase().trim());
+      });
     }
   }
 
@@ -1564,7 +1568,7 @@ function renderStageColBody(stage, items){
     items.forEach(it => {
       let key;
       if(stage.id === 'lead')
-        key = 'n:' + (it.nome||'').toLowerCase().trim();
+        key = 'n:' + (it.nome||'').toLowerCase().trim() + '|p:' + (it.projeto||'').toLowerCase().trim();
       else if(stage.id === 'proposta')
         key = it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim());
       else if(stage.id === 'vistoria')
@@ -1703,10 +1707,14 @@ function renderCard(item,stage){
     ? `<span class="badge badge-${esc(item.tipo)}" title="${esc(item.tipo==='outros'&&item.tipo_obs?item.tipo_obs:'')}">${esc(tipoAtendMap[item.tipo]||item.tipo)}</span>`
     : '';
 
+  const projetoBadge = (stage.id === 'lead' && item.projeto)
+    ? `<span style="display:inline-block;font-size:10px;background:#ede9fe;color:#6B21A8;border-radius:4px;padding:1px 6px;margin-top:2px">${esc(item.projeto)}</span>`
+    : '';
+
   return `
-    <div class="kanban-card" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.responsavel||item.vendedor||'')).toLowerCase()}">
+    <div class="kanban-card" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.responsavel||item.vendedor||'')+' '+(item.projeto||'')).toLowerCase()}">
       <div class="kanban-card-inner">
-        <div class="name">${stage.icon} ${esc(item.nome||'—')}</div>
+        <div class="name">${stage.icon} ${esc(item.nome||'—')}${projetoBadge?'<br>'+projetoBadge:''}</div>
         ${meta1?`<div class="meta">${esc(meta1)}</div>`:''}
         <div class="meta">${esc(meta2)}</div>
         ${flags}
@@ -2510,6 +2518,7 @@ function openLeadModal(item=null){
         <div class="form-grid">
           ${formField({label:'Nome',name:'nome',value:item.nome,required:true})}
           ${formField({label:'Telefone',name:'telefone',value:item.telefone})}
+          ${formField({label:'Projeto',name:'projeto',value:item.projeto,placeholder:'ex: Residencial, Expansão, Comercial...'})}
           ${formField({label:'kWh',name:'kwh',type:'number',value:item.kwh})}
           ${formField({label:'Canal',name:'canal',type:'select',value:item.canal,options:canalOpts})}
           ${formField({label:'Vendedor',name:'vendedor',value:item.vendedor || (isVend()?State.profile.nome:'')})}
