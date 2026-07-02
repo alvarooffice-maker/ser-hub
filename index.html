@@ -707,8 +707,8 @@ function navigate(route){
    DATA LOADERS
    ============================================================ */
 async function loadAll(){
-  const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','atendimentos','app_manutencao','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis','tentativas_contato','metas'];
-  const stateMap = { financeiro_receitas:'receitas', financeiro_despesas:'despesas', app_manutencao:'appman' };
+  const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','atendimentos','app_manutencao','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis','tentativas_contato','metas','contratos_termos_aditivos'];
+  const stateMap = { financeiro_receitas:'receitas', financeiro_despesas:'despesas', app_manutencao:'appman', contratos_termos_aditivos:'termos_aditivos' };
   await Promise.all(tables.map(async t => {
     try{
       const { data, error } = await supa.from(t).select('*').order('criado_em',{ascending:false});
@@ -3693,6 +3693,124 @@ function pickFiles(store, keys){
 /* ============================================================
    CONTRATO MODAL
    ============================================================ */
+const TIPO_TERMO_OPTS = [
+  ['responsabilidade_obra','Responsabilidade de Obra'],
+  ['sombreamento','Sombreamento'],
+  ['financeiro','Financeiro'],
+  ['prazo_entrega','Prazo de Entrega'],
+  ['outro','Outro'],
+];
+const TIPO_TERMO_LABEL = Object.fromEntries(TIPO_TERMO_OPTS);
+
+function renderTermosAditivos(contratoId){
+  const termos = (State.termos_aditivos||[]).filter(t=>t.contrato_id===contratoId);
+  const rows = termos.length
+    ? termos.map(t=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0">
+          <div style="flex:1">
+            <span style="font-weight:600;font-size:13px">${esc(TIPO_TERMO_LABEL[t.tipo]||t.tipo)}</span>
+            ${t.data_assinatura?`<span style="font-size:11px;color:#888;margin-left:8px">${fmtDate(t.data_assinatura)}</span>`:''}
+            ${t.descricao?`<div style="font-size:12px;color:#555;margin-top:2px">${esc(t.descricao)}</div>`:''}
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm ta-print-btn" data-id="${t.id}" title="Imprimir">🖨️</button>
+          <button type="button" class="btn btn-secondary btn-sm ta-edit-btn" data-id="${t.id}" title="Editar">✏️</button>
+        </div>`).join('')
+    : '<div style="font-size:12px;color:#aaa;padding:8px 0">Nenhum termo aditivo cadastrado.</div>';
+  return `
+    <div class="section collapsed" id="termosAditivosSection">
+      <div class="section-header"><h4>📋 Termos Aditivos</h4><span class="section-toggle">▼</span></div>
+      <div class="section-body">
+        ${rows}
+        <button type="button" class="btn btn-secondary btn-sm" id="addTermoBtn" style="margin-top:10px">＋ Novo Termo Aditivo</button>
+      </div>
+    </div>`;
+}
+
+function openTermoAditivoModal(contrato, termo=null){
+  const isNew = !termo;
+  termo = termo || {};
+  openModal(`
+    <div class="modal-header">
+      <h2>${isNew?'Novo Termo Aditivo':'Editar Termo Aditivo'}</h2>
+      <button class="modal-close">×</button>
+    </div>
+    <form id="termoForm">
+      <div class="modal-body">
+        <div class="form-grid">
+          ${formField({label:'Tipo',name:'tipo',type:'select',value:termo.tipo||'',options:[['','— selecione —'],...TIPO_TERMO_OPTS],required:true})}
+          ${formField({label:'Data Assinatura',name:'data_assinatura',type:'date',value:termo.data_assinatura})}
+          ${formField({label:'Descrição / Detalhes',name:'descricao',type:'textarea',value:termo.descricao,full:true,rows:4})}
+        </div>
+      </div>
+      <div class="modal-footer">
+        ${!isNew?`<button type="button" class="btn btn-danger" id="delTermoBtn">Excluir</button>`:''}
+        <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+        <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
+      </div>
+    </form>
+  `,'sm');
+
+  const form = $('#termoForm');
+  form.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = readForm(form);
+    data.contrato_id = contrato.id;
+    let err;
+    if(isNew){ data.criado_por = State.user?.id; ({ error:err } = await supa.from('contratos_termos_aditivos').insert(data)); }
+    else ({ error:err } = await supa.from('contratos_termos_aditivos').update(data).eq('id',termo.id));
+    if(err) return toast(err.message,'error');
+    toast(isNew?'Termo aditivo criado! ✓':'Termo atualizado! ✓','success');
+    await loadAll(); closeModal();
+    openContratoModal(contrato);
+  });
+
+  if(!isNew){
+    $('#delTermoBtn')?.addEventListener('click', async ()=>{
+      if(!confirm('Excluir este termo aditivo?')) return;
+      const { error:err } = await supa.from('contratos_termos_aditivos').delete().eq('id',termo.id);
+      if(err) return toast(err.message,'error');
+      toast('Termo excluído','success');
+      await loadAll(); closeModal();
+      openContratoModal(contrato);
+    });
+  }
+}
+
+function imprimirTermoAditivo(contrato, termo){
+  const tipoLabel = TIPO_TERMO_LABEL[termo.tipo] || termo.tipo;
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Termo Aditivo — ${tipoLabel}</title>
+  <style>
+    body{font-family:Arial,sans-serif;max-width:720px;margin:40px auto;color:#222;font-size:14px;line-height:1.7}
+    h1{font-size:18px;text-align:center;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+    h2{font-size:14px;text-align:center;color:#555;margin-top:0}
+    .bloco{border:1px solid #ddd;border-radius:6px;padding:16px 20px;margin:20px 0}
+    .label{font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.5px}
+    .valor{font-size:14px;font-weight:600;margin-bottom:12px}
+    .corpo{margin:24px 0;text-align:justify;white-space:pre-wrap}
+    .assinaturas{display:flex;gap:40px;margin-top:60px}
+    .ass{flex:1;border-top:1px solid #333;padding-top:6px;font-size:12px;text-align:center}
+    @media print{body{margin:20px}}
+  </style></head><body>
+  <h1>Termo Aditivo ao Contrato</h1>
+  <h2>${tipoLabel}</h2>
+  <div class="bloco">
+    <div class="label">Cliente</div><div class="valor">${esc(contrato.nome||'')}</div>
+    ${contrato.cpf?`<div class="label">CPF</div><div class="valor">${esc(contrato.cpf)}</div>`:''}
+    ${contrato.endereco||contrato.rua?`<div class="label">Endereço</div><div class="valor">${esc([contrato.rua,contrato.numero,contrato.bairro,contrato.cidade,contrato.estado].filter(Boolean).join(', '))}</div>`:''}
+    <div class="label">Data de Assinatura</div><div class="valor">${termo.data_assinatura ? fmtDate(termo.data_assinatura) : '___/___/______'}</div>
+  </div>
+  <div class="corpo">${esc(termo.descricao||'')}</div>
+  <div class="assinaturas">
+    <div class="ass">${esc(contrato.nome||'')}<br>Contratante</div>
+    <div class="ass">SER Energia Renovável<br>Contratada</div>
+    ${contrato.vendedor?`<div class="ass">${esc(contrato.vendedor)}<br>Testemunha</div>`:''}
+  </div>
+  <script>window.onload=()=>window.print()<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
 function openContratoModal(item=null){
   const isNew = !item;
   item = item || {};
@@ -3763,6 +3881,7 @@ function openContratoModal(item=null){
         </div>
         ${!isNew && item.clicksign_url ? `<div class="card" style="background:#e6f7ed">📝 ClickSign: <a href="${esc(item.clicksign_url)}" target="_blank">${esc(item.clicksign_url)}</a></div>` : ''}
         ${!isNew?renderLinkedDocBtns(linked):''}
+        ${!isNew?renderTermosAditivos(item.id):''}
         ${!isNew ? histSection() : ''}
       </div>
       <div class="modal-footer">
@@ -3781,6 +3900,18 @@ function openContratoModal(item=null){
   attachCEP(form);
   attachCPF(form);
   if(!isNew) carregarHistorico($('#histList'), 'contratos', item.id);
+
+  if(!isNew){
+    $('#addTermoBtn')?.addEventListener('click', ()=>{ closeModal(); openTermoAditivoModal(item); });
+    $$('.ta-edit-btn').forEach(btn=>{ btn.addEventListener('click', ()=>{
+      const t = (State.termos_aditivos||[]).find(x=>x.id===btn.dataset.id);
+      if(t){ closeModal(); openTermoAditivoModal(item, t); }
+    }); });
+    $$('.ta-print-btn').forEach(btn=>{ btn.addEventListener('click', ()=>{
+      const t = (State.termos_aditivos||[]).find(x=>x.id===btn.dataset.id);
+      if(t) imprimirTermoAditivo(item, t);
+    }); });
+  }
   const statusContMap = {pendente:'Pendente', enviado:'Enviado', assinado:'Assinado', cancelado:'Cancelado'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
