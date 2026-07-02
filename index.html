@@ -1625,45 +1625,49 @@ function etapaAtualDaVistoria(v){
 function _normNome(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(); }
 function resolvePropostaKwp(item, stageId){
   if(stageId === 'proposta') return item.kwp;
-  // Tenta pelo proposta_id direto (todos os estágios devem ter este campo)
+  // 1. proposta_id direto no próprio item
   if(item.proposta_id){
     const p = (State.propostas||[]).find(x=>x.id===item.proposta_id);
     if(p?.kwp) return p.kwp;
   }
-  // Percorre chain de FKs para chegar na proposta
+  // 2. lead_id — todas as etapas herdam o lead_id, e a proposta também o tem
+  if(item.lead_id){
+    const p = (State.propostas||[]).find(x=>x.lead_id===item.lead_id);
+    if(p?.kwp) return p.kwp;
+  }
+  // 3. chain de FKs (registros criados pelo fluxo normal)
   let propostaId = null;
-  if(stageId === 'vistoria' && item.proposta_id) propostaId = item.proposta_id;
-  else if(stageId === 'contrato'){
+  if(stageId === 'contrato'){
     const v = (State.vistorias||[]).find(x=>x.id===item.vistoria_id);
-    propostaId = item.proposta_id || v?.proposta_id;
+    propostaId = v?.proposta_id;
   } else if(stageId === 'logistica'){
     const c = (State.contratos||[]).find(x=>x.id===item.contrato_id);
     const v = c && (State.vistorias||[]).find(x=>x.id===c.vistoria_id);
-    propostaId = item.proposta_id || c?.proposta_id || v?.proposta_id;
+    propostaId = c?.proposta_id || v?.proposta_id;
   } else if(stageId === 'instalacao'){
     const l = (State.logistica||[]).find(x=>x.id===item.logistica_id);
     const c = l && (State.contratos||[]).find(x=>x.id===l.contrato_id);
     const v = c && (State.vistorias||[]).find(x=>x.id===c.vistoria_id);
-    propostaId = item.proposta_id || l?.proposta_id || c?.proposta_id || v?.proposta_id;
+    propostaId = l?.proposta_id || c?.proposta_id || v?.proposta_id;
   } else if(stageId === 'homologacao'){
     const i = (State.instalacoes||[]).find(x=>x.id===item.instalacao_id);
     const l = i && (State.logistica||[]).find(x=>x.id===i.logistica_id);
     const c = l && (State.contratos||[]).find(x=>x.id===l.contrato_id);
     const v = c && (State.vistorias||[]).find(x=>x.id===c.vistoria_id);
-    propostaId = item.proposta_id || i?.proposta_id || l?.proposta_id || c?.proposta_id || v?.proposta_id;
+    propostaId = i?.proposta_id || l?.proposta_id || c?.proposta_id || v?.proposta_id;
   } else if(stageId === 'posvenda'){
     const h = (State.homologacoes||[]).find(x=>x.id===item.homologacao_id);
     const i = h && (State.instalacoes||[]).find(x=>x.id===h.instalacao_id);
     const l = i && (State.logistica||[]).find(x=>x.id===i.logistica_id);
     const c = l && (State.contratos||[]).find(x=>x.id===l.contrato_id);
     const v = c && (State.vistorias||[]).find(x=>x.id===c.vistoria_id);
-    propostaId = item.proposta_id || h?.proposta_id || i?.proposta_id || l?.proposta_id || c?.proposta_id || v?.proposta_id;
+    propostaId = h?.proposta_id || i?.proposta_id || l?.proposta_id || c?.proposta_id || v?.proposta_id;
   }
   if(propostaId){
     const p = (State.propostas||[]).find(x=>x.id===propostaId);
     if(p?.kwp) return p.kwp;
   }
-  // Fallback por nome normalizado (sem acentos, case-insensitive)
+  // 4. fallback por nome normalizado (sem acentos, case-insensitive)
   const nome = _normNome(item.nome);
   if(nome){
     const p = (State.propostas||[]).find(x=>_normNome(x.nome)===nome);
