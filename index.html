@@ -1618,10 +1618,27 @@ function etapaAtualDaVistoria(v){
   return {icon:'⭐', label:'Pós Venda', status:p.status};
 }
 
+function resolvePropostaKwp(item, stageId){
+  if(stageId === 'proposta') return item.kwp;
+  // Tenta pelo proposta_id (vistoria tem FK direto)
+  if(item.proposta_id){
+    const p = (State.propostas||[]).find(x=>x.id===item.proposta_id);
+    if(p?.kwp) return p.kwp;
+  }
+  // Fallback por nome (cobre todos os estágios sem FK completo)
+  const nome = (item.nome||'').toLowerCase().trim();
+  if(nome){
+    const p = (State.propostas||[]).find(x=>(x.nome||'').toLowerCase().trim()===nome);
+    if(p?.kwp) return p.kwp;
+  }
+  return item.kwp;
+}
+
 function renderCard(item,stage){
   const stat = stageStatus(item,stage);
   const kwh = item.kwh ? `${fmtNum(item.kwh,0)} kWh` : '';
-  const kwp = item.kwp ? `${fmtNum(item.kwp,2)} kWp` : '';
+  const rawKwp = resolvePropostaKwp(item, stage.id);
+  const kwp = rawKwp ? `${fmtNum(rawKwp,2)} kWp` : '';
   const flags = stageFlags(item,stage);
   const role = userRole();
   const isTecVist  = role === 'tec_vistoria';
