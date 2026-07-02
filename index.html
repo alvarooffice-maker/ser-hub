@@ -3745,6 +3745,11 @@ function openTermoAditivoModal(contrato, termo=null){
           ${formField({label:'Data Assinatura',name:'data_assinatura',type:'date',value:termo.data_assinatura})}
           ${formField({label:'Descrição / Detalhes',name:'descricao',type:'textarea',value:termo.descricao,full:true,rows:4})}
         </div>
+        <div id="laudoWrap" style="display:${termo.tipo==='sombreamento'?'block':'none'};margin-top:14px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:#6B21A8">📎 Laudo de Sombreamento (PDF)</div>
+          ${termo.laudo_url?`<div style="margin-bottom:8px"><a href="${esc(termo.laudo_url)}" target="_blank" style="font-size:12px;color:#4B0082">📄 Laudo atual</a></div>`:''}
+          <input type="file" id="laudoFile" accept="application/pdf" style="font-size:13px">
+        </div>
       </div>
       <div class="modal-footer">
         ${!isNew?`<button type="button" class="btn btn-danger" id="delTermoBtn">Excluir</button>`:''}
@@ -3755,10 +3760,30 @@ function openTermoAditivoModal(contrato, termo=null){
   `,'sm');
 
   const form = $('#termoForm');
+
+  // Mostra/esconde campo de laudo conforme o tipo
+  form.elements.tipo.addEventListener('change', e=>{
+    $('#laudoWrap').style.display = e.target.value==='sombreamento' ? 'block' : 'none';
+  });
+
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
     data.contrato_id = contrato.id;
+
+    // Upload do laudo se for sombreamento e tiver arquivo selecionado
+    const laudoFile = $('#laudoFile')?.files?.[0];
+    if(data.tipo === 'sombreamento' && laudoFile){
+      const ext = laudoFile.name.split('.').pop();
+      const path = `${contrato.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supa.storage.from('termos_aditivos').upload(path, laudoFile, {upsert:true});
+      if(upErr) return toast('Erro ao enviar laudo: '+upErr.message,'error');
+      const { data: urlData } = supa.storage.from('termos_aditivos').getPublicUrl(path);
+      data.laudo_url = urlData.publicUrl;
+    } else {
+      data.laudo_url = termo.laudo_url || null;
+    }
+
     let err;
     if(isNew){ data.criado_por = State.user?.id; ({ error:err } = await supa.from('contratos_termos_aditivos').insert(data)); }
     else ({ error:err } = await supa.from('contratos_termos_aditivos').update(data).eq('id',termo.id));
@@ -3810,6 +3835,12 @@ function imprimirTermoAditivo(contrato, termo){
     <div class="ass">SER Energia Renovável<br>Contratada</div>
     ${contrato.vendedor?`<div class="ass">${esc(contrato.vendedor)}<br>Testemunha</div>`:''}
   </div>
+  ${termo.laudo_url ? `
+  <div style="page-break-before:always;margin-top:40px">
+    <h3 style="text-align:center;font-size:14px;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Laudo de Sombreamento Anexo</h3>
+    <embed src="${termo.laudo_url}" type="application/pdf" width="100%" height="900px" style="border:1px solid #ddd;border-radius:4px">
+    <p style="font-size:11px;color:#888;margin-top:8px;text-align:center">Caso o laudo não apareça acima, <a href="${termo.laudo_url}" target="_blank">clique aqui para abrir</a>.</p>
+  </div>` : ''}
   <script>window.onload=()=>window.print()<\/script>
   </body></html>`);
   w.document.close();
