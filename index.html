@@ -1618,17 +1618,51 @@ function etapaAtualDaVistoria(v){
   return {icon:'⭐', label:'Pós Venda', status:p.status};
 }
 
+function _normNome(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(); }
 function resolvePropostaKwp(item, stageId){
   if(stageId === 'proposta') return item.kwp;
-  // Tenta pelo proposta_id (vistoria tem FK direto)
+  // Tenta pelo proposta_id direto (todos os estágios devem ter este campo)
   if(item.proposta_id){
     const p = (State.propostas||[]).find(x=>x.id===item.proposta_id);
     if(p?.kwp) return p.kwp;
   }
-  // Fallback por nome (cobre todos os estágios sem FK completo)
-  const nome = (item.nome||'').toLowerCase().trim();
+  // Percorre chain de FKs para chegar na proposta
+  let propostaId = null;
+  if(stageId === 'vistoria' && item.proposta_id) propostaId = item.proposta_id;
+  else if(stageId === 'contrato'){
+    const v = (State.vistorias||[]).find(x=>x.id===item.vistoria_id);
+    propostaId = item.proposta_id || v?.proposta_id;
+  } else if(stageId === 'logistica'){
+    const c = (State.contratos||[]).find(x=>x.id===item.contrato_id);
+    const v = c && (State.vistorias||[]).find(x=>x.id===c.vistoria_id);
+    propostaId = item.proposta_id || c?.proposta_id || v?.proposta_id;
+  } else if(stageId === 'instalacao'){
+    const l = (State.logistica||[]).find(x=>x.id===item.logistica_id);
+    const c = l && (State.contratos||[]).find(x=>x.id===l.contrato_id);
+    const v = c && (State.vistorias||[]).find(x=>x.id===c.vistoria_id);
+    propostaId = item.proposta_id || l?.proposta_id || c?.proposta_id || v?.proposta_id;
+  } else if(stageId === 'homologacao'){
+    const i = (State.instalacoes||[]).find(x=>x.id===item.instalacao_id);
+    const l = i && (State.logistica||[]).find(x=>x.id===i.logistica_id);
+    const c = l && (State.contratos||[]).find(x=>x.id===l.contrato_id);
+    const v = c && (State.vistorias||[]).find(x=>x.id===c.vistoria_id);
+    propostaId = item.proposta_id || i?.proposta_id || l?.proposta_id || c?.proposta_id || v?.proposta_id;
+  } else if(stageId === 'posvenda'){
+    const h = (State.homologacoes||[]).find(x=>x.id===item.homologacao_id);
+    const i = h && (State.instalacoes||[]).find(x=>x.id===h.instalacao_id);
+    const l = i && (State.logistica||[]).find(x=>x.id===i.logistica_id);
+    const c = l && (State.contratos||[]).find(x=>x.id===l.contrato_id);
+    const v = c && (State.vistorias||[]).find(x=>x.id===c.vistoria_id);
+    propostaId = item.proposta_id || h?.proposta_id || i?.proposta_id || l?.proposta_id || c?.proposta_id || v?.proposta_id;
+  }
+  if(propostaId){
+    const p = (State.propostas||[]).find(x=>x.id===propostaId);
+    if(p?.kwp) return p.kwp;
+  }
+  // Fallback por nome normalizado (sem acentos, case-insensitive)
+  const nome = _normNome(item.nome);
   if(nome){
-    const p = (State.propostas||[]).find(x=>(x.nome||'').toLowerCase().trim()===nome);
+    const p = (State.propostas||[]).find(x=>_normNome(x.nome)===nome);
     if(p?.kwp) return p.kwp;
   }
   return item.kwp;
