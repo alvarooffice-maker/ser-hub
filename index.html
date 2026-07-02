@@ -3745,10 +3745,15 @@ function openTermoAditivoModal(contrato, termo=null){
           ${formField({label:'Data Assinatura',name:'data_assinatura',type:'date',value:termo.data_assinatura})}
           ${formField({label:'Descrição / Detalhes',name:'descricao',type:'textarea',value:termo.descricao,full:true,rows:4})}
         </div>
-        <div id="laudoWrap" style="display:${termo.tipo==='sombreamento'?'block':'none'};margin-top:14px">
-          <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:#6B21A8">📎 Laudo de Sombreamento (PDF)</div>
-          ${termo.laudo_url?`<div style="margin-bottom:8px"><a href="${esc(termo.laudo_url)}" target="_blank" style="font-size:12px;color:#4B0082">📄 Laudo atual</a></div>`:''}
-          <input type="file" id="laudoFile" accept="application/pdf" style="font-size:13px">
+        <div id="laudoWrap" style="display:${termo.tipo==='sombreamento'?'block':'none'};margin-top:14px;background:#f5f0ff;border:1px dashed #a78bfa;border-radius:8px;padding:12px 14px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#6B21A8">📎 Laudo de Sombreamento (PDF)</div>
+          ${termo.laudo_url
+            ? `<div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">
+                 <a href="${esc(termo.laudo_url)}" target="_blank" style="font-size:12px;color:#4B0082;font-weight:600">📄 Ver laudo atual</a>
+                 <span style="font-size:11px;color:#888">— envie novo arquivo para substituir</span>
+               </div>`
+            : '<div style="font-size:12px;color:#888;margin-bottom:8px">Nenhum laudo enviado ainda.</div>'}
+          <input type="file" id="laudoFile" accept="application/pdf" style="font-size:13px;width:100%">
         </div>
       </div>
       <div class="modal-footer">
@@ -3852,7 +3857,11 @@ function imprimirTermoAditivo(contrato, termo){
     <embed src="${termo.laudo_url}" type="application/pdf" width="100%" height="900px" style="border:1px solid #ddd;border-radius:4px">
     <p style="font-size:11px;color:#888;margin-top:8px;text-align:center">Caso o laudo não apareça acima, <a href="${termo.laudo_url}" target="_blank">clique aqui para abrir</a>.</p>
   </div>` : ''}
-  <script>window.onload=()=>window.print()<\/script>
+  <script>
+    const img = document.querySelector('.doc-header img');
+    if(img && !img.complete){ img.onload = ()=>window.print(); img.onerror = ()=>window.print(); }
+    else window.print();
+  <\/script>
   </body></html>`);
   w.document.close();
 }
