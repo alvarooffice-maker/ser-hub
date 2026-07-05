@@ -1,0 +1,34 @@
+name: Disparo Automático WhatsApp
+
+on:
+  schedule:
+    # 11h UTC = 8h Belém (UTC-3), todo dia
+    - cron: '0 11 * * *'
+  workflow_dispatch: # permite rodar manualmente pelo GitHub
+
+jobs:
+  disparar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: disparo/package.json
+
+      - name: Instalar dependências
+        run: npm install
+        working-directory: disparo
+
+      - name: Rodar robô de disparo
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ZAPI_INSTANCE: ${{ secrets.ZAPI_INSTANCE }}
+          ZAPI_TOKEN: ${{ secrets.ZAPI_TOKEN }}
+        run: node 2_disparo_automatico.js
+        working-directory: disparo

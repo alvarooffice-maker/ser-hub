@@ -1,0 +1,14 @@
+{
+  "name": "ser-disparo-automatico",
+  "version": "1.0.0",
+  "description": "Robô de disparo automático de mensagens WhatsApp — SER Energia Renovável",
+  "main": "2_disparo_automatico.js",
+  "scripts": {
+    "start": "node 2_disparo_automatico.js",
+    "dry": "node 2_disparo_automatico.js --dry-run"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-fetch": "^2.7.0"
+  }
+}
