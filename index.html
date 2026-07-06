@@ -2556,6 +2556,55 @@ function openLeadModal(item=null){
     $('#reatWrap').style.display = show?'block':'none';
   });
 
+  // Autocomplete de cliente existente no campo Nome (apenas novo lead)
+  if(isNew){
+    const nomeInput = form.elements.nome;
+    // Coleta todos os clientes conhecidos de todas as etapas
+    const todosClientes = [
+      ...(State.leads||[]),
+      ...(State.propostas||[]),
+      ...(State.vistorias||[]),
+      ...(State.contratos||[]),
+      ...(State.logisticas||[]),
+      ...(State.instalacoes||[]),
+      ...(State.homologacoes||[]),
+      ...(State.posvenda||[]),
+    ].reduce((map, c) => {
+      const n = (c.nome||'').trim();
+      if(n && !map.has(n.toLowerCase())) map.set(n.toLowerCase(), c);
+      return map;
+    }, new Map());
+
+    // Cria dropdown de sugestões
+    const suggest = document.createElement('div');
+    suggest.style.cssText = 'position:absolute;background:#fff;border:1px solid #d1d5db;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:9999;width:100%;max-height:200px;overflow-y:auto;display:none';
+    nomeInput.parentElement.style.position = 'relative';
+    nomeInput.parentElement.appendChild(suggest);
+
+    nomeInput.addEventListener('input', ()=>{
+      const q = nomeInput.value.trim().toLowerCase();
+      suggest.innerHTML = '';
+      if(q.length < 2){ suggest.style.display='none'; return; }
+      const matches = [...todosClientes.values()].filter(c=>(c.nome||'').toLowerCase().includes(q)).slice(0,8);
+      if(!matches.length){ suggest.style.display='none'; return; }
+      matches.forEach(c=>{
+        const div = document.createElement('div');
+        div.style.cssText = 'padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6';
+        div.innerHTML = `<strong>${esc(c.nome)}</strong>${c.telefone?` <span style="color:#6b7280;font-size:12px">· ${esc(c.telefone)}</span>`:''}`;
+        div.addEventListener('mousedown', e=>{ e.preventDefault();
+          nomeInput.value = c.nome;
+          if(c.telefone && !form.elements.telefone.value) form.elements.telefone.value = c.telefone;
+          if(c.nascimento && !form.elements.nascimento.value) form.elements.nascimento.value = c.nascimento;
+          if(c.canal && !form.elements.canal.value) form.elements.canal.value = c.canal;
+          suggest.style.display='none';
+        });
+        suggest.appendChild(div);
+      });
+      suggest.style.display = 'block';
+    });
+    nomeInput.addEventListener('blur', ()=> setTimeout(()=>suggest.style.display='none', 150));
+  }
+
   if(!isNew) carregarHistorico($('#histList'), 'leads', item.id);
 
   const statusLeadMap = {em_contato:'Em contato', proposta:'Proposta', perdido:'Perdido'};
@@ -2816,6 +2865,9 @@ function openPropostaModal(item=null){
   form.kwh.addEventListener('input', recalcSemSolar);
   form.conta_sem_solar.addEventListener('input', recalcComSolar);
   form.conta_com_solar.addEventListener('input', recalcEco);
+
+  // Recalcula ao abrir edição caso economia_mensal esteja zerada mas kwh esteja preenchido
+  if(!isNew && !item.economia_mensal && item.kwh) recalcSemSolar();
 
   if(!isNew) carregarHistorico($('#histList'), 'propostas', item.id);
 
