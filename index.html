@@ -1508,9 +1508,12 @@ function renderStageColBody(stage, items){
   if(FUNIL_ORDEM.includes(stage.id) && stage.id !== 'posvenda'){
     const nomesAvancados = nomesEmEtapasMaisAvancadas(stage.id);
     if(nomesAvancados.size){
+      const leadsComProjeto = new Set((State.leads||[]).filter(l=>(l.projeto||'').trim()).map(l=>l.id));
       items = items.filter(it => {
         // Lead com "projeto" preenchido = segundo projeto do cliente → nunca esconder por nome
         if(stage.id === 'lead' && (it.projeto||'').trim()) return true;
+        // Etapas downstream: se veio de um lead com "projeto" → nunca esconder por nome
+        if(it.lead_id && leadsComProjeto.has(it.lead_id)) return true;
         return !nomesAvancados.has((it.nome||'').toLowerCase().trim());
       });
     }
@@ -1569,9 +1572,11 @@ function renderStageColBody(stage, items){
       let key;
       if(stage.id === 'lead')
         key = 'n:' + (it.nome||'').toLowerCase().trim() + '|p:' + (it.projeto||'').toLowerCase().trim();
-      else if(stage.id === 'proposta')
-        key = it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim());
-      else if(stage.id === 'vistoria')
+      else if(stage.id === 'proposta'){
+        const lead = it.lead_id ? (State.leads||[]).find(l=>l.id===it.lead_id) : null;
+        const proj = (lead?.projeto||'').trim();
+        key = proj ? (it.lead_id + '|p:' + proj.toLowerCase()) : (it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim()));
+      } else if(stage.id === 'vistoria')
         key = it.proposta_id || it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim());
       else
         key = it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim());
