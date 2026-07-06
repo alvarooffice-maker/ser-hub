@@ -4963,15 +4963,15 @@ table.kit .hl{color:#4B0082;font-weight:700}
 <p class="pi">f. Avaliação do projeto de ajuste, caso seja necessário;</p>
 <p class="pi">g. Tratamento do processo de HOMOLOGAÇÃO do sistema junto a Concessionária de Energia Elétrica${c.concessionaria?' ('+c.concessionaria+')':''} e solicitação de aumento de carga (monofásico para bifásico).</p>
 <p><strong>1.1. Os componentes a serem fornecidos estritamente adequados ao projeto contratado, objeto deste contrato, são:</strong></p>
-<p class="pi">g) <strong>${txt(c.qtd_modulos)}</strong> Módulos Solares <strong>${txt(c.marca_modulo)} ${c.pot_modulo||'___'} W</strong>;</p>
-<p class="pi">h) <strong>${c.qtd_inversores||'1'}</strong> INVERSOR <strong>${txt(c.marca_inversor)} ${c.pot_inversor||'___'} KW ${c.fase?c.fase.toUpperCase():''} ${c.tensao?c.tensao+' V':''}</strong>.</p>
+${c.qtd_modulos?`<p class="pi">g) <strong>${txt(c.qtd_modulos)}</strong> Módulos Solares <strong>${txt(c.marca_modulo)} ${c.pot_modulo||'___'} W</strong>;</p>`:''}
+${c.qtd_inversores?`<p class="pi">h) <strong>${c.qtd_inversores}</strong> INVERSOR <strong>${txt(c.marca_inversor)} ${c.pot_inversor||'___'} KW ${c.fase?c.fase.toUpperCase():''} ${c.tensao?c.tensao+' V':''}</strong>.</p>`:''}
 ${c.qtd_baterias?'<p class="pi">i) <strong>'+c.qtd_baterias+'</strong> Bateria(s) <strong>'+txt(c.marca_bateria)+' '+(c.pot_bateria||'___')+' kWh</strong>.</p>':''}
 
 <table class="kit">
   <thead><tr><th>ITEM</th><th>QTD.</th><th>FABRICANTE</th><th>POTÊNCIA</th><th>CONFIGURAÇÃO</th></tr></thead>
   <tbody>
-    <tr><td>Módulos Solares</td><td class="hl">${c.qtd_modulos||'—'} un.</td><td class="hl">${c.marca_modulo||'—'}</td><td>${c.pot_modulo||'—'} W</td><td>—</td></tr>
-    <tr><td>Inversor</td><td class="hl">${c.qtd_inversores||'1'} un.</td><td class="hl">${c.marca_inversor||'—'}</td><td>${c.pot_inversor||'—'} kW</td><td class="hl">${c.fase?c.fase.toUpperCase():''} ${c.tensao?c.tensao+' V':''}</td></tr>
+    ${c.qtd_modulos?`<tr><td>Módulos Solares</td><td class="hl">${c.qtd_modulos} un.</td><td class="hl">${c.marca_modulo||'—'}</td><td>${c.pot_modulo||'—'} W</td><td>—</td></tr>`:''}
+    ${c.qtd_inversores?`<tr><td>Inversor</td><td class="hl">${c.qtd_inversores} un.</td><td class="hl">${c.marca_inversor||'—'}</td><td>${c.pot_inversor||'—'} kW</td><td class="hl">${c.fase?c.fase.toUpperCase():''} ${c.tensao?c.tensao+' V':''}</td></tr>`:''}
     ${c.qtd_baterias?'<tr><td>Baterias</td><td class="hl">'+c.qtd_baterias+' un.</td><td class="hl">'+(c.marca_bateria||'—')+'</td><td>'+(c.pot_bateria||'—')+' kWh</td><td>—</td></tr>':''}
   </tbody>
 </table>
@@ -5090,7 +5090,7 @@ ${(c.pgto_desc||c.banco)?'<p><strong>3.1. O Pagamento ocorrerá: <span style="co
   <p>03 meses para serviços de manutenção pela SER. As fabricantes oferecem 25 anos de garantia de performance e 10 anos contra defeitos de fabricação para os módulos.</p>
   <div class="mat-box">
     <div class="mat-title">📦 Lista de Materiais do Projeto</div>
-    <p>Sistema <strong>${c.kwp||'—'} kWp</strong> · <strong>${c.qtd_modulos||'—'} módulo(s) ${c.marca_modulo||''} ${c.pot_modulo?c.pot_modulo+'W':''}</strong> · <strong>${c.qtd_inversores||'1'} inversor(es) ${c.marca_inversor||''} ${c.pot_inversor?c.pot_inversor+'kW':''}</strong>${c.fase?' — '+c.fase.toUpperCase():''}${c.tensao?' '+c.tensao+'V':''}</p>
+    <p>Sistema <strong>${c.kwp||'—'} kWp</strong>${c.qtd_modulos?` · <strong>${c.qtd_modulos} módulo(s) ${c.marca_modulo||''} ${c.pot_modulo?c.pot_modulo+'W':''}</strong>`:''}${c.qtd_inversores?` · <strong>${c.qtd_inversores} inversor(es) ${c.marca_inversor||''} ${c.pot_inversor?c.pot_inversor+'kW':''}</strong>${c.fase?' — '+c.fase.toUpperCase():''}${c.tensao?' '+c.tensao+'V':''}`:''}</p>
     <p style="margin-top:8px"><strong style="color:#4B0082">💰 Valor total: ${fR(c.valor)} (${extenso(c.valor)})</strong></p>
     <p style="margin-top:4px"><strong>💳 Forma de pagamento: ${txt(c.forma_pgto)}</strong></p>
   </div>
