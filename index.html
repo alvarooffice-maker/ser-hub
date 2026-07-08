@@ -2530,7 +2530,7 @@ function openLeadModal(item=null){
           ${formField({label:'Projeto',name:'projeto',value:item.projeto,placeholder:'ex: Residencial, Expansão, Comercial...'})}
           ${formField({label:'kWh',name:'kwh',type:'number',value:item.kwh})}
           ${formField({label:'Canal',name:'canal',type:'select',value:item.canal,options:canalOpts})}
-          ${formField({label:'Vendedor',name:'vendedor',value:item.vendedor || (isVend()?State.profile.nome:'')})}
+          ${formField({label:'Vendedor',name:'vendedor',type:'select',value:item.vendedor||(isVend()?State.profile.nome:''),options:[['','— selecione —'],...(State.perfis||[]).filter(p=>p.ativo!==false&&['vendedor','supervisor','admin'].includes(p.perfil)&&p.nome).map(p=>[p.nome,p.nome])]})}
           ${formField({label:'Captador',name:'captador',value:item.captador})}
           ${formField({label:'SDR',name:'sdr',value:item.sdr})}
           ${formField({label:'Nascimento',name:'nascimento',type:'date',value:item.nascimento})}
