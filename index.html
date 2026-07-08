@@ -3985,9 +3985,9 @@ function openContratoModal(item=null){
             ${formField({label:'Descrição Pgto',name:'pgto_desc',type:'textarea',value:item.pgto_desc,full:true})}
             ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
             ${formField({label:'Data Assinatura',name:'data_assinatura',type:'date',value:item.data_assinatura})}
-            ${formField({label:'Vendedor (Testemunha 1)',name:'vendedor',value:item.vendedor})}
+            ${formField({label:'Vendedor (Testemunha 1)',name:'vendedor',type:'select',value:item.vendedor||'',options:[['','— selecione —'],...(State.perfis||[]).filter(p=>p.ativo!==false&&['vendedor','supervisor','admin'].includes(p.perfil)&&p.nome).map(p=>[p.nome,p.nome])]})}
             ${formField({label:'CPF do Vendedor',name:'vend_cpf',value:item.vend_cpf,placeholder:'000.000.000-00'})}
-            ${formField({label:'Supervisor (Testemunha 2)',name:'supervisor_nome',value:item.supervisor_nome})}
+            ${formField({label:'Supervisor (Testemunha 2)',name:'supervisor_nome',type:'select',value:item.supervisor_nome||'',options:[['','— selecione —'],...(State.perfis||[]).filter(p=>p.ativo!==false&&['supervisor','admin'].includes(p.perfil)&&p.nome).map(p=>[p.nome,p.nome])]})}
             ${formField({label:'CPF do Supervisor',name:'supervisor_cpf',value:item.supervisor_cpf,placeholder:'000.000.000-00'})}
           </div></div>
         </div>
@@ -4011,6 +4011,19 @@ function openContratoModal(item=null){
   const form = $('#contForm');
   attachCEP(form);
   attachCPF(form);
+
+  // Auto-preenche CPF ao selecionar vendedor ou supervisor
+  const perfisMap = (State.perfis||[]).reduce((m,p)=>{ if(p.nome) m[p.nome]=p; return m; }, {});
+  form.elements.vendedor?.addEventListener('change', e=>{
+    const p = perfisMap[e.target.value];
+    if(p?.cpf && !form.elements.vend_cpf.value) form.elements.vend_cpf.value = p.cpf;
+    else if(p?.cpf) form.elements.vend_cpf.value = p.cpf;
+  });
+  form.elements.supervisor_nome?.addEventListener('change', e=>{
+    const p = perfisMap[e.target.value];
+    if(p?.cpf) form.elements.supervisor_cpf.value = p.cpf;
+  });
+
   if(!isNew) carregarHistorico($('#histList'), 'contratos', item.id);
 
   if(!isNew){
@@ -7152,6 +7165,7 @@ function openUserModal(item=null){
       ${isNew?formField({label:'Senha (mín. 8 caracteres, letras e números)',name:'password',type:'password',value:'',required:true}):''}
       ${isNew?`<div style="grid-column:1/-1;font-size:11px;color:#888;margin-top:-8px">💡 Ex: <strong>Senha2025</strong> — evite caracteres especiais como @#$%</div>`:''}
       ${formField({label:'Perfil',name:'perfil',type:'select',value:item.perfil||'vendedor',options:perfilOpts})}
+      ${formField({label:'CPF',name:'cpf',value:item.cpf||'',placeholder:'000.000.000-00'})}
       ${formField({label:'Ativo',name:'ativo',type:'toggle',value:item.ativo!==false})}
     </div></div>
     <div class="modal-footer">
@@ -7186,7 +7200,7 @@ function openUserModal(item=null){
         toast('Usuário salvo com sucesso!','success');
       }catch(err){ return toast(err.message,'error'); }
     } else {
-      const { data:updated, error } = await supaAdmin.from('perfis').update({ nome:data.nome, perfil:data.perfil, ativo:data.ativo }).eq('email',item.email).select();
+      const { data:updated, error } = await supaAdmin.from('perfis').update({ nome:data.nome, perfil:data.perfil, ativo:data.ativo, cpf:data.cpf||null }).eq('email',item.email).select();
       if(error) return toast(error.message,'error');
       if(!updated||updated.length===0) return toast('Registro não encontrado.','error');
       toast('Atualizado','success');
