@@ -2759,6 +2759,8 @@ function openPropostaModal(item=null){
             ${formField({label:'Nome',name:'nome',value:item.nome,required:true})}
             ${formField({label:'Telefone',name:'telefone',value:item.telefone})}
             ${formField({label:'Email',name:'email',type:'email',value:item.email})}
+            ${formField({label:'CPF',name:'cpf',value:item.cpf,placeholder:'000.000.000-00'})}
+            ${formField({label:'Data de Nascimento',name:'nascimento',type:'date',value:item.nascimento})}
           </div></div>
         </div>
         <div class="section"><div class="section-header"><h4>Endereço</h4><span class="section-toggle">▼</span></div>
@@ -5531,6 +5533,7 @@ function openHomologacaoModal(item=null){
       </div>
       <div class="modal-footer">
         ${isAdmin()?`<button type="button" class="btn btn-danger" id="delHomBtn">Excluir</button>`:''}
+        ${canVerFinanceiro()?`<button type="button" class="btn btn-secondary" id="homProjFinBtn">💰 Financeiro</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
       </div>
@@ -5538,6 +5541,10 @@ function openHomologacaoModal(item=null){
   `,'lg');
   const form = $('#homForm');
   carregarHistorico($('#histList'), 'homologacoes', item.id);
+  $('#homProjFinBtn')?.addEventListener('click', ()=>{
+    const cont = linked.contrato || {};
+    openProjetoFinanceiroModal(cont.id || item.contrato_id, item.nome || cont.nome || '');
+  });
 
   // ── Etapa tracker — interação ──
   const trackerEl    = document.getElementById('homEtapaTracker');
