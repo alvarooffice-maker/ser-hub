@@ -1510,9 +1510,9 @@ function renderStageColBody(stage, items){
     if(nomesAvancados.size){
       const leadsComProjeto = new Set((State.leads||[]).filter(l=>(l.projeto||'').trim()).map(l=>l.id));
       items = items.filter(it => {
-        // Lead com "projeto" preenchido = segundo projeto do cliente → nunca esconder por nome
-        if(stage.id === 'lead' && (it.projeto||'').trim()) return true;
-        // Etapas downstream: se veio de um lead com "projeto" → nunca esconder por nome
+        // Item com "projeto" preenchido (próprio ou propagado) → nunca esconder por nome
+        if((it.projeto||'').trim()) return true;
+        // Fallback: lead de origem tem "projeto" → nunca esconder por nome
         if(it.lead_id && leadsComProjeto.has(it.lead_id)) return true;
         return !nomesAvancados.has((it.nome||'').toLowerCase().trim());
       });
@@ -2093,7 +2093,10 @@ async function enviarParaRemarketing(item, motivo, msg){
 
 function buildTransitionPayload(item, fromStage, toStage){
   const lead_id = item.lead_id || (fromStage==='lead'?item.id:null);
-  const base = { nome:item.nome, telefone:item.telefone, vendedor:item.vendedor, lead_id };
+  // Propaga "projeto" do lead para todas as etapas downstream
+  const lead = lead_id ? (State.leads||[]).find(l=>l.id===lead_id) : null;
+  const projeto = item.projeto || lead?.projeto || null;
+  const base = { nome:item.nome, telefone:item.telefone, vendedor:item.vendedor, lead_id, projeto };
   if(toStage==='proposta') return { ...base, kwh:item.kwh, status:'em_aberto' };
   if(toStage==='vistoria') return {
     ...base, proposta_id:item.id, email:item.email, cep:item.cep, rua:item.rua, numero:item.numero, complemento:item.complemento,
