@@ -6469,7 +6469,17 @@ function openComissaoModal(item=null, nomePreenchido=null){
 
   // Se editando e valor_vendido está zerado, tenta preencher automaticamente do contrato
   if(!isNew && !(Number(item.valor_vendido))){
-    autoFillContrato(item.nome||'');
+    // Usa contrato_id direto se disponível, para evitar pegar contrato errado em clientes com múltiplos projetos
+    if(item.contrato_id){
+      const contratoExato = contratosAssinados.find(c=>c.id===item.contrato_id);
+      if(contratoExato?.valor){
+        form.elements['valor_contrato'].value = fmtInputNum(contratoExato.valor);
+        form.elements['valor_vendido'].value  = fmtInputNum(contratoExato.valor);
+        recalc();
+      }
+    } else {
+      autoFillContrato(item.nome||'');
+    }
   }
 
   // Auto-preenche Valor Vendido com o valor do contrato ao digitar/selecionar o cliente
