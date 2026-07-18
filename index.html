@@ -832,10 +832,13 @@ async function renderDashboard(){
     </div>
 
     <div class="metrics" style="margin-bottom:16px">
-      <div class="metric"><div class="metric-label">Total Leads</div><div class="metric-value">${leads.length}</div></div>
-      <div class="metric"><div class="metric-label">Propostas Abertas</div><div class="metric-value">${propsAbertas}</div></div>
-      <div class="metric"><div class="metric-label">Contratos Assinados</div><div class="metric-value">${contratosAssin}</div></div>
-      <div class="metric"><div class="metric-label">kWp Instalado</div><div class="metric-value">${fmtNum(totalKwp,2)}</div></div>
+      <div class="metric"><div class="metric-label">Total Leads</div><div class="metric-value">${isVend() ? filterByVendor(leads).length : leads.length}</div></div>
+      <div class="metric"><div class="metric-label">Propostas Abertas</div><div class="metric-value">${isVend() ? filterByVendor(props).filter(p=>!['aceita','recusada'].includes(p.status)).length : propsAbertas}</div></div>
+      <div class="metric"><div class="metric-label">Contratos Assinados</div><div class="metric-value">${isVend() ? filterByVendor(contratos).filter(c=>c.status==='assinado').length : contratosAssin}</div></div>
+      <div class="metric"><div class="metric-label">kWp Instalado</div><div class="metric-value">${fmtNum(isVend() ? filterByVendor(instal).reduce((s,i)=>s+(Number(i.kwp)||0),0) : totalKwp,2)}</div></div>
+      <div class="metric"><div class="metric-label">Vendido no Mês</div><div class="metric-value" style="font-size:15px">${fmtBRL(valorMes)}</div></div>
+      <div class="metric"><div class="metric-label">Ticket Médio</div><div class="metric-value" style="font-size:15px">${(()=>{ const cc=contratos.filter(c=>c.status==='assinado'&&(isVend()?c.vendedor===State.profile?.nome:true)); return cc.length ? fmtBRL(cc.reduce((s,c)=>s+(Number(c.valor)||0),0)/cc.length) : '—'; })()}</div></div>
+      <div class="metric"><div class="metric-label">Taxa Conversão</div><div class="metric-value">${(()=>{ const l=isVend()?filterByVendor(leads).length:leads.length; const c=isVend()?filterByVendor(contratos).filter(x=>x.status==='assinado').length:contratosAssin; return l>0?Math.round(c/l*100)+'%':'—'; })()}</div></div>
     </div>
 
     <div style="display:grid;grid-template-columns:180px 1fr 220px;gap:16px;margin-bottom:16px">
@@ -1063,9 +1066,10 @@ async function renderDashboard(){
     let rows = [];
 
     if(dashRankTab === 'vendedores'){
+      const contVend = isVend() ? contFiltrados.filter(c=>c.vendedor===State.profile?.nome) : contFiltrados;
       const grp = {};
-      contFiltrados.forEach(c=>{ const k=c.vendedor||'—'; grp[k]=(grp[k]||0)+(Number(c.valor)||0); });
-      rows = Object.entries(grp).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${esc(k)}</td><td>${fmtBRL(v)}</td><td>${contFiltrados.filter(c=>(c.vendedor||'—')===k).length} contratos</td></tr>`);
+      contVend.forEach(c=>{ const k=c.vendedor||'—'; grp[k]=(grp[k]||0)+(Number(c.valor)||0); });
+      rows = Object.entries(grp).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${esc(k)}</td><td>${fmtBRL(v)}</td><td>${contVend.filter(c=>(c.vendedor||'—')===k).length} contratos</td></tr>`);
       $('#rankBody').innerHTML = rows.length ? `<table><thead><tr><th>#</th><th>Vendedor</th><th>Volume</th><th>Qtd</th></tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div class="empty">Nenhum dado no período.</div>';
     }
     else if(dashRankTab === 'bancos'){
