@@ -915,26 +915,35 @@ async function renderDashboard(){
       <div class="metric"><div class="metric-label">Ticket Médio</div><div class="metric-value" style="font-size:15px">${(()=>{ const cc=contratos.filter(c=>c.status==='assinado'&&(isVend()?c.vendedor===State.profile?.nome:true)); return cc.length ? fmtBRL(cc.reduce((s,c)=>s+(Number(c.valor)||0),0)/cc.length) : '—'; })()}</div></div>
       <div class="metric"><div class="metric-label">Taxa Conversão</div><div class="metric-value">${(()=>{ const l=isVend()?filterByVendor(leads).length:leads.length; const c=isVend()?filterByVendor(contratos).filter(x=>x.status==='assinado').length:contratosAssin; return l>0?Math.round(c/l*100)+'%':'—'; })()}</div></div>
       <div class="metric"><div class="metric-label">⏱️ Time Lead</div><div class="metric-value" id="kpiTimeLead">—</div><div class="metric-sub" style="font-size:10px;color:var(--text-light);text-align:center">dias lead→contrato</div></div>
+      <div class="metric"><div class="metric-label">🏆 Rec. Homologação</div><div class="metric-value" id="kpiHomolRec">—</div><div class="metric-value" style="font-size:13px;color:var(--text-light)" id="kpiHomolAvg">—</div><div class="metric-sub" style="font-size:10px;color:var(--text-light);text-align:center">recorde · média (dias contrato→homol)</div></div>
     </div>
 
     <div style="display:grid;grid-template-columns:180px 1fr 220px;gap:16px;margin-bottom:16px">
       <!-- Meta do mês -->
-      <div class="card" style="padding:16px;display:flex;flex-direction:column;align-items:center;gap:6px">
-        <div style="font-size:12px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Meta do Mês</div>
-        <div class="meta-clock-wrap">
-          <svg viewBox="0 0 140 140" width="110" height="110">
-            <circle cx="70" cy="70" r="54" fill="none" stroke="#e9e2f5" stroke-width="13"/>
-            <circle cx="70" cy="70" r="54" fill="none" stroke="var(--primary)" stroke-width="13"
-              stroke-dasharray="${circum}" stroke-dashoffset="${dashOffset.toFixed(1)}"
-              stroke-linecap="round" transform="rotate(-90 70 70)"
-              style="transition:stroke-dashoffset .6s ease"/>
-            <text x="70" y="65" text-anchor="middle" font-size="18" font-weight="800" fill="var(--primary)" font-family="inherit">${Math.round(pctMeta*100)}%</text>
-            <text x="70" y="82" text-anchor="middle" font-size="9" fill="#6b5f7a" font-family="inherit">DA META</text>
-          </svg>
-          <div class="meta-clock-val">${fmtBRL(valorMes)}</div>
-          <div class="meta-clock-label">de ${fmtBRL(metaValor)}</div>
-          ${isAdmin()?`<button class="btn btn-sm btn-secondary" id="editMetaBtn" style="margin-top:4px;font-size:11px">✏️ Definir meta</button>`:''}
-        </div>
+      <div class="card" style="padding:16px;display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div style="font-size:12px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Meta do Mês</div>
+        ${(()=>{
+          const _p=pctMeta, _cx=90,_cy=82,_R=64,_tW=13;
+          const _clamp=Math.min(1.02,_p);
+          const _angDeg=-180+_clamp*180, _angRad=_angDeg*Math.PI/180;
+          const _nx=_cx+_R*0.68*Math.cos(_angRad), _ny=_cy+_R*0.68*Math.sin(_angRad);
+          const _col=_p>=1?'#16a34a':_p>=.7?'#ca8a04':_p>=.4?'#ea580c':'#dc2626';
+          const _arc=(r,a1,a2)=>{const s=a1*Math.PI/180,e=a2*Math.PI/180;return 'M '+(_cx+r*Math.cos(s))+' '+(_cy+r*Math.sin(s))+' A '+r+' '+r+' 0 0 1 '+(_cx+r*Math.cos(e))+' '+(_cy+r*Math.sin(e));};
+          const _fillEnd=Math.min(0,_angDeg);
+          const _tick=(pm,c)=>{const a=(-180+pm*180)*Math.PI/180;return '<line x1="'+(_cx+(_R+5)*Math.cos(a))+'" y1="'+(_cy+(_R+5)*Math.sin(a))+'" x2="'+(_cx+(_R+13)*Math.cos(a))+'" y2="'+(_cy+(_R+13)*Math.sin(a))+'" stroke="'+c+'" stroke-width="3" stroke-linecap="round"/>';};
+          const _pctLbl=Math.round(Math.min(1,_p)*100)+'%';
+          return '<svg width="180" height="100" viewBox="0 0 180 100" style="overflow:visible">'
+            +'<path d="'+_arc(_R,-180,0)+'" fill="none" stroke="#e5e7eb" stroke-width="'+_tW+'" stroke-linecap="round"/>'
+            +(_p>0?'<path d="'+_arc(_R,-180,_fillEnd)+'" fill="none" stroke="'+_col+'" stroke-width="'+_tW+'" stroke-linecap="round" opacity="0.9"/>':'')
+            +_tick(.4,'#ea580c')+_tick(.7,'#ca8a04')+_tick(1,'#16a34a')
+            +'<line x1="'+_cx+'" y1="'+_cy+'" x2="'+_nx+'" y2="'+_ny+'" stroke="'+_col+'" stroke-width="4.5" stroke-linecap="round"/>'
+            +'<circle cx="'+_cx+'" cy="'+_cy+'" r="7" fill="'+_col+'"/>'
+            +'<text x="'+_cx+'" y="'+(_cy+22)+'" text-anchor="middle" font-size="22" font-weight="800" fill="'+_col+'" font-family="inherit">'+_pctLbl+'</text>'
+            +'</svg>';
+        })()}
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${fmtBRL(valorMes)}</div>
+        <div style="font-size:11px;color:var(--text-light)">de ${metaValor?fmtBRL(metaValor):'sem meta'}</div>
+        ${isAdmin()?`<button class="btn btn-sm btn-secondary" id="editMetaBtn" style="margin-top:6px;font-size:11px">✏️ Definir meta</button>`:''}
       </div>
 
       <!-- Funil -->
@@ -1195,6 +1204,23 @@ async function renderDashboard(){
     const avgTL = diasTL.length ? Math.round(diasTL.reduce((a,b)=>a+b,0)/diasTL.length) : null;
     const tlEl = $('#kpiTimeLead');
     if(tlEl) tlEl.textContent = avgTL!=null ? avgTL+'d' : '—';
+
+    // ── Recorde Homologação: dias contrato assinado → homologação aprovada ──
+    const diasHomol = (State.homologacoes||[])
+      .filter(h => h.etapa==='aprovada' && h.contrato_id && h.atualizado_em)
+      .map(h => {
+        const cont = (State.contratos||[]).find(c=>String(c.id)===String(h.contrato_id));
+        if(!cont?.data_assinatura) return null;
+        const dias = Math.floor((new Date(h.atualizado_em).getTime() - new Date(cont.data_assinatura).getTime()) / 86400000);
+        return dias >= 0 ? dias : null;
+      })
+      .filter(d => d != null);
+    const recHomol = diasHomol.length ? Math.min(...diasHomol) : null;
+    const avgHomol = diasHomol.length ? Math.round(diasHomol.reduce((a,b)=>a+b,0)/diasHomol.length) : null;
+    const hrEl = $('#kpiHomolRec');
+    const haEl = $('#kpiHomolAvg');
+    if(hrEl) hrEl.textContent = recHomol!=null ? '🏅 '+recHomol+'d' : '—';
+    if(haEl) haEl.textContent = avgHomol!=null ? 'ø '+avgHomol+'d' : '—';
 
     // ── Contratos filtrados por período ────────────────────────────────────
     const contFiltrados = contratos.filter(c=>c.status==='assinado' && c.data_assinatura >= startD && c.data_assinatura <= endD);
@@ -9146,6 +9172,36 @@ async function renderMetasVendedor(){
     return { nome:p.nome, meta, realizado, pct, metaRec };
   }).filter(r=>r.meta>0 || r.realizado>0).sort((a,b)=>b.realizado-a.realizado);
 
+  const gaugeSVG = (r) => {
+    const pct = r.meta>0 ? Math.min(1.02, r.pct) : 0;
+    const cx=80, cy=76, R=58, tW=11;
+    // 0% = -180° (esquerda), 100% = 0° (direita) — semicírculo superior
+    const angDeg = -180 + Math.min(1.02,pct)*180;
+    const angRad = angDeg*Math.PI/180;
+    const nx = cx + R*0.68*Math.cos(angRad);
+    const ny = cy + R*0.68*Math.sin(angRad);
+    const col = pct>=1?'#16a34a':pct>=.7?'#ca8a04':pct>=.4?'#ea580c':'#dc2626';
+    const arc = (r2,a1,a2) => { const s=a1*Math.PI/180,e=a2*Math.PI/180; return 'M '+(cx+r2*Math.cos(s))+' '+(cy+r2*Math.sin(s))+' A '+r2+' '+r2+' 0 0 1 '+(cx+r2*Math.cos(e))+' '+(cy+r2*Math.sin(e)); };
+    const fillEnd = Math.min(0, angDeg);
+    const tick = (pm,c) => { const a=(-180+pm*180)*Math.PI/180; return '<line x1="'+(cx+(R+5)*Math.cos(a))+'" y1="'+(cy+(R+5)*Math.sin(a))+'" x2="'+(cx+(R+12)*Math.cos(a))+'" y2="'+(cy+(R+12)*Math.sin(a))+'" stroke="'+c+'" stroke-width="2.5" stroke-linecap="round"/>'; };
+    const pctLabel = r.meta>0 ? Math.round(Math.min(1,pct)*100)+'%' : '0%';
+    const emoji = pct>=1?'🏆':pct>=.7?'💪':pct>=.4?'⚡':'🔥';
+    const firstName = r.nome.split(' ')[0];
+    return '<div style="display:flex;flex-direction:column;align-items:center;min-width:140px;max-width:160px">'
+      +'<svg width="160" height="92" viewBox="0 0 160 92" style="overflow:visible">'
+      +'<path d="'+arc(R,-180,0)+'" fill="none" stroke="#e5e7eb" stroke-width="'+tW+'" stroke-linecap="round"/>'
+      +(pct>0?'<path d="'+arc(R,-180,fillEnd)+'" fill="none" stroke="'+col+'" stroke-width="'+tW+'" stroke-linecap="round" opacity="0.9"/>':'')
+      +tick(.4,'#ea580c')+tick(.7,'#ca8a04')+tick(1,'#16a34a')
+      +'<line x1="'+cx+'" y1="'+cy+'" x2="'+nx+'" y2="'+ny+'" stroke="'+col+'" stroke-width="3.5" stroke-linecap="round"/>'
+      +'<circle cx="'+cx+'" cy="'+cy+'" r="5.5" fill="'+col+'"/>'
+      +'<text x="'+cx+'" y="'+(cy+20)+'" text-anchor="middle" font-size="17" font-weight="700" fill="'+col+'" font-family="inherit">'+pctLabel+'</text>'
+      +'<text x="'+cx+'" y="12" text-anchor="middle" font-size="13">'+emoji+'</text>'
+      +'</svg>'
+      +'<div style="font-weight:700;font-size:13px;margin-top:-2px">'+esc(firstName)+'</div>'
+      +'<div style="font-size:10px;color:var(--text-light);margin-top:2px">'+fmtBRL(r.realizado)+' / '+(r.meta?fmtBRL(r.meta):'sem meta')+'</div>'
+      +'</div>';
+  };
+
   if(!rows.length) return `<div class="card" style="margin-bottom:16px">
     <div class="card-header" style="justify-content:space-between;display:flex;align-items:center">
       <h3>🎯 Metas por Vendedor</h3>
@@ -9159,20 +9215,8 @@ async function renderMetasVendedor(){
       <h3>🎯 Metas por Vendedor — <span style="font-weight:400;font-size:13px;color:var(--text-light)">${mesAtual}</span></h3>
       ${isAdmin()?`<button class="btn btn-sm btn-secondary" id="editMetasVendBtn">✏️ Definir metas</button>`:''}
     </div>
-    <div style="display:flex;flex-direction:column;gap:12px;padding:4px 0">
-      ${rows.map(r=>{
-        const pctDisplay = r.meta>0 ? Math.round(r.pct*100)+'%' : '—';
-        const barColor = r.pct>=1?'#16a34a':r.pct>=.7?'#ca8a04':'#7c3aed';
-        return `<div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
-            <span style="font-weight:600;font-size:13px">${esc(r.nome)}</span>
-            <span style="font-size:12px;color:var(--text-light)">${fmtBRL(r.realizado)} de ${r.meta?fmtBRL(r.meta):'sem meta'} <strong style="color:${barColor}">(${pctDisplay})</strong></span>
-          </div>
-          <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
-            <div style="height:100%;width:${r.meta?Math.min(100,Math.round(r.pct*100)):0}%;background:${barColor};border-radius:4px;transition:width .6s ease"></div>
-          </div>
-        </div>`;
-      }).join('')}
+    <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;justify-content:center">
+      ${rows.map(r=>gaugeSVG(r)).join('')}
     </div>
   </div>`;
 }
