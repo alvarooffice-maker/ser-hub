@@ -1150,7 +1150,7 @@ async function renderDashboard(){
     // ── Rankings ───────────────────────────────────────────────────────────
     // Helper: agrupa com normalização, retorna array ordenado por valor desc
     function grpNorm(arr, field, valFn){
-      const map = new Map(); // normKey → {display, val, count}
+      const map = new Map();
       arr.forEach(item=>{
         const raw = item[field]||'—';
         const key = normName(raw);
@@ -1162,42 +1162,80 @@ async function renderDashboard(){
       return [...map.values()].sort((a,b)=>b.val-a.val);
     }
 
+    // Medalhas para os 3 primeiros
+    const medals = ['🥇','🥈','🥉'];
+
+    // Renderiza lista visual de ranking (barra de progresso proporcional)
+    function rankCards(rows, {label, valFmt, subFmt, emptyMsg, accent='var(--primary)'}){
+      if(!rows.length) return `<div class="empty" style="padding:24px">${emptyMsg}</div>`;
+      const maxVal = rows[0].val || 1;
+      return `<div style="display:flex;flex-direction:column;gap:8px;padding:12px 0">
+        ${rows.map(({display,val,count},i)=>{
+          const pct = Math.max(4, Math.round((val/maxVal)*100));
+          const medal = i<3 ? medals[i] : `<span style="font-size:11px;color:var(--text-light);font-weight:700;min-width:18px;text-align:center">${i+1}</span>`;
+          const sub = subFmt ? subFmt({val,count}) : '';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--border);transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+            <span style="font-size:${i<3?'20px':'13px'};line-height:1;width:24px;text-align:center;flex-shrink:0">${medal}</span>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+                <span style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%">${esc(display)}</span>
+                <span style="font-weight:700;font-size:13px;color:${accent};white-space:nowrap">${valFmt({val,count})}</span>
+              </div>
+              <div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:${i===0?accent:(i===1?accent+'cc':accent+'88')};border-radius:3px;transition:width .4s ease"></div>
+              </div>
+              ${sub?`<div style="font-size:11px;color:var(--text-light);margin-top:3px">${sub}</div>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+
     if(dashRankTab === 'vendedores'){
       const src = isVend() ? contFiltrados.filter(c=>normName(c.vendedor)===normName(State.profile?.nome)) : contFiltrados;
       const rows = grpNorm(src,'vendedor',c=>Number(c.valor)||0);
-      $('#rankBody').innerHTML = rows.length
-        ? `<table><thead><tr><th>#</th><th>Vendedor</th><th>Volume</th><th>Qtd</th></tr></thead><tbody>
-           ${rows.map(({display,val,count},i)=>`<tr><td>${i+1}</td><td>${esc(display)}</td><td>${fmtBRL(val)}</td><td>${count} contrato${count!==1?'s':''}</td></tr>`).join('')}
-           </tbody></table>`
-        : '<div class="empty">Nenhum dado no período.</div>';
+      const totalVend = rows.reduce((s,r)=>s+r.val,0);
+      $('#rankBody').innerHTML = rankCards(rows,{
+        label:'Vendedor',
+        accent:'#7c3aed',
+        valFmt:({val})=>fmtBRL(val),
+        subFmt:({val,count})=>`${count} contrato${count!==1?'s':''} · ${totalVend?Math.round(val/totalVend*100):0}% do total`,
+        emptyMsg:'Nenhum dado no período.'
+      });
     }
     else if(dashRankTab === 'bancos'){
       const src = contFiltrados.filter(c=>c.banco);
       const rows = grpNorm(src,'banco',c=>Number(c.valor)||0);
-      $('#rankBody').innerHTML = rows.length
-        ? `<table><thead><tr><th>#</th><th>Banco</th><th>Volume</th><th>Qtd</th></tr></thead><tbody>
-           ${rows.map(({display,val,count},i)=>`<tr><td>${i+1}</td><td>${esc(display)}</td><td>${fmtBRL(val)}</td><td>${count}</td></tr>`).join('')}
-           </tbody></table>`
-        : '<div class="empty">Nenhum financiamento no período.</div>';
+      $('#rankBody').innerHTML = rankCards(rows,{
+        label:'Banco',
+        accent:'#0369a1',
+        valFmt:({val})=>fmtBRL(val),
+        subFmt:({count})=>`${count} financiamento${count!==1?'s':''}`,
+        emptyMsg:'Nenhum financiamento no período.'
+      });
     }
     else if(dashRankTab === 'forma_pgto'){
-      const rows = grpNorm(contFiltrados,'forma_pgto',()=>1).sort((a,b)=>b.val-a.val);
+      const rows = grpNorm(contFiltrados,'forma_pgto',()=>1);
       const total = contFiltrados.length;
-      $('#rankBody').innerHTML = rows.length
-        ? `<table><thead><tr><th>#</th><th>Forma Pagamento</th><th>Qtd</th><th>%</th></tr></thead><tbody>
-           ${rows.map(({display,val},i)=>`<tr><td>${i+1}</td><td>${esc(display)}</td><td>${val}</td><td>${Math.round(val/Math.max(1,total)*100)}%</td></tr>`).join('')}
-           </tbody></table>`
-        : '<div class="empty">Nenhum dado no período.</div>';
+      $('#rankBody').innerHTML = rankCards(rows,{
+        label:'Forma Pgto',
+        accent:'#059669',
+        valFmt:({val})=>`${Math.round(val/Math.max(1,total)*100)}%`,
+        subFmt:({val})=>`${val} contrato${val!==1?'s':''}`,
+        emptyMsg:'Nenhum dado no período.'
+      });
     }
     else if(dashRankTab === 'distribuidores'){
       const logFiltrados = (isVend()?filterByVendor(State.logistica||[]):State.logistica||[])
         .filter(l=>l.criado_em>=s0&&l.criado_em<=e9&&l.distribuidora);
       const rows = grpNorm(logFiltrados,'distribuidora',()=>1);
-      $('#rankBody').innerHTML = rows.length
-        ? `<table><thead><tr><th>#</th><th>Distribuidora</th><th>Qtd pedidos</th></tr></thead><tbody>
-           ${rows.map(({display,val},i)=>`<tr><td>${i+1}</td><td>${esc(display)}</td><td>${val}</td></tr>`).join('')}
-           </tbody></table>`
-        : '<div class="empty">Nenhum dado no período.</div>';
+      $('#rankBody').innerHTML = rankCards(rows,{
+        label:'Distribuidora',
+        accent:'#d97706',
+        valFmt:({val})=>`${val} pedido${val!==1?'s':''}`,
+        subFmt:null,
+        emptyMsg:'Nenhum dado no período.'
+      });
     }
   }
 
@@ -1713,16 +1751,17 @@ function renderStageColBody(stage, items){
     const seen = new Map();
     items.forEach(it => {
       let key;
+      const _proj = (it.projeto||'').toLowerCase().trim();
       if(stage.id === 'lead')
-        key = 'n:' + (it.nome||'').toLowerCase().trim() + '|p:' + (it.projeto||'').toLowerCase().trim();
+        key = 'n:' + (it.nome||'').toLowerCase().trim() + '|p:' + _proj;
       else if(stage.id === 'proposta'){
         const lead = it.lead_id ? (State.leads||[]).find(l=>l.id===it.lead_id) : null;
-        const proj = (lead?.projeto||'').trim();
-        key = proj ? (it.lead_id + '|p:' + proj.toLowerCase()) : (it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim()));
+        const proj = _proj || (lead?.projeto||'').toLowerCase().trim();
+        key = it.lead_id ? (it.lead_id + '|p:' + proj) : ('n:' + (it.nome||'').toLowerCase().trim() + '|p:' + proj);
       } else if(stage.id === 'vistoria')
-        key = it.proposta_id || it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim());
+        key = (it.proposta_id || it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim())) + '|p:' + _proj;
       else
-        key = it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim());
+        key = (it.lead_id || ('n:' + (it.nome||'').toLowerCase().trim())) + '|p:' + _proj;
       const prev = seen.get(key);
       if(!prev || (it.criado_em||'') > (prev.criado_em||'')) seen.set(key, it);
     });
@@ -1859,8 +1898,9 @@ function renderCard(item,stage){
     ? `<span class="badge badge-${esc(item.tipo)}" title="${esc(item.tipo==='outros'&&item.tipo_obs?item.tipo_obs:'')}">${esc(tipoAtendMap[item.tipo]||item.tipo)}</span>`
     : '';
 
-  const projetoBadge = (stage.id === 'lead' && item.projeto)
-    ? `<span style="display:inline-block;font-size:10px;background:#ede9fe;color:#6B21A8;border-radius:4px;padding:1px 6px;margin-top:2px">${esc(item.projeto)}</span>`
+  // Badge de projeto: mostra em TODAS as etapas se o campo estiver preenchido
+  const projetoBadge = item.projeto
+    ? `<span style="display:inline-block;font-size:10px;background:#ede9fe;color:#6B21A8;border-radius:4px;padding:1px 6px;margin-top:2px;font-weight:600">📌 ${esc(item.projeto)}</span>`
     : '';
 
   return `
