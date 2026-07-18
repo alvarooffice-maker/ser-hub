@@ -1063,6 +1063,25 @@ async function renderDashboard(){
     $('#rankPeriodLabel').textContent = `(${periodLabels[dashPeriod]||dashPeriod})`;
 
     const contFiltrados = contratos.filter(c=>c.status==='assinado' && c.data_assinatura >= startD && c.data_assinatura <= endD);
+
+    // Atualiza KPIs dinâmicos conforme o período selecionado
+    const contKpi = isVend() ? contFiltrados.filter(c=>c.vendedor===State.profile?.nome) : contFiltrados;
+    const totalPeriodo = contKpi.reduce((s,c)=>s+(Number(c.valor)||0),0);
+    const ticketMedio = contKpi.length ? totalPeriodo/contKpi.length : 0;
+    const leadsPeriodo = isVend() ? filterByVendor(leads).filter(l=>l.criado_em>=startD+'T00:00:00'&&l.criado_em<=endD+'T23:59:59').length : leads.filter(l=>l.criado_em>=startD+'T00:00:00'&&l.criado_em<=endD+'T23:59:59').length;
+    const taxaConv = leadsPeriodo > 0 ? Math.round(contKpi.length/leadsPeriodo*100)+'%' : '—';
+    const propAb = isVend() ? filterByVendor(props).filter(p=>!['aceita','recusada'].includes(p.status)&&p.criado_em>=startD+'T00:00:00'&&p.criado_em<=endD+'T23:59:59').length : props.filter(p=>!['aceita','recusada'].includes(p.status)&&p.criado_em>=startD+'T00:00:00'&&p.criado_em<=endD+'T23:59:59').length;
+    document.querySelectorAll('.metric').forEach(m=>{
+      const lbl = m.querySelector('.metric-label')?.textContent;
+      const val = m.querySelector('.metric-value');
+      if(!lbl||!val) return;
+      if(lbl==='Vendido no Mês'){ m.querySelector('.metric-label').textContent='Vendido no Período'; val.textContent=fmtBRL(totalPeriodo); }
+      if(lbl==='Vendido no Período') val.textContent=fmtBRL(totalPeriodo);
+      if(lbl==='Ticket Médio') val.textContent=ticketMedio?fmtBRL(ticketMedio):'—';
+      if(lbl==='Taxa Conversão') val.textContent=taxaConv;
+      if(lbl==='Propostas Abertas') val.textContent=String(propAb);
+      if(lbl==='Contratos Assinados') val.textContent=String(contKpi.length);
+    });
     let rows = [];
 
     if(dashRankTab === 'vendedores'){
