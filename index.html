@@ -433,6 +433,34 @@ tbody tr:hover{background:#fafaf6}
 .cal-week-date{font-size:20px;font-weight:700;color:var(--text)}
 .cal-week-col.today .cal-week-date{color:var(--primary)}
 .cal-more{font-size:10px;color:var(--text-light);cursor:pointer;padding:2px 6px}
+
+/* BUSCA GLOBAL */
+#globalSearchOverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;display:none;align-items:flex-start;justify-content:center;padding-top:80px}
+#globalSearchOverlay.open{display:flex}
+#globalSearchBox{background:var(--card);border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,.3);width:min(640px,96vw);overflow:hidden;animation:slideDown .15s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+#globalSearchInput{width:100%;padding:18px 20px;font-size:16px;border:none;outline:none;background:transparent;color:var(--text);border-bottom:1px solid var(--border)}
+#globalSearchResults{max-height:400px;overflow-y:auto}
+.gsr-item{display:flex;align-items:center;gap:12px;padding:12px 20px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
+.gsr-item:hover,.gsr-item.gsr-active{background:var(--bg)}
+.gsr-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--primary);color:#fff;white-space:nowrap;flex-shrink:0}
+.gsr-name{font-weight:600;font-size:14px;color:var(--text)}
+.gsr-sub{font-size:12px;color:var(--text-light)}
+.gsr-empty{padding:32px 20px;text-align:center;color:var(--text-light);font-size:14px}
+#globalSearchKbd{padding:12px 20px;font-size:11px;color:var(--text-light);display:flex;gap:16px}
+#globalSearchKbd kbd{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-family:inherit;font-size:11px}
+
+/* SLA BADGE nos cards */
+.sla-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px}
+.sla-ok{background:#dcfce7;color:#16a34a}
+.sla-warn{background:#fef9c3;color:#a16207}
+.sla-alert{background:#ffedd5;color:#c2410c}
+.sla-danger{background:#fee2e2;color:#dc2626}
+
+/* TOPBAR SEARCH BTN */
+#globalSearchBtn{background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--text-light);display:flex;align-items:center;gap:6px;transition:background .15s}
+#globalSearchBtn:hover{background:var(--bg)}
+#globalSearchBtn kbd{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:11px;font-family:inherit}
 </style>
 </head>
 <body>
@@ -476,6 +504,7 @@ tbody tr:hover{background:#fafaf6}
     <div class="topbar">
       <button class="btn-icon" id="mobileMenuBtn" style="display:none">☰</button>
       <h1 id="pageTitle">Dashboard</h1>
+      <button id="globalSearchBtn" title="Busca global (Ctrl+K)">🔍 Buscar <kbd>Ctrl K</kbd></button>
       <div class="actions" id="pageActions"></div>
     </div>
     <div class="content" id="content"></div>
@@ -487,6 +516,15 @@ tbody tr:hover{background:#fafaf6}
 
 <!-- TOAST -->
 <div class="toast-stack" id="toastStack"></div>
+
+<!-- BUSCA GLOBAL -->
+<div id="globalSearchOverlay">
+  <div id="globalSearchBox">
+    <input id="globalSearchInput" placeholder="🔍  Buscar cliente, contrato, telefone…" autocomplete="off" spellcheck="false" />
+    <div id="globalSearchResults"></div>
+    <div id="globalSearchKbd"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span><span><kbd>Ctrl K</kbd> abrir</span></div>
+  </div>
+</div>
 
 <script>
 /* ============================================================
@@ -503,7 +541,7 @@ const State = {
   user:null, profile:null, route:'dashboard',
   leads:[], propostas:[], vistorias:[], contratos:[], logistica:[], instalacoes:[], homologacoes:[], posvenda:[], atendimentos:[], appman:[],
   remarketing:[], comissoes:[], receitas:[], despesas:[], cadastros:[], perfis:[],
-  tentativas_contato:[], metas:[],
+  tentativas_contato:[], metas:[], metas_vendedores:[],
   charts:{}
 };
 
@@ -657,6 +695,7 @@ const ROUTES = [
   { id:'remarketing', label:'Remarketing', icon:'🔁' },
   { id:'baterias', label:'Calculadora de Baterias', icon:'🔋' },
   { id:'disparador', label:'Disparador de Mensagens', icon:'💬' },
+  { id:'posvenda_rel', label:'Relatório Pós-Venda', icon:'📬', section:'RELATÓRIOS' },
   { id:'custo_projeto', label:'Custo por Projeto', icon:'💰', section:'GESTÃO' },
   { id:'financeiro', label:'Financeiro', icon:'📈', section:'GESTÃO' },
   { id:'cadastros', label:'Cadastros', icon:'👥', section:'GESTÃO' },
@@ -668,7 +707,7 @@ function visibleRoutes(){
   return ROUTES.filter(r=>{
     if(r.adminOnly && !['admin','supervisor'].includes(role)) return false;
     if(role==='financeiro') return ['dashboard','calendario','clientes','custo_projeto','financeiro'].includes(r.id);
-    if(role==='vendedor') return ['dashboard','calendario','clientes','pipeline','remarketing','baterias','disparador'].includes(r.id);
+    if(role==='vendedor') return ['dashboard','calendario','clientes','pipeline','remarketing','baterias','disparador','posvenda_rel'].includes(r.id);
     if(role==='tec_vistoria') return ['dashboard','calendario','clientes','vistoriador'].includes(r.id);
     if(role==='tec_instalacao') return ['dashboard','calendario','clientes','instalador'].includes(r.id);
     if(role==='tec_homologacao') return ['dashboard','calendario','clientes','homologador'].includes(r.id);
@@ -726,6 +765,7 @@ function navigate(route){
     case 'financeiro': renderFinanceiro(); break;
     case 'cadastros': renderCadastros(); break;
     case 'usuarios': renderUsuarios(); break;
+    case 'posvenda_rel': renderRelatorioPosvenda(); break;
   }
 }
 
@@ -733,7 +773,7 @@ function navigate(route){
    DATA LOADERS
    ============================================================ */
 async function loadAll(){
-  const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','atendimentos','app_manutencao','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis','tentativas_contato','metas','contratos_termos_aditivos'];
+  const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','atendimentos','app_manutencao','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis','tentativas_contato','metas','metas_vendedores','contratos_termos_aditivos'];
   const stateMap = { financeiro_receitas:'receitas', financeiro_despesas:'despesas', app_manutencao:'appman', contratos_termos_aditivos:'termos_aditivos' };
   await Promise.all(tables.map(async t => {
     try{
@@ -926,6 +966,12 @@ async function renderDashboard(){
         <canvas id="salesChart"></canvas>
       </div>
     </div>
+
+    <!-- Tempo médio por etapa -->
+    <div id="tempoMedioSection" style="margin-bottom:0"></div>
+
+    <!-- Metas por vendedor -->
+    <div id="metasVendSection" style="margin-bottom:0"></div>
 
     <!-- Rankings -->
     <div class="card" id="rankingsCard">
@@ -1242,6 +1288,15 @@ async function renderDashboard(){
   syncDashSelects();
   renderChart();
   renderRankings();
+
+  // Tempo médio por etapa
+  const tmEl = $('#tempoMedioSection');
+  if(tmEl) tmEl.innerHTML = buildTempoMedioSection();
+
+  // Metas por vendedor
+  const mvEl = $('#metasVendSection');
+  if(mvEl) renderMetasVendedor().then(html=>{ if(mvEl) mvEl.innerHTML = html; $('#editMetasVendBtn')?.addEventListener('click', openMetasVendedoresModal); });
+
 
   // Filtro de período
   $$('.period-btn').forEach(btn=>{
@@ -1903,6 +1958,15 @@ function renderCard(item,stage){
     ? `<span style="display:inline-block;font-size:10px;background:#ede9fe;color:#6B21A8;border-radius:4px;padding:1px 6px;margin-top:2px;font-weight:600">📌 ${esc(item.projeto)}</span>`
     : '';
 
+  // SLA: dias nesta etapa (usa atualizado_em p/ leads, criado_em p/ demais)
+  const _slaDate = stage.id==='lead' ? (item.atualizado_em||item.criado_em) : item.criado_em;
+  const _slaDias = _slaDate ? Math.floor((Date.now()-new Date(_slaDate).getTime())/86400000) : null;
+  const _slaClass = _slaDias==null ? '' : _slaDias<=3 ? 'sla-ok' : _slaDias<=7 ? 'sla-warn' : _slaDias<=14 ? 'sla-alert' : 'sla-danger';
+  const _slaIcon  = _slaDias==null ? '' : _slaDias<=3 ? '🟢' : _slaDias<=7 ? '🟡' : _slaDias<=14 ? '🟠' : '🔴';
+  const slaBadge = (_slaDias!=null && !['atendimentos','appman','posvenda'].includes(stage.id))
+    ? `<span class="sla-badge ${_slaClass}" title="${_slaDias}d nesta etapa">${_slaIcon} ${_slaDias}d</span>`
+    : '';
+
   return `
     <div class="kanban-card" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.responsavel||item.vendedor||'')+' '+(item.projeto||'')).toLowerCase()}">
       <div class="kanban-card-inner">
@@ -1911,7 +1975,7 @@ function renderCard(item,stage){
         <div class="meta">${esc(meta2)}</div>
         ${flags}
         ${tecHint}
-        <div class="footer">${tipoBadge}${badge(stat)}</div>
+        <div class="footer">${tipoBadge}${badge(stat)}${slaBadge}</div>
       </div>
     </div>`;
 }
@@ -2198,12 +2262,25 @@ function attachKanbanDnD(){
       dragging = null;
       if(fromStage === toStage) return;
       const fromIdx = STAGES.findIndex(s=>s.id===fromStage);
-      const toIdx = STAGES.findIndex(s=>s.id===toStage);
-      if(toIdx !== fromIdx+1){
+      const toIdx   = STAGES.findIndex(s=>s.id===toStage);
+      if(toIdx === fromIdx+1){
+        // Avanço normal
+        await transitionCard(drag.id, fromStage, toStage);
+      } else if(toIdx < fromIdx){
+        // Regressão: pede confirmação antes de desfazer
+        const fromLabel = STAGES[fromIdx]?.label || fromStage;
+        const toLabel   = STAGES[toIdx]?.label   || toStage;
+        confirmDialog(
+          `⚠️ Regredir card para "${toLabel}"?`,
+          `O registro em "${fromLabel}" será excluído. Esta ação não pode ser desfeita.`,
+          'Sim, regredir', 'Cancelar',
+          async () => {
+            await regressarCard(drag.id, fromStage, toStage);
+          }
+        );
+      } else {
         toast('Só é permitido avançar uma etapa por vez.','error');
-        return;
       }
-      await transitionCard(drag.id, fromStage, toStage);
     });
   });
 }
@@ -2230,6 +2307,26 @@ async function transitionCard(id, fromStage, toStage){
   toast(`Movido para ${toCfg.label}`,'success');
   await loadAll();
   renderPipeline();
+}
+
+function confirmDialog(title, body, okLabel, cancelLabel, onOk){
+  openModal(`
+    <div class="modal-header"><h2>${title}</h2><button class="modal-close">×</button></div>
+    <div class="modal-body"><p style="margin:0;font-size:14px;color:var(--text-light)">${body}</p></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary modal-close">${cancelLabel}</button>
+      <button class="btn btn-danger" id="confirmOkBtn">${okLabel}</button>
+    </div>`,'sm');
+  $('#confirmOkBtn').addEventListener('click',()=>{ closeModal(); onOk(); });
+}
+
+async function regressarCard(id, fromStage, toStage){
+  const fromCfg = STAGES.find(s=>s.id===fromStage);
+  if(!fromCfg){ toast('Etapa inválida.','error'); return; }
+  const { error } = await supa.from(fromCfg.table).delete().eq('id', id);
+  if(error){ toast('Erro ao regredir: '+error.message,'error'); return; }
+  toast('Card regredido com sucesso.','success');
+  await loadAll(); renderPipeline();
 }
 
 function checkGuard(item, fromStage, toStage){
@@ -2803,6 +2900,12 @@ function openLeadModal(item=null){
     e.preventDefault();
     const data = readForm(form);
     data.kwh = data.kwh!=null ? Number(data.kwh) : null;
+    // Motivo de perda obrigatório
+    if(data.status==='perdido' && !data.motivo_perda){
+      toast('Informe o motivo da perda antes de salvar.','error');
+      form.elements.motivo_perda?.focus();
+      return;
+    }
     if(isNew){
       data.criado_por = State.user?.id;
       const { data: leadCriado, error } = await supa.from('leads').insert(data).select('id').single();
@@ -8744,6 +8847,338 @@ function attachCalEvents(){
   // Event click → abre o modal da etapa mais avançada do cliente
   $$('.cal-event').forEach(el=>{
     el.addEventListener('click', ()=> openClientModalByNome(el.dataset.calNome));
+  });
+}
+
+/* ============================================================
+   BUSCA GLOBAL — Ctrl+K / botão 🔍
+   ============================================================ */
+(function initGlobalSearch(){
+  const overlay = $('#globalSearchOverlay');
+  const input   = $('#globalSearchInput');
+  const results = $('#globalSearchResults');
+  let active = -1;
+
+  const stageColors = {
+    lead:'#9333ea', proposta:'#2980b9', vistoria:'#8e44ad', contrato:'#27ae60',
+    logistica:'#e67e22', instalacao:'#1565c0', homologacao:'#c0392b', posvenda:'#f39c12',
+    atendimentos:'#475569', appman:'#0891b2'
+  };
+  const stageLabels = {
+    lead:'Lead', proposta:'Proposta', vistoria:'Vistoria', contrato:'Contrato',
+    logistica:'Logística', instalacao:'Instalação', homologacao:'Homologação', posvenda:'Pós-Venda',
+    atendimentos:'Re-Serviço', appman:'App/Manutenção'
+  };
+  const stageDataKey = {
+    lead:'leads', proposta:'propostas', vistoria:'vistorias', contrato:'contratos',
+    logistica:'logistica', instalacao:'instalacoes', homologacao:'homologacoes', posvenda:'posvenda',
+    atendimentos:'atendimentos', appman:'appman'
+  };
+
+  function openSearch(){
+    overlay.classList.add('open');
+    input.value = '';
+    results.innerHTML = '';
+    active = -1;
+    setTimeout(()=>input.focus(), 50);
+  }
+  function closeSearch(){ overlay.classList.remove('open'); active = -1; }
+
+  function search(q){
+    if(!q.trim()){ results.innerHTML = ''; active=-1; return; }
+    const norm = q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    const hits = [];
+    Object.entries(stageDataKey).forEach(([stageId, key])=>{
+      (State[key]||[]).forEach(item=>{
+        const hay = ((item.nome||'')+' '+(item.telefone||'')+' '+(item.cpf||'')+(item.email||''))
+          .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+        if(hay.includes(norm)) hits.push({stageId, item});
+      });
+    });
+    // Dedup: same item can appear in multiple stages — keep most advanced
+    const seen = new Map();
+    hits.forEach(h=>{
+      const key = (h.item.nome||'').toLowerCase().trim();
+      const prev = seen.get(key);
+      if(!prev || Object.keys(stageDataKey).indexOf(h.stageId) > Object.keys(stageDataKey).indexOf(prev.stageId))
+        seen.set(key, h);
+    });
+    const deduped = [...seen.values()].slice(0,12);
+    if(!deduped.length){
+      results.innerHTML = `<div class="gsr-empty">Nenhum resultado para "<strong>${esc(q)}</strong>"</div>`;
+      active = -1; return;
+    }
+    results.innerHTML = deduped.map((h,i)=>`
+      <div class="gsr-item" data-idx="${i}" data-stage="${h.stageId}" data-id="${h.item.id}">
+        <span class="gsr-badge" style="background:${stageColors[h.stageId]||'#6b7280'}">${stageLabels[h.stageId]||h.stageId}</span>
+        <div style="flex:1;min-width:0">
+          <div class="gsr-name">${esc(h.item.nome||'—')}</div>
+          <div class="gsr-sub">${[h.item.telefone, h.item.vendedor, h.item.projeto].filter(Boolean).join(' · ')}</div>
+        </div>
+      </div>`).join('');
+    active = -1;
+    results.querySelectorAll('.gsr-item').forEach(el=>{
+      el.addEventListener('click',()=>{ closeSearch(); openStageModal(el.dataset.stage, el.dataset.id); });
+    });
+  }
+
+  function setActive(idx){
+    const items = results.querySelectorAll('.gsr-item');
+    if(!items.length) return;
+    active = Math.max(0, Math.min(idx, items.length-1));
+    items.forEach((el,i)=>el.classList.toggle('gsr-active', i===active));
+    items[active]?.scrollIntoView({block:'nearest'});
+  }
+
+  input.addEventListener('input', e=>search(e.target.value));
+  input.addEventListener('keydown', e=>{
+    const items = results.querySelectorAll('.gsr-item');
+    if(e.key==='ArrowDown'){ e.preventDefault(); setActive(active+1); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); setActive(active-1); }
+    else if(e.key==='Enter'){
+      e.preventDefault();
+      const el = active>=0 ? items[active] : items[0];
+      if(el){ closeSearch(); openStageModal(el.dataset.stage, el.dataset.id); }
+    }
+    else if(e.key==='Escape'){ closeSearch(); }
+  });
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) closeSearch(); });
+
+  // Botão na topbar
+  $('#globalSearchBtn')?.addEventListener('click', openSearch);
+
+  // Ctrl+K (ou Cmd+K no Mac)
+  document.addEventListener('keydown', e=>{
+    if((e.ctrlKey||e.metaKey) && e.key==='k'){
+      e.preventDefault();
+      overlay.classList.contains('open') ? closeSearch() : openSearch();
+    }
+  });
+})();
+
+/* ============================================================
+   RELATÓRIO PÓS-VENDA
+   ============================================================ */
+async function renderRelatorioPosvenda(){
+  await loadAll();
+  const pv = State.posvenda || [];
+  const td = today();
+  const mesAtual = td.slice(0,7);
+
+  const total   = pv.length;
+  const env5d   = pv.filter(p=>p.msg_5d_enviada_em).length;
+  const env30d  = pv.filter(p=>p.msg_30d_enviada_em).length;
+  const env90d  = pv.filter(p=>p.msg_90d_enviada_em).length;
+  const anivMes = pv.filter(p=>{
+    if(!p.nascimento) return false;
+    const nasc = new Date(p.nascimento);
+    return `${String(nasc.getMonth()+1).padStart(2,'0')}` === td.slice(5,7);
+  });
+
+  // Marcos próximos (clientes que estão chegando nos 5/30/90 dias)
+  const diasAtivacao = p => p.data_ativacao ? Math.floor((Date.now()-new Date(p.data_ativacao).getTime())/86400000) : null;
+  const prox5  = pv.filter(p=>{ const d=diasAtivacao(p); return d!=null && d>=3 && d<5 && !p.msg_5d_enviada_em; });
+  const prox30 = pv.filter(p=>{ const d=diasAtivacao(p); return d!=null && d>=27 && d<30 && !p.msg_30d_enviada_em; });
+  const prox90 = pv.filter(p=>{ const d=diasAtivacao(p); return d!=null && d>=87 && d<90 && !p.msg_90d_enviada_em; });
+
+  $('#pageActions').innerHTML = '';
+  $('#content').innerHTML = `
+    <div class="metrics" style="margin-bottom:16px">
+      <div class="metric"><div class="metric-label">Total Pós-Venda</div><div class="metric-value">${total}</div></div>
+      <div class="metric"><div class="metric-label">Msg 5 dias enviada</div><div class="metric-value">${env5d}</div></div>
+      <div class="metric"><div class="metric-label">Msg 30 dias enviada</div><div class="metric-value">${env30d}</div></div>
+      <div class="metric"><div class="metric-label">Msg 90 dias enviada</div><div class="metric-value">${env90d}</div></div>
+      <div class="metric"><div class="metric-label">Aniversários no mês</div><div class="metric-value">${anivMes.length}</div></div>
+    </div>
+
+    ${(prox5.length||prox30.length||prox90.length) ? `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><h3>⏰ Próximas Mensagens Automáticas</h3></div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">
+        ${prox5.map(p=>`<div style="padding:8px 12px;background:#eff6ff;border-radius:8px;font-size:13px;border-left:3px solid #2563eb">
+          📅 <strong>${esc(p.nome)}</strong> — mensagem de <strong>5 dias</strong> em breve (${diasAtivacao(p)}d de ativação)
+        </div>`).join('')}
+        ${prox30.map(p=>`<div style="padding:8px 12px;background:#f0fdf4;border-radius:8px;font-size:13px;border-left:3px solid #16a34a">
+          📅 <strong>${esc(p.nome)}</strong> — mensagem de <strong>30 dias</strong> em breve (${diasAtivacao(p)}d de ativação)
+        </div>`).join('')}
+        ${prox90.map(p=>`<div style="padding:8px 12px;background:#fefce8;border-radius:8px;font-size:13px;border-left:3px solid #ca8a04">
+          📅 <strong>${esc(p.nome)}</strong> — mensagem de <strong>90 dias</strong> em breve (${diasAtivacao(p)}d de ativação)
+        </div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    ${anivMes.length ? `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><h3>🎂 Aniversários deste Mês</h3></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Nome</th><th>Data Nasc.</th><th>Telefone</th><th>Mensagem enviada?</th></tr></thead>
+        <tbody>
+          ${anivMes.map(p=>{
+            const nasc = new Date(p.nascimento);
+            const jaEnviou = p.msg_aniversario_ultimo_ano === new Date().getFullYear();
+            return `<tr>
+              <td><strong>${esc(p.nome)}</strong></td>
+              <td>${nasc.toLocaleDateString('pt-BR',{day:'2-digit',month:'long'})}</td>
+              <td>${esc(p.telefone||'—')}</td>
+              <td>${jaEnviou ? '<span style="color:#16a34a;font-weight:600">✅ Sim</span>' : '<span style="color:#dc2626">⏳ Não</span>'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>
+    </div>` : ''}
+
+    <div class="card">
+      <div class="card-header"><h3>📋 Todos os Clientes em Pós-Venda</h3></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Nome</th><th>Ativação</th><th>Dias</th><th>5d</th><th>30d</th><th>90d</th><th>Aniversário</th></tr></thead>
+        <tbody>
+          ${pv.length ? pv.map(p=>{
+            const dias = diasAtivacao(p);
+            const anoAtual = new Date().getFullYear();
+            const ck = v => v ? '✅' : '—';
+            return `<tr>
+              <td><strong>${esc(p.nome)}</strong></td>
+              <td>${p.data_ativacao ? fmtDate(p.data_ativacao) : '—'}</td>
+              <td>${dias!=null ? dias+'d' : '—'}</td>
+              <td style="text-align:center">${ck(p.msg_5d_enviada_em)}</td>
+              <td style="text-align:center">${ck(p.msg_30d_enviada_em)}</td>
+              <td style="text-align:center">${ck(p.msg_90d_enviada_em)}</td>
+              <td style="text-align:center">${p.msg_aniversario_ultimo_ano===anoAtual ? '✅ '+anoAtual : '—'}</td>
+            </tr>`;
+          }).join('') : '<tr><td colspan="7" class="empty">Nenhum cliente em pós-venda.</td></tr>'}
+        </tbody>
+      </table></div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   TEMPO MÉDIO POR ETAPA  (seção do dashboard)
+   ============================================================ */
+function buildTempoMedioSection(){
+  const stageInfo = [
+    { id:'lead',        key:'leads',        label:'Lead',       icon:'👤' },
+    { id:'proposta',    key:'propostas',     label:'Proposta',   icon:'📋' },
+    { id:'vistoria',    key:'vistorias',     label:'Vistoria',   icon:'🔍' },
+    { id:'contrato',    key:'contratos',     label:'Contrato',   icon:'✍️' },
+    { id:'logistica',   key:'logistica',     label:'Logística',  icon:'📦' },
+    { id:'instalacao',  key:'instalacoes',   label:'Instalação', icon:'🔧' },
+    { id:'homologacao', key:'homologacoes',  label:'Homolog.',   icon:'📋' },
+  ];
+  const now = Date.now();
+  const rows = stageInfo.map(s=>{
+    const items = State[s.key]||[];
+    if(!items.length) return { ...s, avg:0, count:0 };
+    const dias = items.map(it=>{
+      const d = it.criado_em ? Math.floor((now-new Date(it.criado_em).getTime())/86400000) : null;
+      return d;
+    }).filter(d=>d!=null && d>=0);
+    const avg = dias.length ? Math.round(dias.reduce((a,b)=>a+b,0)/dias.length) : 0;
+    return { ...s, avg, count:items.length };
+  });
+  const maxAvg = Math.max(1,...rows.map(r=>r.avg));
+  const color = avg => avg<=3?'#16a34a':avg<=7?'#ca8a04':avg<=14?'#ea580c':'#dc2626';
+
+  return `<div class="card" style="margin-bottom:16px">
+    <div class="card-header"><h3>⏱️ Tempo Médio por Etapa</h3></div>
+    <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0">
+      ${rows.map(r=>`
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="width:80px;font-size:12px;color:var(--text-light);flex-shrink:0">${r.icon} ${r.label}</span>
+          <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${r.avg?Math.max(4,Math.round(r.avg/maxAvg*100)):0}%;background:${color(r.avg)};border-radius:4px;transition:width .4s"></div>
+          </div>
+          <span style="width:52px;text-align:right;font-weight:700;font-size:13px;color:${color(r.avg)}">${r.avg}d</span>
+          <span style="width:36px;text-align:right;font-size:11px;color:var(--text-light)">${r.count}</span>
+        </div>`).join('')}
+    </div>
+    <div style="font-size:11px;color:var(--text-light);margin-top:8px">Média de dias que os registros permanecem em cada etapa atualmente.</div>
+  </div>`;
+}
+
+/* ============================================================
+   METAS POR VENDEDOR  (seção do dashboard)
+   ============================================================ */
+async function renderMetasVendedor(){
+  const td = today();
+  const mesAtual = td.slice(0,7);
+  const [mesStart] = getPeriodRange('mes');
+  const perfisVend = (State.perfis||[]).filter(p=>p.ativo!==false && ['vendedor','supervisor'].includes(p.perfil) && p.nome);
+  const contratosDoMes = (State.contratos||[]).filter(c=>c.status==='assinado' && (c.data_assinatura||'')>=mesStart && (c.data_assinatura||'')<=td);
+
+  const rows = perfisVend.map(p=>{
+    const metaRec = (State.metas_vendedores||[]).find(m=>m.mes===mesAtual && normName(m.vendedor)===normName(p.nome));
+    const meta = Number(metaRec?.valor||0);
+    const realizado = contratosDoMes.filter(c=>normName(c.vendedor)===normName(p.nome)).reduce((s,c)=>s+(Number(c.valor)||0),0);
+    const pct = meta>0 ? Math.min(1, realizado/meta) : 0;
+    return { nome:p.nome, meta, realizado, pct, metaRec };
+  }).filter(r=>r.meta>0 || r.realizado>0).sort((a,b)=>b.realizado-a.realizado);
+
+  if(!rows.length) return `<div class="card" style="margin-bottom:16px">
+    <div class="card-header" style="justify-content:space-between;display:flex;align-items:center">
+      <h3>🎯 Metas por Vendedor</h3>
+      ${isAdmin()?`<button class="btn btn-sm btn-secondary" id="editMetasVendBtn">✏️ Definir metas</button>`:''}
+    </div>
+    <div class="empty" style="padding:24px">Nenhuma meta definida para o mês. ${isAdmin()?'Clique em "Definir metas" para configurar.':''}</div>
+  </div>`;
+
+  return `<div class="card" style="margin-bottom:16px">
+    <div class="card-header" style="justify-content:space-between;display:flex;align-items:center">
+      <h3>🎯 Metas por Vendedor — <span style="font-weight:400;font-size:13px;color:var(--text-light)">${mesAtual}</span></h3>
+      ${isAdmin()?`<button class="btn btn-sm btn-secondary" id="editMetasVendBtn">✏️ Definir metas</button>`:''}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;padding:4px 0">
+      ${rows.map(r=>{
+        const pctDisplay = r.meta>0 ? Math.round(r.pct*100)+'%' : '—';
+        const barColor = r.pct>=1?'#16a34a':r.pct>=.7?'#ca8a04':'#7c3aed';
+        return `<div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+            <span style="font-weight:600;font-size:13px">${esc(r.nome)}</span>
+            <span style="font-size:12px;color:var(--text-light)">${fmtBRL(r.realizado)} de ${r.meta?fmtBRL(r.meta):'sem meta'} <strong style="color:${barColor}">(${pctDisplay})</strong></span>
+          </div>
+          <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${r.meta?Math.min(100,Math.round(r.pct*100)):0}%;background:${barColor};border-radius:4px;transition:width .6s ease"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function openMetasVendedoresModal(){
+  const td = today();
+  const mesAtual = td.slice(0,7);
+  const perfisVend = (State.perfis||[]).filter(p=>p.ativo!==false && ['vendedor','supervisor'].includes(p.perfil) && p.nome);
+  openModal(`
+    <div class="modal-header"><h2>Metas por Vendedor — ${mesAtual}</h2><button class="modal-close">×</button></div>
+    <form id="metasVendForm">
+      <div class="modal-body">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${perfisVend.map(p=>{
+            const metaRec = (State.metas_vendedores||[]).find(m=>m.mes===mesAtual && normName(m.vendedor)===normName(p.nome));
+            return `<div style="display:flex;align-items:center;gap:12px">
+              <label style="min-width:140px;font-size:13px;font-weight:600">${esc(p.nome)}</label>
+              <input type="number" name="meta_${esc(p.nome)}" value="${metaRec?.valor||''}" placeholder="R$ 0" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px" min="0" step="1000">
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar metas</button>
+      </div>
+    </form>
+  `,'sm');
+  $('#metasVendForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const mesAtual = today().slice(0,7);
+    const perfisVend = (State.perfis||[]).filter(p=>p.ativo!==false && ['vendedor','supervisor'].includes(p.perfil) && p.nome);
+    for(const p of perfisVend){
+      const val = Number(e.target.elements[`meta_${p.nome}`]?.value||0);
+      if(!val) continue;
+      await supa.from('metas_vendedores').upsert({ mes:mesAtual, vendedor:p.nome, valor:val, atualizado_em:new Date().toISOString() }, { onConflict:'mes,vendedor' });
+    }
+    toast('Metas salvas!','success'); closeModal(); renderDashboard();
   });
 }
 
