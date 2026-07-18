@@ -551,6 +551,15 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&
 const fmtBRL = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 // Normaliza nome para agrupamento: remove acentos, minúsculo, espaços extras
 const normName = s => (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+// Chave de ranking: ignora partículas (da/de/do/dos) e usa primeiro + último nome
+// "Rogerio da Costa Barbosa" → "rogerio barbosa" (igual a "Rogerio Barbosa")
+const _PARTICLES = new Set(['da','de','do','das','dos','e','van','von','di','del']);
+const normNameRank = s => {
+  const parts = normName(s).split(' ').filter(Boolean);
+  const sig = parts.filter(p => !_PARTICLES.has(p));
+  if(sig.length <= 1) return sig.join(' ');
+  return sig[0] + ' ' + sig[sig.length-1];
+};
 // Agrupa array de objetos por campo normalizado, retorna [{key, display, items}]
 function groupByNorm(arr, field){
   const map = new Map(); // normKey → { display: string, items: [] }
@@ -1194,16 +1203,18 @@ async function renderDashboard(){
     });
 
     // ── Rankings ───────────────────────────────────────────────────────────
-    // Helper: agrupa com normalização, retorna array ordenado por valor desc
+    // Helper: agrupa com normalização inteligente (ignora partículas de nome)
     function grpNorm(arr, field, valFn){
       const map = new Map();
       arr.forEach(item=>{
         const raw = item[field]||'—';
-        const key = normName(raw);
+        const key = normNameRank(raw);
         if(!map.has(key)) map.set(key,{display:raw, val:0, count:0});
         const e = map.get(key);
         e.val += valFn(item);
         e.count++;
+        // Prefere o nome mais longo como display (mais completo)
+        if(raw.length > e.display.length) e.display = raw;
       });
       return [...map.values()].sort((a,b)=>b.val-a.val);
     }
