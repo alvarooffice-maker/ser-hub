@@ -1208,11 +1208,12 @@ async function renderDashboard(){
 
     // ── Recorde Homologação: dias contrato assinado → homologação aprovada ──
     const diasHomol = (State.homologacoes||[])
-      .filter(h => h.etapa==='aprovada' && h.contrato_id && h.atualizado_em)
+      .filter(h => h.etapa==='aprovada' && h.contrato_id && (h.data_aprovacao || h.atualizado_em))
       .map(h => {
         const cont = (State.contratos||[]).find(c=>String(c.id)===String(h.contrato_id));
         if(!cont?.data_assinatura) return null;
-        const dias = Math.floor((new Date(h.atualizado_em).getTime() - new Date(cont.data_assinatura).getTime()) / 86400000);
+        const dataAprov = h.data_aprovacao || h.atualizado_em;
+        const dias = Math.floor((new Date(dataAprov).getTime() - new Date(cont.data_assinatura).getTime()) / 86400000);
         return dias >= 0 ? dias : null;
       })
       .filter(d => d != null);
@@ -5956,6 +5957,7 @@ function openHomologacaoModal(item=null){
     ['trt_val','art_val','tecnico_val','estimado','pago'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     Object.keys(data).filter(k=>k.startsWith('_')).forEach(k=>delete data[k]);
     data.docs = docStore;
+    if(data.etapa==='aprovada' && !item.data_aprovacao) data.data_aprovacao = new Date().toISOString();
     const { error } = await supa.from('homologacoes').update(data).eq('id',item.id);
     if(error) return toast(error.message,'error');
     const mud = detectMudancas(item, data, [
