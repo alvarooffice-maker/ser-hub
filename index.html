@@ -511,6 +511,22 @@ const $ = (sel,root=document)=>root.querySelector(sel);
 const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const fmtBRL = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+// Normaliza nome para agrupamento: remove acentos, minúsculo, espaços extras
+const normName = s => (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+// Agrupa array de objetos por campo normalizado, retorna [{key, display, items}]
+function groupByNorm(arr, field){
+  const map = new Map(); // normKey → { display: string, items: [] }
+  arr.forEach(obj=>{
+    const raw = obj[field] || '—';
+    const key = normName(raw);
+    if(!map.has(key)) map.set(key, { display: raw, count: 0, items: [] });
+    const entry = map.get(key);
+    entry.items.push(obj);
+    entry.count++;
+    // Prefer the version that appears most often (just keep first for now; refine if needed)
+  });
+  return [...map.entries()].map(([key,{display,items}])=>({ key, display, items }));
+}
 const fmtNum = (v,d=2) => (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
 // Converte "1.500,50" → 1500.5 (aceita digitação brasileira com vírgula)
 const parseBR = v => { if(v==null||v==='') return null; const s=String(v).replace(/[^\d,.\-]/g,'').replace(/\./g,'').replace(',','.'); const n=parseFloat(s); return isNaN(n)?null:n; };
@@ -873,8 +889,8 @@ async function renderDashboard(){
 
       <!-- Funil -->
       <div class="card">
-        <div class="card-header"><h3>Funil do Pipeline</h3></div>
-        <div class="funnel">
+        <div class="card-header"><h3>Funil do Pipeline <span style="font-size:11px;color:var(--text-light);font-weight:400" id="funnelPeriodLabel">(Total)</span></h3></div>
+        <div class="funnel" id="funnelBody">
           ${Object.entries(fn).map(([k,v])=>`
             <div class="funnel-row">
               <div class="funnel-label">${k}</div>
@@ -1070,6 +1086,7 @@ async function renderDashboard(){
 
   function renderRankings(){
     const [startD, endD] = getDashRange();
+    const s0 = startD+'T00:00:00', e9 = endD+'T23:59:59';
     const periodLabels = {
       dia:'Hoje',
       mes:`${mesesNomes[dashMes]} de ${dashAno}`,
@@ -1077,55 +1094,110 @@ async function renderDashboard(){
       semestre:`${dashSem+1}º Semestre de ${dashAno}`,
       ano:`Ano de ${dashAno}`
     };
-    $('#rankPeriodLabel').textContent = `(${periodLabels[dashPeriod]||dashPeriod})`;
+    const pLabel = periodLabels[dashPeriod]||dashPeriod;
+    $('#rankPeriodLabel').textContent = `(${pLabel})`;
 
+    // ── Funil filtrado por período ──────────────────────────────────────────
+    const inPeriod = (d) => d && d >= s0 && d <= e9;
+    const fnData = {
+      Lead:       (isVend()?filterByVendor(leads):leads).filter(l=>inPeriod(l.criado_em)).length,
+      Proposta:   (isVend()?filterByVendor(props):props).filter(p=>inPeriod(p.criado_em)).length,
+      Vistoria:   (State.vistorias||[]).filter(v=>inPeriod(v.criado_em)).length,
+      Contrato:   contratos.filter(c=>inPeriod(c.data_assinatura||c.criado_em)).length,
+      Logística:  (State.logistica||[]).filter(l=>inPeriod(l.criado_em)).length,
+      Instalação: (State.instalacoes||[]).filter(i=>inPeriod(i.data_instalacao||i.criado_em)).length,
+      Homologação:(State.homologacoes||[]).filter(h=>inPeriod(h.criado_em)).length,
+      'Pós Venda':(State.posvenda||[]).filter(p=>inPeriod(p.criado_em)).length,
+    };
+    const maxFnD = Math.max(1,...Object.values(fnData));
+    const funnelEl = $('#funnelBody');
+    if(funnelEl) funnelEl.innerHTML = Object.entries(fnData).map(([k,v])=>`
+      <div class="funnel-row">
+        <div class="funnel-label">${k}</div>
+        <div class="funnel-bar"><div class="funnel-fill" style="width:${Math.max(8,(v/maxFnD)*100)}%">${v}</div></div>
+      </div>`).join('');
+    const funnelLabel = $('#funnelPeriodLabel');
+    if(funnelLabel) funnelLabel.textContent = `(${pLabel})`;
+
+    // ── Contratos filtrados por período ────────────────────────────────────
     const contFiltrados = contratos.filter(c=>c.status==='assinado' && c.data_assinatura >= startD && c.data_assinatura <= endD);
-
-    // Atualiza KPIs dinâmicos conforme o período selecionado
-    const contKpi = isVend() ? contFiltrados.filter(c=>c.vendedor===State.profile?.nome) : contFiltrados;
+    const contKpi = isVend() ? contFiltrados.filter(c=>normName(c.vendedor)===normName(State.profile?.nome)) : contFiltrados;
     const totalPeriodo = contKpi.reduce((s,c)=>s+(Number(c.valor)||0),0);
     const ticketMedio = contKpi.length ? totalPeriodo/contKpi.length : 0;
-    const leadsPeriodo = isVend() ? filterByVendor(leads).filter(l=>l.criado_em>=startD+'T00:00:00'&&l.criado_em<=endD+'T23:59:59').length : leads.filter(l=>l.criado_em>=startD+'T00:00:00'&&l.criado_em<=endD+'T23:59:59').length;
-    const taxaConv = leadsPeriodo > 0 ? Math.round(contKpi.length/leadsPeriodo*100)+'%' : '—';
-    const propAb = isVend() ? filterByVendor(props).filter(p=>!['aceita','recusada'].includes(p.status)&&p.criado_em>=startD+'T00:00:00'&&p.criado_em<=endD+'T23:59:59').length : props.filter(p=>!['aceita','recusada'].includes(p.status)&&p.criado_em>=startD+'T00:00:00'&&p.criado_em<=endD+'T23:59:59').length;
+
+    const leadsP = (isVend()?filterByVendor(leads):leads).filter(l=>l.criado_em>=s0&&l.criado_em<=e9);
+    const taxaConv = leadsP.length > 0 ? Math.round(contKpi.length/leadsP.length*100)+'%' : '—';
+    const propAb = (isVend()?filterByVendor(props):props).filter(p=>!['aceita','recusada'].includes(p.status)&&p.criado_em>=s0&&p.criado_em<=e9).length;
+    const kwpP = (isVend()?filterByVendor(State.instalacoes||[]):State.instalacoes||[])
+      .filter(i=>{ const d=i.data_instalacao||i.criado_em; return d>=s0&&d<=e9; })
+      .reduce((s,i)=>s+(Number(i.kwp)||0),0);
+
+    // ── Atualiza cards de KPI ──────────────────────────────────────────────
     document.querySelectorAll('.metric').forEach(m=>{
-      const lbl = m.querySelector('.metric-label')?.textContent;
-      const val = m.querySelector('.metric-value');
-      if(!lbl||!val) return;
-      if(lbl==='Vendido no Mês'){ m.querySelector('.metric-label').textContent='Vendido no Período'; val.textContent=fmtBRL(totalPeriodo); }
-      if(lbl==='Vendido no Período') val.textContent=fmtBRL(totalPeriodo);
-      if(lbl==='Ticket Médio') val.textContent=ticketMedio?fmtBRL(ticketMedio):'—';
-      if(lbl==='Taxa Conversão') val.textContent=taxaConv;
-      if(lbl==='Propostas Abertas') val.textContent=String(propAb);
-      if(lbl==='Contratos Assinados') val.textContent=String(contKpi.length);
+      const lblEl = m.querySelector('.metric-label');
+      const val   = m.querySelector('.metric-value');
+      if(!lblEl||!val) return;
+      const lbl = lblEl.textContent.trim();
+      if(lbl==='Vendido no Mês'||lbl==='Vendido no Período'){ lblEl.textContent='Vendido no Período'; val.textContent=fmtBRL(totalPeriodo); }
+      if(lbl==='Ticket Médio')        val.textContent = ticketMedio ? fmtBRL(ticketMedio) : '—';
+      if(lbl==='Taxa Conversão')      val.textContent = taxaConv;
+      if(lbl==='Propostas Abertas')   val.textContent = String(propAb);
+      if(lbl==='Contratos Assinados') val.textContent = String(contKpi.length);
+      if(lbl==='Total Leads')         val.textContent = String(leadsP.length);
+      if(lbl==='kWp Instalado')       val.textContent = fmtNum(kwpP,2);
     });
-    let rows = [];
+
+    // ── Rankings ───────────────────────────────────────────────────────────
+    // Helper: agrupa com normalização, retorna array ordenado por valor desc
+    function grpNorm(arr, field, valFn){
+      const map = new Map(); // normKey → {display, val, count}
+      arr.forEach(item=>{
+        const raw = item[field]||'—';
+        const key = normName(raw);
+        if(!map.has(key)) map.set(key,{display:raw, val:0, count:0});
+        const e = map.get(key);
+        e.val += valFn(item);
+        e.count++;
+      });
+      return [...map.values()].sort((a,b)=>b.val-a.val);
+    }
 
     if(dashRankTab === 'vendedores'){
-      const contVend = isVend() ? contFiltrados.filter(c=>c.vendedor===State.profile?.nome) : contFiltrados;
-      const grp = {};
-      contVend.forEach(c=>{ const k=c.vendedor||'—'; grp[k]=(grp[k]||0)+(Number(c.valor)||0); });
-      rows = Object.entries(grp).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${esc(k)}</td><td>${fmtBRL(v)}</td><td>${contVend.filter(c=>(c.vendedor||'—')===k).length} contratos</td></tr>`);
-      $('#rankBody').innerHTML = rows.length ? `<table><thead><tr><th>#</th><th>Vendedor</th><th>Volume</th><th>Qtd</th></tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div class="empty">Nenhum dado no período.</div>';
+      const src = isVend() ? contFiltrados.filter(c=>normName(c.vendedor)===normName(State.profile?.nome)) : contFiltrados;
+      const rows = grpNorm(src,'vendedor',c=>Number(c.valor)||0);
+      $('#rankBody').innerHTML = rows.length
+        ? `<table><thead><tr><th>#</th><th>Vendedor</th><th>Volume</th><th>Qtd</th></tr></thead><tbody>
+           ${rows.map(({display,val,count},i)=>`<tr><td>${i+1}</td><td>${esc(display)}</td><td>${fmtBRL(val)}</td><td>${count} contrato${count!==1?'s':''}</td></tr>`).join('')}
+           </tbody></table>`
+        : '<div class="empty">Nenhum dado no período.</div>';
     }
     else if(dashRankTab === 'bancos'){
-      const grp = {};
-      contFiltrados.filter(c=>c.banco).forEach(c=>{ const k=c.banco||'—'; grp[k]=(grp[k]||0)+(Number(c.valor)||0); });
-      rows = Object.entries(grp).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${esc(k)}</td><td>${fmtBRL(v)}</td></tr>`);
-      $('#rankBody').innerHTML = rows.length ? `<table><thead><tr><th>#</th><th>Banco</th><th>Volume</th></tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div class="empty">Nenhum financiamento no período.</div>';
+      const src = contFiltrados.filter(c=>c.banco);
+      const rows = grpNorm(src,'banco',c=>Number(c.valor)||0);
+      $('#rankBody').innerHTML = rows.length
+        ? `<table><thead><tr><th>#</th><th>Banco</th><th>Volume</th><th>Qtd</th></tr></thead><tbody>
+           ${rows.map(({display,val,count},i)=>`<tr><td>${i+1}</td><td>${esc(display)}</td><td>${fmtBRL(val)}</td><td>${count}</td></tr>`).join('')}
+           </tbody></table>`
+        : '<div class="empty">Nenhum financiamento no período.</div>';
     }
     else if(dashRankTab === 'forma_pgto'){
-      const grp = {};
-      contFiltrados.forEach(c=>{ const k=c.forma_pgto||'—'; grp[k]=(grp[k]||0)+1; });
-      rows = Object.entries(grp).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${esc(k)}</td><td>${v}</td><td>${Math.round(v/Math.max(1,contFiltrados.length)*100)}%</td></tr>`);
-      $('#rankBody').innerHTML = rows.length ? `<table><thead><tr><th>#</th><th>Forma Pagamento</th><th>Qtd</th><th>%</th></tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div class="empty">Nenhum dado no período.</div>';
+      const rows = grpNorm(contFiltrados,'forma_pgto',()=>1).sort((a,b)=>b.val-a.val);
+      const total = contFiltrados.length;
+      $('#rankBody').innerHTML = rows.length
+        ? `<table><thead><tr><th>#</th><th>Forma Pagamento</th><th>Qtd</th><th>%</th></tr></thead><tbody>
+           ${rows.map(({display,val},i)=>`<tr><td>${i+1}</td><td>${esc(display)}</td><td>${val}</td><td>${Math.round(val/Math.max(1,total)*100)}%</td></tr>`).join('')}
+           </tbody></table>`
+        : '<div class="empty">Nenhum dado no período.</div>';
     }
     else if(dashRankTab === 'distribuidores'){
-      const logFiltrados = filterByVendor(State.logistica).filter(l=>l.criado_em>=startD+'T00:00:00' && l.criado_em<=endD+'T23:59:59' && l.distribuidora);
-      const grp = {};
-      logFiltrados.forEach(l=>{ const k=l.distribuidora||'—'; grp[k]=(grp[k]||0)+1; });
-      rows = Object.entries(grp).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>`<tr><td>${i+1}</td><td>${esc(k)}</td><td>${v}</td></tr>`);
-      $('#rankBody').innerHTML = rows.length ? `<table><thead><tr><th>#</th><th>Distribuidora</th><th>Qtd pedidos</th></tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div class="empty">Nenhum dado no período.</div>';
+      const logFiltrados = (isVend()?filterByVendor(State.logistica||[]):State.logistica||[])
+        .filter(l=>l.criado_em>=s0&&l.criado_em<=e9&&l.distribuidora);
+      const rows = grpNorm(logFiltrados,'distribuidora',()=>1);
+      $('#rankBody').innerHTML = rows.length
+        ? `<table><thead><tr><th>#</th><th>Distribuidora</th><th>Qtd pedidos</th></tr></thead><tbody>
+           ${rows.map(({display,val},i)=>`<tr><td>${i+1}</td><td>${esc(display)}</td><td>${val}</td></tr>`).join('')}
+           </tbody></table>`
+        : '<div class="empty">Nenhum dado no período.</div>';
     }
   }
 
