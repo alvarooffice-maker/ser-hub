@@ -914,6 +914,7 @@ async function renderDashboard(){
       <div class="metric"><div class="metric-label">Vendido no Mês</div><div class="metric-value" style="font-size:15px">${fmtBRL(valorMes)}</div></div>
       <div class="metric"><div class="metric-label">Ticket Médio</div><div class="metric-value" style="font-size:15px">${(()=>{ const cc=contratos.filter(c=>c.status==='assinado'&&(isVend()?c.vendedor===State.profile?.nome:true)); return cc.length ? fmtBRL(cc.reduce((s,c)=>s+(Number(c.valor)||0),0)/cc.length) : '—'; })()}</div></div>
       <div class="metric"><div class="metric-label">Taxa Conversão</div><div class="metric-value">${(()=>{ const l=isVend()?filterByVendor(leads).length:leads.length; const c=isVend()?filterByVendor(contratos).filter(x=>x.status==='assinado').length:contratosAssin; return l>0?Math.round(c/l*100)+'%':'—'; })()}</div></div>
+      <div class="metric"><div class="metric-label">⏱️ Time Lead</div><div class="metric-value" id="kpiTimeLead">—</div><div class="metric-sub" style="font-size:10px;color:var(--text-light);text-align:center">dias lead→contrato</div></div>
     </div>
 
     <div style="display:grid;grid-template-columns:180px 1fr 220px;gap:16px;margin-bottom:16px">
@@ -1173,6 +1174,27 @@ async function renderDashboard(){
       </div>`).join('');
     const funnelLabel = $('#funnelPeriodLabel');
     if(funnelLabel) funnelLabel.textContent = `(${pLabel})`;
+
+    // ── Time Lead: dias médios de lead → contrato assinado ─────────────────
+    const contAssinPeriodo = contratos.filter(c=>c.status==='assinado' && c.data_assinatura>=startD && c.data_assinatura<=endD);
+    const contKpiTL = isVend() ? contAssinPeriodo.filter(c=>normName(c.vendedor)===normName(State.profile?.nome)) : contAssinPeriodo;
+    const diasTL = contKpiTL.map(c=>{
+      // Tenta resolver o lead de origem via lead_id propagado
+      const lead = c.lead_id ? (State.leads||[]).find(l=>String(l.id)===String(c.lead_id)) : null;
+      if(lead?.criado_em && c.data_assinatura){
+        return Math.floor((new Date(c.data_assinatura).getTime() - new Date(lead.criado_em).getTime()) / 86400000);
+      }
+      // Fallback: proposta → lead pelo nome
+      const prop = (State.propostas||[]).find(p=>normName(p.nome)===normName(c.nome));
+      const leadFb = prop?.lead_id ? (State.leads||[]).find(l=>String(l.id)===String(prop.lead_id)) : null;
+      if(leadFb?.criado_em && c.data_assinatura){
+        return Math.floor((new Date(c.data_assinatura).getTime() - new Date(leadFb.criado_em).getTime()) / 86400000);
+      }
+      return null;
+    }).filter(d=>d!=null && d>=0);
+    const avgTL = diasTL.length ? Math.round(diasTL.reduce((a,b)=>a+b,0)/diasTL.length) : null;
+    const tlEl = $('#kpiTimeLead');
+    if(tlEl) tlEl.textContent = avgTL!=null ? avgTL+'d' : '—';
 
     // ── Contratos filtrados por período ────────────────────────────────────
     const contFiltrados = contratos.filter(c=>c.status==='assinado' && c.data_assinatura >= startD && c.data_assinatura <= endD);
