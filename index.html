@@ -450,12 +450,12 @@ tbody tr:hover{background:#fafaf6}
 #globalSearchKbd{padding:12px 20px;font-size:11px;color:var(--text-light);display:flex;gap:16px}
 #globalSearchKbd kbd{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-family:inherit;font-size:11px}
 
-/* SLA BADGE nos cards */
-.sla-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px}
-.sla-ok{background:#dcfce7;color:#16a34a}
-.sla-warn{background:#fef9c3;color:#a16207}
-.sla-alert{background:#ffedd5;color:#c2410c}
-.sla-danger{background:#fee2e2;color:#dc2626}
+/* SLA — coloração do card inteiro */
+.kanban-card.sla-warn  .kanban-card-inner{background:#fefce8;border-left:3px solid #ca8a04}
+.kanban-card.sla-alert .kanban-card-inner{background:#fff7ed;border-left:3px solid #ea580c}
+.kanban-card.sla-danger .kanban-card-inner{background:#fff1f2;border-left:3px solid #dc2626}
+/* contador de dias discreto no canto */
+.sla-days{position:absolute;top:6px;right:8px;font-size:10px;font-weight:700;color:inherit;opacity:.65}
 
 /* TOPBAR SEARCH BTN */
 #globalSearchBtn{background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--text-light);display:flex;align-items:center;gap:6px;transition:background .15s}
@@ -1972,21 +1972,20 @@ function renderCard(item,stage){
   // SLA: dias nesta etapa (usa atualizado_em p/ leads, criado_em p/ demais)
   const _slaDate = stage.id==='lead' ? (item.atualizado_em||item.criado_em) : item.criado_em;
   const _slaDias = _slaDate ? Math.floor((Date.now()-new Date(_slaDate).getTime())/86400000) : null;
-  const _slaClass = _slaDias==null ? '' : _slaDias<=3 ? 'sla-ok' : _slaDias<=7 ? 'sla-warn' : _slaDias<=14 ? 'sla-alert' : 'sla-danger';
-  const _slaIcon  = _slaDias==null ? '' : _slaDias<=3 ? '🟢' : _slaDias<=7 ? '🟡' : _slaDias<=14 ? '🟠' : '🔴';
-  const slaBadge = (_slaDias!=null && !['atendimentos','appman','posvenda'].includes(stage.id))
-    ? `<span class="sla-badge ${_slaClass}" title="${_slaDias}d nesta etapa">${_slaIcon} ${_slaDias}d</span>`
-    : '';
+  const showSla  = _slaDias!=null && !['atendimentos','appman','posvenda'].includes(stage.id);
+  const _slaClass = !showSla || _slaDias<=3 ? '' : _slaDias<=7 ? 'sla-warn' : _slaDias<=14 ? 'sla-alert' : 'sla-danger';
+  const slaDaysLabel = showSla && _slaDias>3 ? `<span class="sla-days">${_slaDias}d</span>` : '';
 
   return `
-    <div class="kanban-card" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.responsavel||item.vendedor||'')+' '+(item.projeto||'')).toLowerCase()}">
-      <div class="kanban-card-inner">
+    <div class="kanban-card ${_slaClass}" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.responsavel||item.vendedor||'')+' '+(item.projeto||'')).toLowerCase()}">
+      <div class="kanban-card-inner" style="position:relative">
+        ${slaDaysLabel}
         <div class="name">${stage.icon} ${esc(item.nome||'—')}${projetoBadge?'<br>'+projetoBadge:''}</div>
         ${meta1?`<div class="meta">${esc(meta1)}</div>`:''}
         <div class="meta">${esc(meta2)}</div>
         ${flags}
         ${tecHint}
-        <div class="footer">${tipoBadge}${badge(stat)}${slaBadge}</div>
+        <div class="footer">${tipoBadge}${badge(stat)}</div>
       </div>
     </div>`;
 }
