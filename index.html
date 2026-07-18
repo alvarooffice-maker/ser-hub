@@ -661,16 +661,26 @@ function visibleRoutes(){
   });
 }
 
+function calcLeadsParados(dias=3){
+  const corte = new Date(Date.now()-dias*24*60*60*1000);
+  const meuLeads = filterByVendor(State.leads||[]);
+  return meuLeads.filter(l=>l.status==='em_contato' && new Date(l.atualizado_em||l.criado_em) < corte);
+}
+
 function renderNav(){
   const nav = $('#nav');
   const items = visibleRoutes();
+  const parados = calcLeadsParados(3).length;
   let html=''; let lastSec='__';
   items.forEach(r=>{
     if(r.section && r.section!==lastSec){
       html += `<div class="nav-section">${r.section}</div>`;
       lastSec = r.section;
     }
-    html += `<div class="nav-item" data-route="${r.id}"><span class="icon">${r.icon}</span><span class="label">${r.label}</span></div>`;
+    const badgeHtml = (r.id==='pipeline' && parados>0)
+      ? `<span style="margin-left:auto;background:#e53e3e;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center">${parados}</span>`
+      : '';
+    html += `<div class="nav-item" data-route="${r.id}"><span class="icon">${r.icon}</span><span class="label">${r.label}</span>${badgeHtml}</div>`;
   });
   nav.innerHTML = html;
   $$('.nav-item', nav).forEach(el => el.addEventListener('click', ()=> navigate(el.dataset.route)));
@@ -875,11 +885,18 @@ async function renderDashboard(){
 
       <!-- Alertas -->
       <div class="card">
-        <div class="card-header"><h3>Alertas</h3></div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <div style="padding:12px;background:#fff3cd;border-radius:8px;font-size:13px"><strong>${leadsSemContato}</strong> leads sem contato há +3 dias</div>
-          <div style="padding:12px;background:#cfe2ff;border-radius:8px;font-size:13px"><strong>${vistHoje}</strong> vistorias para hoje</div>
-          <div style="padding:12px;background:#d1e7dd;border-radius:8px;font-size:13px"><strong>${instHoje}</strong> instalações para hoje</div>
+        <div class="card-header"><h3>🔔 Alertas</h3></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div id="alertaLeadsParados" style="padding:12px;background:${leadsSemContato>0?'#fee2e2':'#f0fdf4'};border-radius:8px;font-size:13px;cursor:${leadsSemContato>0?'pointer':'default'};border:1px solid ${leadsSemContato>0?'#fca5a5':'#bbf7d0'}">
+            ${leadsSemContato>0?'🔴':'🟢'} <strong>${leadsSemContato}</strong> lead${leadsSemContato!==1?'s':''} sem contato há +3 dias
+            ${leadsSemContato>0?'<span style="float:right;color:#e53e3e;font-size:11px">Ver →</span>':''}
+          </div>
+          <div style="padding:12px;background:${vistHoje>0?'#eff6ff':'#f0fdf4'};border-radius:8px;font-size:13px;border:1px solid ${vistHoje>0?'#bfdbfe':'#bbf7d0'}">
+            ${vistHoje>0?'🔵':'🟢'} <strong>${vistHoje}</strong> vistoria${vistHoje!==1?'s':''} para hoje
+          </div>
+          <div style="padding:12px;background:${instHoje>0?'#eff6ff':'#f0fdf4'};border-radius:8px;font-size:13px;border:1px solid ${instHoje>0?'#bfdbfe':'#bbf7d0'}">
+            ${instHoje>0?'🔵':'🟢'} <strong>${instHoje}</strong> instalação${instHoje!==1?'ões':''} para hoje
+          </div>
         </div>
       </div>
     </div>
@@ -1183,6 +1200,14 @@ async function renderDashboard(){
       toast('Meta salva!','success'); closeModal(); renderDashboard();
     });
   });
+
+  // Alerta leads parados → ir para pipeline destacando os parados
+  $('#alertaLeadsParados')?.addEventListener('click', ()=>{
+    const parados = calcLeadsParados(3);
+    if(!parados.length) return;
+    State.highlightParados = new Set(parados.map(l=>l.id));
+    navigate('pipeline');
+  });
 }
 
 /* ============================================================
@@ -1215,11 +1240,34 @@ async function renderPipeline(){
   $('#pageActions').innerHTML = isTec ? '' : `<button class="btn btn-primary" id="newLeadBtn">+ Novo Lead</button>`;
   $('#newLeadBtn')?.addEventListener('click', ()=> openLeadModal());
 
-  $('#content').innerHTML = `<div class="kanban" id="kanban">${stages.map(s=>renderStageCol(s)).join('')}</div>`;
+  const paradoIds = State.highlightParados;
+  State.highlightParados = null;
+
+  const paradoBanner = paradoIds?.size ? `
+    <div id="paradoBanner" style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;gap:8px">
+      🔴 <strong>${paradoIds.size} lead${paradoIds.size!==1?'s':''} sem contato há +3 dias estão destacados abaixo.</strong>
+      <button onclick="document.getElementById('paradoBanner').remove();document.querySelectorAll('.kanban-card.parado-highlight').forEach(c=>c.classList.remove('parado-highlight'))" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:#9b2c2c">×</button>
+    </div>` : '';
+
+  $('#content').innerHTML = `${paradoBanner}<div class="kanban" id="kanban">${stages.map(s=>renderStageCol(s)).join('')}</div>`;
   attachKanbanDnD();
   attachKanbanSearch();
   $('#newAtendBtn')?.addEventListener('click', ()=> openAtendimentoModal());
   $('#newAppManBtn')?.addEventListener('click', ()=> openAppManModal());
+
+  // Highlight parado cards
+  if(paradoIds?.size){
+    document.querySelectorAll('.kanban-card').forEach(card=>{
+      if(paradoIds.has(card.dataset.id) || paradoIds.has(Number(card.dataset.id))){
+        card.classList.add('parado-highlight');
+        card.style.outline='2px solid #e53e3e';
+        card.style.outlineOffset='2px';
+      }
+    });
+    // Scroll to first highlighted card
+    const first = document.querySelector('.parado-highlight');
+    if(first) setTimeout(()=>first.scrollIntoView({behavior:'smooth',block:'center'}),200);
+  }
 }
 
 /* ============================================================
@@ -6371,7 +6419,8 @@ async function renderCustoPorProjeto(){
   const contratos = (State.contratos||[]).filter(c=>c.status==='assinado');
   const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-  $('#pageActions').innerHTML = '';
+  $('#pageActions').innerHTML = `<button class="btn btn-secondary" id="relComissaoPDFBtn">📄 Relatório PDF</button>`;
+  $('#relComissaoPDFBtn').addEventListener('click', ()=> gerarRelatorioComissoesPDF());
   $('#content').innerHTML = `
     <div class="card"><div class="table-wrap"><table>
       <thead><tr><th>Cliente</th><th>Valor Contrato</th><th>Total Custos</th><th>Receita</th><th>Margem</th><th></th></tr></thead>
@@ -6409,6 +6458,146 @@ async function renderCustoPorProjeto(){
 }
 
 async function renderComissoes(){ renderCustoPorProjeto(); }
+
+function gerarRelatorioComissoesPDF(){
+  const comissoes = State.comissoes || [];
+  const contratos = (State.contratos || []).filter(c=>c.status==='assinado');
+  const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const pct = (v,base)=> base ? ' ('+(((Number(v)||0)/(Number(base)||1))*100).toFixed(1)+'%)' : '';
+  const hoje = new Date().toLocaleDateString('pt-BR');
+
+  // Agrupa linhas de comissão por pessoa
+  const porPessoa = {};
+  comissoes.forEach(com=>{
+    const _vc   = Number(com.valor_contrato||0);
+    const _vv   = Number(com.valor_vendido||0) || _vc;
+    const _obra = com.obra_ativo ? Number(com.obra_val||0) : 0;
+    const _pres = com.pres_ativo ? Number(com.pres_val||0) : 0;
+    const _ind  = com.ind_ativo  ? Number(com.ind_val||0)  : 0;
+    const _vend_base = _vc * (Number(com.vend_pct)||0) / 100;
+    const _base_maj  = _vv - _vc - _obra - _pres - _ind;
+    const _major_val = Math.max(0, _base_maj) * (Number(com.vend_major_pct)||0) / 100;
+
+    const linhas = [];
+    if(_vend_base)                     linhas.push({ tipo:'Comissão Vendedor', val:_vend_base, nome:com.vend_nome||'Vendedor', cliente:com.nome, status:com.status });
+    if(_major_val)                     linhas.push({ tipo:'Majorado',          val:_major_val, nome:com.vend_nome||'Vendedor', cliente:com.nome, status:com.status });
+    if(Number(com.sup_val))            linhas.push({ tipo:'Supervisor',        val:Number(com.sup_val), nome:com.sup_nome||'Supervisor', cliente:com.nome, status:com.status });
+    if(com.sdr_ativo&&Number(com.sdr_val)) linhas.push({ tipo:'SDR',          val:Number(com.sdr_val), nome:com.sdr_nome||'SDR', cliente:com.nome, status:com.status });
+    if(com.cap_ativo&&Number(com.cap_val)) linhas.push({ tipo:'Captador',     val:Number(com.cap_val), nome:com.cap_nome||'Captador', cliente:com.nome, status:com.status });
+
+    linhas.forEach(l=>{
+      const key = l.nome.trim().toLowerCase();
+      if(!porPessoa[key]) porPessoa[key] = { nome:l.nome, itens:[], total:0, pago:0, pendente:0 };
+      porPessoa[key].itens.push(l);
+      porPessoa[key].total += l.val;
+      if(l.status==='paga') porPessoa[key].pago += l.val;
+      else porPessoa[key].pendente += l.val;
+    });
+  });
+
+  const pessoas = Object.values(porPessoa).sort((a,b)=>b.total-a.total);
+  const totalGeral = pessoas.reduce((s,p)=>s+p.total,0);
+  const totalPago  = pessoas.reduce((s,p)=>s+p.pago,0);
+  const totalPend  = pessoas.reduce((s,p)=>s+p.pendente,0);
+
+  const statusBadge = s => {
+    const map = { paga:'#16a34a', pendente:'#d97706', aprovada:'#2563eb', cancelada:'#9ca3af' };
+    return `<span style="background:${map[s]||'#6b7280'}20;color:${map[s]||'#6b7280'};border:1px solid ${map[s]||'#6b7280'}40;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;text-transform:uppercase">${s||'—'}</span>`;
+  };
+
+  const pessoasSecs = pessoas.map(p=>`
+    <div style="margin-bottom:28px;page-break-inside:avoid">
+      <div style="display:flex;align-items:center;justify-content:space-between;background:#1a3a5c;color:#fff;padding:8px 14px;border-radius:6px 6px 0 0">
+        <span style="font-weight:700;font-size:14px">👤 ${p.nome}</span>
+        <span style="font-size:13px">${fR(p.total)}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:#f1f5f9">
+            <th style="text-align:left;padding:6px 10px;border-bottom:1px solid #e2e8f0">Cliente</th>
+            <th style="text-align:left;padding:6px 10px;border-bottom:1px solid #e2e8f0">Tipo</th>
+            <th style="text-align:right;padding:6px 10px;border-bottom:1px solid #e2e8f0">Valor</th>
+            <th style="text-align:center;padding:6px 10px;border-bottom:1px solid #e2e8f0">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${p.itens.map((it,i)=>`
+          <tr style="background:${i%2?'#f8fafc':'#fff'}">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9">${it.cliente||'—'}</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#64748b">${it.tipo}</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:600;color:#dc2626">${fR(it.val)}</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;text-align:center">${statusBadge(it.status)}</td>
+          </tr>`).join('')}
+          <tr style="background:#fef9f0">
+            <td colspan="2" style="padding:6px 10px;font-weight:700;font-size:11px;color:#92400e">SUBTOTAL</td>
+            <td style="padding:6px 10px;text-align:right;font-weight:700;color:#92400e">${fR(p.total)}</td>
+            <td style="padding:6px 10px;text-align:center;font-size:11px;color:#64748b">
+              <span style="color:#16a34a">Pago: ${fR(p.pago)}</span> &nbsp;
+              <span style="color:#d97706">Pend: ${fR(p.pendente)}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`).join('');
+
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Relatório de Comissões — SER Energia</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;padding:32px}
+    .print-bar{position:fixed;top:0;left:0;right:0;background:#1a3a5c;color:#fff;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:999;font-size:13px}
+    .print-bar button{background:#f59e0b;color:#1a3a5c;border:none;border-radius:6px;padding:6px 16px;font-weight:700;cursor:pointer;font-size:13px}
+    .report-body{margin-top:56px}
+    @media print{.print-bar{display:none}.report-body{margin-top:0}}
+    h1{font-size:22px;color:#1a3a5c;margin-bottom:4px}
+    .sub{font-size:13px;color:#64748b;margin-bottom:24px}
+    .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px}
+    .summary-card{border-radius:8px;padding:16px;text-align:center}
+    .summary-card .label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;font-weight:600}
+    .summary-card .value{font-size:20px;font-weight:800}
+    @media print{body{padding:16px}h1{font-size:18px}}
+  </style>
+  </head><body>
+  <div class="print-bar">
+    <span>SER Energia Renovável — Relatório de Comissões</span>
+    <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+  </div>
+  <div class="report-body">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px">
+      <div>
+        <h1>Relatório de Comissões</h1>
+        <div class="sub">Gerado em ${hoje} &nbsp;·&nbsp; ${comissoes.length} contrato${comissoes.length!==1?'s':''} &nbsp;·&nbsp; ${pessoas.length} colaborador${pessoas.length!==1?'es':''}</div>
+      </div>
+      <div style="text-align:right;font-size:11px;color:#94a3b8;font-weight:600;letter-spacing:.5px">SER ENERGIA RENOVÁVEL</div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card" style="background:#eff6ff;border:1px solid #bfdbfe">
+        <div class="label" style="color:#1d4ed8">Total Comissões</div>
+        <div class="value" style="color:#1d4ed8">${fR(totalGeral)}</div>
+      </div>
+      <div class="summary-card" style="background:#f0fdf4;border:1px solid #bbf7d0">
+        <div class="label" style="color:#15803d">Total Pago</div>
+        <div class="value" style="color:#15803d">${fR(totalPago)}</div>
+      </div>
+      <div class="summary-card" style="background:#fffbeb;border:1px solid #fde68a">
+        <div class="label" style="color:#b45309">Total Pendente</div>
+        <div class="value" style="color:#b45309">${fR(totalPend)}</div>
+      </div>
+    </div>
+
+    ${pessoas.length ? pessoasSecs : '<p style="color:#94a3b8;text-align:center;padding:40px">Nenhuma comissão lançada.</p>'}
+
+    <div style="margin-top:32px;padding-top:16px;border-top:2px solid #1a3a5c;display:flex;justify-content:space-between;font-size:12px;color:#64748b">
+      <span>SER Energia Renovável</span>
+      <span>Relatório gerado automaticamente pelo SER Hub</span>
+    </div>
+  </div>
+  <script>window.onload=()=>{};<\/script>
+  </body></html>`);
+  w.document.close();
+}
 
 function openComissaoModal(item=null, nomePreenchido=null){
   const isNew = !item;
