@@ -927,7 +927,7 @@ async function renderDashboard(){
           const _clamp=Math.min(1.02,_p);
           const _angDeg=-180+_clamp*180, _angRad=_angDeg*Math.PI/180;
           const _nx=_cx+_R*0.68*Math.cos(_angRad), _ny=_cy+_R*0.68*Math.sin(_angRad);
-          const _gaugeCol=(_pv)=>'hsl('+Math.round(Math.min(_pv,1)*120)+',80%,40%)';
+          const _gaugeCol=(_pv)=>{const s=[[239,68,68],[249,115,22],[234,179,8],[34,197,94]],sc=Math.min(_pv,1)*3,i=Math.min(2,Math.floor(sc)),t=sc-i,[r1,g1,b1]=s[i],[r2,g2,b2]=s[i+1];return'rgb('+Math.round(r1+(r2-r1)*t)+','+Math.round(g1+(g2-g1)*t)+','+Math.round(b1+(b2-b1)*t)+')';};
           const _col=_gaugeCol(_p);
           const _arc=(r,a1,a2)=>{const s=a1*Math.PI/180,e=a2*Math.PI/180;return 'M '+(_cx+r*Math.cos(s))+' '+(_cy+r*Math.sin(s))+' A '+r+' '+r+' 0 0 1 '+(_cx+r*Math.cos(e))+' '+(_cy+r*Math.sin(e));};
           const _fillEnd=Math.min(0,_angDeg);
@@ -9181,7 +9181,7 @@ async function renderMetasVendedor(){
     const angRad = angDeg*Math.PI/180;
     const nx = cx + R*0.68*Math.cos(angRad);
     const ny = cy + R*0.68*Math.sin(angRad);
-    const _gaugeCol=(pv)=>'hsl('+Math.round(Math.min(pv,1)*120)+',80%,40%)';
+    const _gaugeCol=(pv)=>{const s=[[239,68,68],[249,115,22],[234,179,8],[34,197,94]],sc=Math.min(pv,1)*3,i=Math.min(2,Math.floor(sc)),t=sc-i,[r1,g1,b1]=s[i],[r2,g2,b2]=s[i+1];return'rgb('+Math.round(r1+(r2-r1)*t)+','+Math.round(g1+(g2-g1)*t)+','+Math.round(b1+(b2-b1)*t)+')';};
     const col = _gaugeCol(pct);
     const arc = (r2,a1,a2) => { const s=a1*Math.PI/180,e=a2*Math.PI/180; return 'M '+(cx+r2*Math.cos(s))+' '+(cy+r2*Math.sin(s))+' A '+r2+' '+r2+' 0 0 1 '+(cx+r2*Math.cos(e))+' '+(cy+r2*Math.sin(e)); };
     const fillEnd = Math.min(0, angDeg);
