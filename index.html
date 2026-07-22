@@ -701,6 +701,8 @@ const ROUTES = [
   { id:'vistoriador', label:'Minhas Vistorias', icon:'🔍' },
   { id:'instalador', label:'Minhas Instalações', icon:'🔧' },
   { id:'homologador', label:'Minhas Homologações', icon:'📋' },
+  { id:'reservico', label:'Re-Serviço', icon:'🛠️' },
+  { id:'appmanutencao', label:'App/Manutenção', icon:'📱' },
   { id:'remarketing', label:'Remarketing', icon:'🔁' },
   { id:'baterias', label:'Calculadora de Baterias', icon:'🔋' },
   { id:'disparador', label:'Disparador de Mensagens', icon:'💬' },
@@ -716,9 +718,9 @@ function visibleRoutes(){
   return ROUTES.filter(r=>{
     if(r.adminOnly && !['admin','supervisor'].includes(role)) return false;
     if(role==='financeiro') return ['dashboard','calendario','clientes','custo_projeto','financeiro'].includes(r.id);
-    if(role==='vendedor') return ['dashboard','calendario','clientes','pipeline','remarketing','baterias','disparador','posvenda_rel'].includes(r.id);
+    if(role==='vendedor') return ['dashboard','calendario','clientes','pipeline','reservico','appmanutencao','remarketing','baterias','disparador','posvenda_rel'].includes(r.id);
     if(role==='tec_vistoria') return ['dashboard','calendario','clientes','vistoriador'].includes(r.id);
-    if(role==='tec_instalacao') return ['dashboard','calendario','clientes','instalador'].includes(r.id);
+    if(role==='tec_instalacao') return ['dashboard','calendario','clientes','instalador','reservico','appmanutencao'].includes(r.id);
     if(role==='tec_homologacao') return ['dashboard','calendario','clientes','homologador'].includes(r.id);
     if(['vistoriador','instalador','homologador'].includes(r.id)) return false; // oculto para outros perfis
     return true;
@@ -758,7 +760,7 @@ function navigate(route){
   $('#pageActions').innerHTML = '';
   $('#content').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   // Pipeline: bloqueia scroll do .content para que cada coluna role individualmente
-  document.querySelector('.content').style.overflow = ['pipeline','vistoriador','instalador','homologador'].includes(route) ? 'hidden' : '';
+  document.querySelector('.content').style.overflow = ['pipeline','vistoriador','instalador','homologador','reservico','appmanutencao'].includes(route) ? 'hidden' : '';
   switch(route){
     case 'dashboard': renderDashboard(); break;
     case 'calendario': renderCalendario(); break;
@@ -767,6 +769,8 @@ function navigate(route){
     case 'vistoriador': renderVistoriadorKanban(); break;
     case 'instalador': renderInstaladorKanban(); break;
     case 'homologador': renderHomologadorKanban(); break;
+    case 'reservico': renderReservicoKanban(); break;
+    case 'appmanutencao': renderAppManKanban(); break;
     case 'remarketing': renderRemarketing(); break;
     case 'baterias': renderBaterias(); break;
     case 'disparador': renderDisparador(); break;
@@ -1447,9 +1451,7 @@ const STAGES = [
   { id:'logistica', label:'Logística', icon:'📦', table:'logistica', dataKey:'logistica' },
   { id:'instalacao', label:'Instalação', icon:'🔧', table:'instalacoes', dataKey:'instalacoes' },
   { id:'homologacao', label:'Homologação', icon:'📋', table:'homologacoes', dataKey:'homologacoes' },
-  { id:'posvenda',     label:'Pós Venda',    icon:'⭐', table:'posvenda',     dataKey:'posvenda' },
-  { id:'atendimentos', label:'Re-Serviço', icon:'🛠️', table:'atendimentos', dataKey:'atendimentos' },
-  { id:'appman', label:'App/Man', icon:'📱', table:'app_manutencao', dataKey:'appman' }
+  { id:'posvenda',     label:'Pós Venda',    icon:'⭐', table:'posvenda',     dataKey:'posvenda' }
 ];
 
 async function renderPipeline(){
@@ -1478,8 +1480,6 @@ async function renderPipeline(){
   $('#content').innerHTML = `${paradoBanner}<div class="kanban" id="kanban">${stages.map(s=>renderStageCol(s)).join('')}</div>`;
   attachKanbanDnD();
   attachKanbanSearch();
-  $('#newAtendBtn')?.addEventListener('click', ()=> openAtendimentoModal());
-  $('#newAppManBtn')?.addEventListener('click', ()=> openAppManModal());
 
   // Highlight parado cards
   if(paradoIds?.size){
@@ -1682,14 +1682,118 @@ async function renderHomologadorKanban(){
   });
 }
 
+async function renderReservicoKanban(){
+  await loadAll();
+  const role = userRole();
+  const items = State.atendimentos || [];
+
+  const cols = [
+    { status:'aberto',       label:'Aberto',       icon:'🔴', color:'#fef3c7' },
+    { status:'em_andamento', label:'Em Andamento',  icon:'🟡', color:'#e0f2fe' },
+    { status:'concluido',    label:'Concluído',     icon:'🟢', color:'#d1fae5' },
+    { status:'cancelado',    label:'Cancelado',     icon:'⚫', color:'#f3f4f6' },
+  ];
+
+  const tipoMap = {retorno_tecnico:'Retorno Técnico',sombreamento:'Sombreamento',goteira:'Goteira',falta_de_energia:'Falta de Energia',outros:'Outros'};
+
+  const canEdit = ['admin','supervisor','vendedor','tec_instalacao'].includes(role);
+  $('#pageActions').innerHTML = canEdit ? `<button class="btn btn-primary" id="newReservicoBtn">+ Novo Re-Serviço</button>` : '';
+  $('#newReservicoBtn')?.addEventListener('click', ()=> openAtendimentoModal());
+
+  const renderCard = (item) => {
+    const tipo = tipoMap[item.tipo] || item.tipo || '—';
+    const statusBadgeClass = `badge-${item.status||'aberto'}`;
+    const statusLabel = {aberto:'Aberto',em_andamento:'Em Andamento',concluido:'Concluído',cancelado:'Cancelado'}[item.status]||item.status;
+    return `<div class="kanban-card" data-id="${item.id}" style="margin-bottom:8px;cursor:pointer">
+      <div class="kanban-card-inner" style="padding:10px 12px;border-radius:8px;background:var(--card);border:1px solid var(--border)">
+        <div style="font-weight:600;font-size:13px;margin-bottom:4px">${esc(item.nome||'—')}</div>
+        <div style="font-size:11px;color:var(--text-light);margin-bottom:6px">${esc(tipo)}</div>
+        ${item.data_agendamento?`<div style="font-size:11px;color:var(--text-light)">📅 ${item.data_agendamento}</div>`:''}
+        ${item.responsavel?`<div style="font-size:11px;color:var(--text-light)">👤 ${esc(item.responsavel)}</div>`:''}
+        <div style="margin-top:6px"><span class="badge ${statusBadgeClass}" style="font-size:10px">${statusLabel}</span></div>
+      </div>
+    </div>`;
+  };
+
+  $('#content').innerHTML = `<div class="kanban" id="kanbanRS">${cols.map(col=>{
+    const colItems = items.filter(i=>(i.status||'aberto')===col.status);
+    return `<div class="kanban-col" data-stage="${col.status}" style="min-width:260px">
+      <div class="kanban-col-header" style="background:${col.color}">
+        <span>${col.icon} ${col.label}</span>
+        <span class="badge-count">${colItems.length}</span>
+      </div>
+      <div class="kanban-cards" id="rsCol_${col.status}">
+        ${colItems.map(renderCard).join('')}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+
+  $$('.kanban-card','#kanbanRS').forEach(card=>{
+    card.addEventListener('click',()=>{
+      const item = items.find(x=>String(x.id)===String(card.dataset.id));
+      if(item) openAtendimentoModal(item);
+    });
+  });
+}
+
+async function renderAppManKanban(){
+  await loadAll();
+  const role = userRole();
+  const items = State.appman || [];
+
+  const cols = [
+    { status:'aberto',       label:'Aberto',       icon:'🔴', color:'#fef3c7' },
+    { status:'em_andamento', label:'Em Andamento',  icon:'🟡', color:'#e0f2fe' },
+    { status:'concluido',    label:'Concluído',     icon:'🟢', color:'#d1fae5' },
+    { status:'cancelado',    label:'Cancelado',     icon:'⚫', color:'#f3f4f6' },
+  ];
+
+  const ITENS_LABEL = {app:'App Monitoramento',manutencao_preventiva:'Manutenção Preventiva',manutencao_corretiva:'Manutenção Corretiva',limpeza:'Limpeza de Módulos',vistoria_tecnica:'Vistoria Técnica',troca_inversor:'Troca de Inversor'};
+
+  const canEdit = ['admin','supervisor','vendedor','tec_instalacao'].includes(role);
+  $('#pageActions').innerHTML = canEdit ? `<button class="btn btn-primary" id="newAppManBtn">+ Novo App/Manutenção</button>` : '';
+  $('#newAppManBtn')?.addEventListener('click', ()=> openAppManModal());
+
+  const renderCard = (item) => {
+    const itensAtivos = item.itens ? Object.entries(item.itens).filter(([,v])=>v?.ativo).map(([k])=>ITENS_LABEL[k]||k) : [];
+    const statusBadgeClass = `badge-${item.status||'aberto'}`;
+    const statusLabel = {aberto:'Aberto',em_andamento:'Em Andamento',concluido:'Concluído',cancelado:'Cancelado'}[item.status]||item.status;
+    return `<div class="kanban-card" data-id="${item.id}" style="margin-bottom:8px;cursor:pointer">
+      <div class="kanban-card-inner" style="padding:10px 12px;border-radius:8px;background:var(--card);border:1px solid var(--border)">
+        <div style="font-weight:600;font-size:13px;margin-bottom:4px">${esc(item.nome||'—')}</div>
+        ${itensAtivos.length?`<div style="font-size:11px;color:var(--text-light);margin-bottom:4px">${itensAtivos.slice(0,2).map(esc).join(', ')}${itensAtivos.length>2?' +mais':''}</div>`:''}
+        ${item.responsavel?`<div style="font-size:11px;color:var(--text-light)">👤 ${esc(item.responsavel)}</div>`:''}
+        ${item.valor_total?`<div style="font-size:11px;font-weight:600;color:var(--primary);margin-top:4px">${fmtBRL(item.valor_total)}</div>`:''}
+        <div style="margin-top:6px"><span class="badge ${statusBadgeClass}" style="font-size:10px">${statusLabel}</span></div>
+      </div>
+    </div>`;
+  };
+
+  $('#content').innerHTML = `<div class="kanban" id="kanbanAM">${cols.map(col=>{
+    const colItems = items.filter(i=>(i.status||'aberto')===col.status);
+    return `<div class="kanban-col" data-stage="${col.status}" style="min-width:260px">
+      <div class="kanban-col-header" style="background:${col.color}">
+        <span>${col.icon} ${col.label}</span>
+        <span class="badge-count">${colItems.length}</span>
+      </div>
+      <div class="kanban-cards" id="amCol_${col.status}">
+        ${colItems.map(renderCard).join('')}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+
+  $$('.kanban-card','#kanbanAM').forEach(card=>{
+    card.addEventListener('click',()=>{
+      const item = items.find(x=>String(x.id)===String(card.dataset.id));
+      if(item) openAppManModal(item);
+    });
+  });
+}
+
 function renderStageCol(stage){
   let items = filterByVendor(State[stage.dataKey]||[]);
 
-  // Atendimentos / App-Man: técnicos veem todos os registros, sem filtro
-  // por cadeia de funil (não fazem parte do pipeline de vendas).
-  if(['atendimentos','appman'].includes(stage.id)){
-    return renderStageColBody(stage, items);
-  }
+  // (atendimentos/appman removed from pipeline — now independent kanban views)
 
   // ── tec_vistoria_instalacao: combina cadeia de vistoria + instalação ──────────
   if(userRole() === 'tec_vistoria_instalacao'){
@@ -2240,29 +2344,9 @@ function filterColCards(stageId, term){
   if(countEl) countEl.textContent = t ? `${visible}/${cards.length}` : String(cards.length);
 }
 
-// Colunas de Atendimentos e App/Man, anexadas aos kanbans dos
-// técnicos (vistoriador/instalador) para acompanhamento de demandas.
-function renderExtraCols(){
-  return [STAGES.find(s=>s.id==='atendimentos'), STAGES.find(s=>s.id==='appman')]
-    .map(s=>renderStageCol(s)).join('');
-}
-function attachExtraKanbanCols(){
-  $$('.kanban-col[data-stage="atendimentos"] .kanban-card').forEach(card=>{
-    card.addEventListener('click', ()=>{
-      const item = (State.atendimentos||[]).find(x=>String(x.id)===String(card.dataset.id));
-      if(item) openAtendimentoModal(item);
-    });
-  });
-  $$('.kanban-col[data-stage="appman"] .kanban-card').forEach(card=>{
-    card.addEventListener('click', ()=>{
-      const item = (State.appman||[]).find(x=>String(x.id)===String(card.dataset.id));
-      if(item) openAppManModal(item);
-    });
-  });
-  $('#newAtendBtn')?.addEventListener('click', ()=> openAtendimentoModal());
-  $('#newAppManBtn')?.addEventListener('click', ()=> openAppManModal());
-  attachKanbanSearch();
-}
+// Re-Serviço e App/Manutenção agora são kanbans independentes no menu.
+function renderExtraCols(){ return ''; }
+function attachExtraKanbanCols(){ attachKanbanSearch(); }
 
 function attachKanbanSearch(){
   $$('.col-search-btn').forEach(btn=>{
@@ -3893,13 +3977,14 @@ function openAtendimentoModal(item=null){
       toast('Re-Serviço salvo! ✓','success');
     }
     closeModal();
-    if(State.route==='pipeline') renderPipeline(); else if(State.route==='vistoriador') renderVistoriadorKanban(); else if(State.route==='instalador') renderInstaladorKanban(); else if(State.route==='homologador') renderHomologadorKanban();
+    if(State.route==='reservico') renderReservicoKanban(); else if(State.route==='appmanutencao') renderAppManKanban(); else if(State.route==='pipeline') renderPipeline(); else if(State.route==='vistoriador') renderVistoriadorKanban(); else if(State.route==='instalador') renderInstaladorKanban(); else if(State.route==='homologador') renderHomologadorKanban();
   });
 
   $('#delAtendBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir Re-Serviço?')) return;
     await supa.from('atendimentos').delete().eq('id',item.id);
-    toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
+    toast('Excluído','success'); await loadAll(); closeModal();
+    if(State.route==='reservico') renderReservicoKanban(); else renderPipeline();
   });
 }
 
@@ -4077,13 +4162,14 @@ function openAppManModal(item=null){
       toast('Registro salvo! ✓','success');
     }
     closeModal();
-    if(State.route==='pipeline') renderPipeline();
+    if(State.route==='appmanutencao') renderAppManKanban(); else if(State.route==='pipeline') renderPipeline();
   });
 
   $('#delAppManBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir registro de App/Manutenção?')) return;
     await supa.from('app_manutencao').delete().eq('id',item.id);
-    toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
+    toast('Excluído','success'); await loadAll(); closeModal();
+    if(State.route==='appmanutencao') renderAppManKanban(); else renderPipeline();
   });
 }
 
