@@ -1728,7 +1728,7 @@ async function renderReservicoKanban(){
     </div>`;
   }).join('')}</div>`;
 
-  $$('.kanban-card','#kanbanRS').forEach(card=>{
+  $$('#kanbanRS .kanban-card').forEach(card=>{
     card.addEventListener('click',()=>{
       const item = items.find(x=>String(x.id)===String(card.dataset.id));
       if(item) openAtendimentoModal(item);
@@ -1782,7 +1782,7 @@ async function renderAppManKanban(){
     </div>`;
   }).join('')}</div>`;
 
-  $$('.kanban-card','#kanbanAM').forEach(card=>{
+  $$('#kanbanAM .kanban-card').forEach(card=>{
     card.addEventListener('click',()=>{
       const item = items.find(x=>String(x.id)===String(card.dataset.id));
       if(item) openAppManModal(item);
