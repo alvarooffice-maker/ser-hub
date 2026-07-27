@@ -9138,9 +9138,13 @@ async function renderGestaoCustos(){
   const avgKit   = avg(projDados.map(p=>p.kit));
   const avgInst  = avg(projDados.map(p=>p.inst));
   const avgHomol = avg(projDados.map(p=>p.homol));
-  const avgComis = avg(projDados.map(p=>p.comis));
   const avgVar   = avg(projDados.map(p=>p.totalVar));
   const avgContrato = avg(projDados.map(p=>p.valor));
+
+  // Comissões não têm contrato_id — calcular globalmente
+  const todasComissoes = despAll.filter(d=>d.categoria==='comissao');
+  const avgComis = todasComissoes.length ? todasComissoes.reduce((s,d)=>s+(Number(d.valor)||0),0)/todasComissoes.length : 0;
+  const totalComisGlobal = todasComissoes.reduce((s,d)=>s+(Number(d.valor)||0),0);
   const pct = (v,base) => base>0 ? (v/base*100).toFixed(1)+'%' : '—';
 
   // ── Custos fixos do mês selecionado ──
@@ -9166,7 +9170,7 @@ async function renderGestaoCustos(){
           <div class="metric"><div class="metric-label">Kit / Equipamentos</div><div class="metric-value" style="font-size:16px">${fR(avgKit)}</div><div class="metric-sub">${pct(avgKit,avgContrato)} do contrato</div></div>
           <div class="metric"><div class="metric-label">Instalação</div><div class="metric-value" style="font-size:16px">${fR(avgInst)}</div><div class="metric-sub">${pct(avgInst,avgContrato)} do contrato</div></div>
           <div class="metric"><div class="metric-label">Homologação</div><div class="metric-value" style="font-size:16px">${fR(avgHomol)}</div><div class="metric-sub">${pct(avgHomol,avgContrato)} do contrato</div></div>
-          <div class="metric"><div class="metric-label">Comissões</div><div class="metric-value" style="font-size:16px">${fR(avgComis)}</div><div class="metric-sub">${pct(avgComis,avgContrato)} do contrato</div></div>
+          <div class="metric"><div class="metric-label">Comissões (média global)</div><div class="metric-value" style="font-size:16px">${fR(avgComis)}</div><div class="metric-sub">${todasComissoes.length} pagamentos · ${fR(totalComisGlobal)} total</div></div>
           <div class="metric"><div class="metric-label">Total Variável</div><div class="metric-value" style="font-size:16px;color:#dc2626">${fR(avgVar)}</div><div class="metric-sub">${pct(avgVar,avgContrato)} do contrato</div></div>
           <div class="metric"><div class="metric-label">Margem Bruta Média</div><div class="metric-value" style="font-size:16px;color:#16a34a">${fR(margemBrutaMedia)}</div><div class="metric-sub">${pct(margemBrutaMedia,avgContrato)} do contrato</div></div>
         </div>
