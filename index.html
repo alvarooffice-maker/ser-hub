@@ -616,6 +616,7 @@ function isAdmin(){ return State.profile?.perfil === 'admin'; }
 function isVend(){ return State.profile?.perfil === 'vendedor'; }
 function userRole(){ return State.profile?.perfil; }
 function canVerFinanceiro(){ return ['admin','supervisor','financeiro'].includes(State.profile?.perfil); }
+function isGestor(){ return ['alvaro.office@gmail.com','wellem.office@gmail.com'].includes(State.user?.email); }
 
 function filterByVendor(arr, key='vendedor'){
   if(!isVend()) return arr;
@@ -710,13 +711,15 @@ const ROUTES = [
   { id:'custo_projeto', label:'Custo por Projeto', icon:'💰', section:'GESTÃO' },
   { id:'financeiro', label:'Financeiro', icon:'📈', section:'GESTÃO' },
   { id:'cadastros', label:'Cadastros', icon:'👥', section:'GESTÃO' },
-  { id:'usuarios', label:'Usuários', icon:'🔐', section:'GESTÃO', adminOnly:true }
+  { id:'usuarios', label:'Usuários', icon:'🔐', section:'GESTÃO', adminOnly:true },
+  { id:'gestao_custos', label:'Gestão de Custos', icon:'📊', section:'GESTÃO' }
 ];
 
 function visibleRoutes(){
   const role = userRole();
   return ROUTES.filter(r=>{
     if(r.adminOnly && !['admin','supervisor'].includes(role)) return false;
+    if(r.id==='gestao_custos') return isGestor();
     if(role==='financeiro') return ['dashboard','calendario','clientes','custo_projeto','financeiro'].includes(r.id);
     if(role==='vendedor') return ['dashboard','calendario','clientes','pipeline','reservico','appmanutencao','remarketing','baterias','disparador','posvenda_rel'].includes(r.id);
     if(role==='tec_vistoria') return ['dashboard','calendario','clientes','vistoriador'].includes(r.id);
@@ -779,6 +782,7 @@ function navigate(route){
     case 'cadastros': renderCadastros(); break;
     case 'usuarios': renderUsuarios(); break;
     case 'posvenda_rel': renderRelatorioPosvenda(); break;
+    case 'gestao_custos': renderGestaoCustos(); break;
   }
 }
 
@@ -786,7 +790,7 @@ function navigate(route){
    DATA LOADERS
    ============================================================ */
 async function loadAll(){
-  const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','atendimentos','app_manutencao','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis','tentativas_contato','metas','metas_vendedores','contratos_termos_aditivos'];
+  const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','atendimentos','app_manutencao','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis','tentativas_contato','metas','metas_vendedores','contratos_termos_aditivos','custos_fixos'];
   const stateMap = { financeiro_receitas:'receitas', financeiro_despesas:'despesas', app_manutencao:'appman', contratos_termos_aditivos:'termos_aditivos' };
   await Promise.all(tables.map(async t => {
     try{
@@ -9106,6 +9110,185 @@ function attachCalEvents(){
 /* ============================================================
    RELATÓRIO PÓS-VENDA
    ============================================================ */
+async function renderGestaoCustos(){
+  if(!isGestor()){ $('#content').innerHTML='<div class="empty">Acesso restrito.</div>'; return; }
+  await loadAll();
+  await Promise.all([loadTable('financeiro_despesas'),loadTable('contratos'),loadTable('custos_fixos')]);
+
+  const td = today();
+  const mesAtual = td.slice(0,7);
+  const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fN = (v,d=1)=>(Number(v)||0).toFixed(d);
+
+  // ── Custos variáveis médios (projetos com kit+inst+homol preenchidos) ──
+  const contratos = (State.contratos||[]).filter(c=>c.status==='assinado');
+  const despAll   = State.despesas || State.financeiro_despesas || [];
+  const projDados = contratos.map(c=>{
+    const desp = despAll.filter(d=>String(d.contrato_id)===String(c.id));
+    const kit   = desp.filter(d=>d.categoria==='kit').reduce((s,d)=>s+(Number(d.valor)||0),0);
+    const inst  = desp.filter(d=>d.categoria==='instalacao').reduce((s,d)=>s+(Number(d.valor)||0),0);
+    const homol = desp.filter(d=>d.categoria==='homologacao').reduce((s,d)=>s+(Number(d.valor)||0),0);
+    const outros= desp.filter(d=>!['kit','instalacao','homologacao','comissao'].includes(d.categoria)).reduce((s,d)=>s+(Number(d.valor)||0),0);
+    const comis = desp.filter(d=>d.categoria==='comissao').reduce((s,d)=>s+(Number(d.valor)||0),0);
+    const valor = Number(c.valor)||0;
+    return { nome:c.nome, valor, kit, inst, homol, outros, comis, totalVar:kit+inst+homol+outros+comis };
+  }).filter(p=>p.kit>0 && p.inst>0 && p.homol>0 && p.valor>0);
+
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+  const avgKit   = avg(projDados.map(p=>p.kit));
+  const avgInst  = avg(projDados.map(p=>p.inst));
+  const avgHomol = avg(projDados.map(p=>p.homol));
+  const avgComis = avg(projDados.map(p=>p.comis));
+  const avgVar   = avg(projDados.map(p=>p.totalVar));
+  const avgContrato = avg(projDados.map(p=>p.valor));
+  const pct = (v,base) => base>0 ? (v/base*100).toFixed(1)+'%' : '—';
+
+  // ── Custos fixos do mês selecionado ──
+  const [mesSel, setMesSel] = [State._gcMes||mesAtual, m=>{ State._gcMes=m; renderGestaoCustos(); }];
+  const fixosMes = (State.custos_fixos||[]).filter(f=>f.mes===mesSel);
+  const totalFixo = fixosMes.reduce((s,f)=>s+(Number(f.valor)||0),0);
+
+  // ── Ponto de equilíbrio ──
+  const margemBrutaMedia = avgContrato - avgVar;
+  const peProj = margemBrutaMedia>0 ? Math.ceil(totalFixo/margemBrutaMedia) : null;
+
+  const catFixaOpts = [['aluguel','Aluguel'],['folha','Folha de Pagamento'],['energia','Energia'],['internet','Internet'],['software','Software/Assinaturas'],['marketing','Marketing'],['contabilidade','Contabilidade'],['veiculo','Veículo'],['outros','Outros']];
+  const catFixaMap  = Object.fromEntries(catFixaOpts);
+
+  $('#pageActions').innerHTML = '';
+  $('#content').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:20px">
+
+      <!-- KPIs variáveis -->
+      <div class="card">
+        <div class="card-header"><h3>📦 Custos Variáveis Médios <span style="font-size:12px;color:var(--text-light);font-weight:400">(${projDados.length} projetos completos)</span></h3></div>
+        <div class="metrics" style="margin:0;padding:12px 0 4px">
+          <div class="metric"><div class="metric-label">Kit / Equipamentos</div><div class="metric-value" style="font-size:16px">${fR(avgKit)}</div><div class="metric-sub">${pct(avgKit,avgContrato)} do contrato</div></div>
+          <div class="metric"><div class="metric-label">Instalação</div><div class="metric-value" style="font-size:16px">${fR(avgInst)}</div><div class="metric-sub">${pct(avgInst,avgContrato)} do contrato</div></div>
+          <div class="metric"><div class="metric-label">Homologação</div><div class="metric-value" style="font-size:16px">${fR(avgHomol)}</div><div class="metric-sub">${pct(avgHomol,avgContrato)} do contrato</div></div>
+          <div class="metric"><div class="metric-label">Comissões</div><div class="metric-value" style="font-size:16px">${fR(avgComis)}</div><div class="metric-sub">${pct(avgComis,avgContrato)} do contrato</div></div>
+          <div class="metric"><div class="metric-label">Total Variável</div><div class="metric-value" style="font-size:16px;color:#dc2626">${fR(avgVar)}</div><div class="metric-sub">${pct(avgVar,avgContrato)} do contrato</div></div>
+          <div class="metric"><div class="metric-label">Margem Bruta Média</div><div class="metric-value" style="font-size:16px;color:#16a34a">${fR(margemBrutaMedia)}</div><div class="metric-sub">${pct(margemBrutaMedia,avgContrato)} do contrato</div></div>
+        </div>
+      </div>
+
+      <!-- Custos fixos -->
+      <div class="card">
+        <div class="card-header" style="justify-content:space-between;display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+          <h3>🏢 Custos Fixos — <input type="month" id="gcMesInput" value="${mesSel}" style="border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:13px;font-family:inherit;background:var(--card);color:var(--text)"></h3>
+          <button class="btn btn-primary btn-sm" id="gcAddFixoBtn">+ Lançar custo fixo</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Categoria</th><th>Descrição</th><th>Valor</th><th></th></tr></thead>
+            <tbody>
+              ${fixosMes.length ? fixosMes.sort((a,b)=>a.categoria.localeCompare(b.categoria)).map(f=>`
+                <tr>
+                  <td><span class="badge" style="background:var(--bg-accent);color:var(--text-accent)">${catFixaMap[f.categoria]||f.categoria}</span></td>
+                  <td>${esc(f.descricao)}</td>
+                  <td style="font-weight:600">${fR(f.valor)}</td>
+                  <td style="display:flex;gap:6px">
+                    <button class="btn btn-sm btn-secondary" data-gc-edit="${f.id}">✏️</button>
+                    <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" data-gc-del="${f.id}">🗑️</button>
+                  </td>
+                </tr>`).join('') : `<tr><td colspan="4" class="empty">Nenhum custo fixo lançado para ${mesSel}.</td></tr>`}
+              ${fixosMes.length ? `<tr style="border-top:2px solid var(--border)"><td colspan="2"><strong>Total</strong></td><td style="font-weight:700;color:#dc2626">${fR(totalFixo)}</td><td></td></tr>` : ''}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Ponto de equilíbrio -->
+      <div class="card">
+        <div class="card-header"><h3>⚖️ Ponto de Equilíbrio</h3></div>
+        <div style="padding:16px;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+          <div>
+            <div style="font-size:13px;color:var(--text-light);margin-bottom:4px">Ticket médio dos contratos</div>
+            <div style="font-size:20px;font-weight:700">${fR(avgContrato)}</div>
+          </div>
+          <div>
+            <div style="font-size:13px;color:var(--text-light);margin-bottom:4px">Custo variável médio</div>
+            <div style="font-size:20px;font-weight:700;color:#dc2626">${fR(avgVar)}</div>
+          </div>
+          <div>
+            <div style="font-size:13px;color:var(--text-light);margin-bottom:4px">Margem bruta por projeto</div>
+            <div style="font-size:20px;font-weight:700;color:#16a34a">${fR(margemBrutaMedia)}</div>
+          </div>
+          <div>
+            <div style="font-size:13px;color:var(--text-light);margin-bottom:4px">Custo fixo do mês</div>
+            <div style="font-size:20px;font-weight:700;color:#ca8a04">${fR(totalFixo)}</div>
+          </div>
+          <div style="background:var(--primary);color:#fff;border-radius:12px;padding:16px 24px;text-align:center">
+            <div style="font-size:12px;opacity:.85;margin-bottom:4px">Projetos p/ fechar os fixos</div>
+            <div style="font-size:36px;font-weight:800">${peProj!=null ? peProj : '—'}</div>
+            <div style="font-size:11px;opacity:.75">${totalFixo>0&&peProj!=null ? 'projetos/mês' : 'lance custos fixos'}</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  // Troca de mês
+  $('#gcMesInput').addEventListener('change', e=> setMesSel(e.target.value));
+
+  // Abrir modal custo fixo (novo)
+  $('#gcAddFixoBtn').addEventListener('click', ()=> openCustoFixoModal(null, mesSel));
+
+  // Editar
+  $$('[data-gc-edit]').forEach(b=>{
+    const f = (State.custos_fixos||[]).find(x=>String(x.id)===b.dataset.gcEdit);
+    b.addEventListener('click', ()=> openCustoFixoModal(f, mesSel));
+  });
+
+  // Excluir
+  $$('[data-gc-del]').forEach(b=>{
+    b.addEventListener('click', async ()=>{
+      if(!confirm('Excluir este custo fixo?')) return;
+      await supa.from('custos_fixos').delete().eq('id', b.dataset.gcDel);
+      await loadTable('custos_fixos');
+      renderGestaoCustos();
+    });
+  });
+}
+
+function openCustoFixoModal(item=null, mes=today().slice(0,7)){
+  const isNew = !item;
+  item = item || {};
+  const catOpts = [['aluguel','Aluguel'],['folha','Folha de Pagamento'],['energia','Energia'],['internet','Internet'],['software','Software/Assinaturas'],['marketing','Marketing'],['contabilidade','Contabilidade'],['veiculo','Veículo'],['outros','Outros']];
+  openModal(`
+    <div class="modal-header"><h2>${isNew?'Novo Custo Fixo':'Editar Custo Fixo'}</h2><button class="modal-close">×</button></div>
+    <form id="custoFixoForm">
+      <div class="modal-body">
+        <div class="form-grid">
+          ${formField({label:'Mês',name:'mes',type:'month',value:item.mes||mes})}
+          ${formField({label:'Categoria',name:'categoria',type:'select',value:item.categoria||'outros',options:catOpts})}
+          ${formField({label:'Descrição',name:'descricao',value:item.descricao,required:true,full:true})}
+          ${formField({label:'Valor (R$)',name:'valor',type:'number',value:item.valor,required:true})}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+  `,'sm');
+  $('#custoFixoForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = readForm($('#custoFixoForm'));
+    data.valor = Number(data.valor)||0;
+    if(isNew){
+      await supa.from('custos_fixos').insert({...data, criado_em:new Date().toISOString(), atualizado_em:new Date().toISOString()});
+    } else {
+      await supa.from('custos_fixos').update({...data, atualizado_em:new Date().toISOString()}).eq('id',item.id);
+    }
+    toast('Salvo!','success');
+    await loadTable('custos_fixos');
+    closeModal();
+    renderGestaoCustos();
+  });
+}
+
 async function renderRelatorioPosvenda(){
   await loadAll();
   const pv = State.posvenda || [];
