@@ -4368,7 +4368,7 @@ function openContratoModal(item=null){
   const isNew = !item;
   item = item || {};
   const linked = getLinkedDocs(item);
-  const statusOpts = [['pendente','Pendente'],['enviado','Enviado'],['assinado','Assinado'],['cancelado','Cancelado']];
+  const statusOpts = [['pendente','Pendente'],['enviado','Enviado'],['assinado','Assinado'],['cancelado','Cancelado'],['perdido','Perdido']];
   const faseOpts = [['','—'],['Monofásico','Monofásico'],['Bifásico','Bifásico'],['Trifásico','Trifásico']];
   const pgtoOpts = [['','—'],['À Vista','À Vista'],['Cartão de Crédito','Cartão de Crédito'],['Financiamento Bancário','Financiamento Bancário'],['Parcelamento Interno','Parcelamento Interno'],['Misto','Misto']];
 
@@ -4425,6 +4425,10 @@ function openContratoModal(item=null){
             ${formField({label:'Banco (se financ.)',name:'banco',value:item.banco,datalist:DL_BANCO})}
             ${formField({label:'Descrição Pgto',name:'pgto_desc',type:'textarea',value:item.pgto_desc,full:true})}
             ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
+            <div class="form-field full" id="motivoPerdaWrap" style="display:${item.status==='perdido'?'block':'none'}">
+              <label>Motivo da Perda <span style="color:var(--danger)">*</span></label>
+              <textarea name="motivo_perda" rows="2" style="width:100%;resize:vertical">${esc(item.motivo_perda||'')}</textarea>
+            </div>
             ${formField({label:'Data Assinatura',name:'data_assinatura',type:'date',value:item.data_assinatura})}
             ${formField({label:'Vendedor (Testemunha 1)',name:'vendedor',type:'select',value:item.vendedor||'',options:[['','— selecione —'],...(State.perfis||[]).filter(p=>p.ativo!==false&&['vendedor','supervisor','admin'].includes(p.perfil)&&p.nome).map(p=>[p.nome,p.nome])]})}
             ${formField({label:'CPF do Vendedor',name:'vend_cpf',value:item.vend_cpf,placeholder:'000.000.000-00'})}
@@ -4465,6 +4469,12 @@ function openContratoModal(item=null){
     if(p?.cpf) form.elements.supervisor_cpf.value = p.cpf;
   });
 
+  // Mostra/esconde campo motivo de perda
+  form.elements.status?.addEventListener('change', e=>{
+    const wrap = document.getElementById('motivoPerdaWrap');
+    if(wrap) wrap.style.display = e.target.value==='perdido' ? 'block' : 'none';
+  });
+
   if(!isNew) carregarHistorico($('#histList'), 'contratos', item.id);
 
   if(!isNew){
@@ -4478,7 +4488,7 @@ function openContratoModal(item=null){
       if(t) imprimirTermoAditivo(item, t);
     }); });
   }
-  const statusContMap = {pendente:'Pendente', enviado:'Enviado', assinado:'Assinado', cancelado:'Cancelado'};
+  const statusContMap = {pendente:'Pendente', enviado:'Enviado', assinado:'Assinado', cancelado:'Cancelado', perdido:'Perdido'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
@@ -4502,6 +4512,13 @@ function openContratoModal(item=null){
       // Contrato cancelado → envia cliente para Remarketing
       if(data.status === 'cancelado' && prevStatus !== 'cancelado'){
         await enviarParaRemarketing({...item,...data}, 'contrato_cancelado', 'Contrato cancelado');
+      }
+      // Contrato perdido → valida motivo e envia para Remarketing
+      if(data.status === 'perdido'){
+        if(!data.motivo_perda?.trim()){ toast('Informe o motivo da perda','error'); return; }
+        if(prevStatus !== 'perdido'){
+          await enviarParaRemarketing({...item,...data}, 'contrato_perdido', 'Contrato perdido: '+data.motivo_perda.trim());
+        }
       }
 
       // Auto-avançar para Logística quando assinado
