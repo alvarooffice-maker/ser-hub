@@ -1947,7 +1947,7 @@ function renderStageColBody(stage, items){
   }
   if(stage.id === 'proposta'){
     const promovidos = new Set((State.vistorias||[]).map(v=>v.proposta_id).filter(Boolean));
-    items = items.filter(p => !promovidos.has(p.id));
+    items = items.filter(p => !promovidos.has(p.id) && p.status !== 'recusada');
   }
   if(stage.id === 'vistoria'){
     const promovidos = new Set((State.contratos||[]).map(c=>c.vistoria_id).filter(Boolean));
