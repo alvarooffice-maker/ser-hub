@@ -4426,8 +4426,7 @@ function openContratoModal(item=null){
             ${formField({label:'Descrição Pgto',name:'pgto_desc',type:'textarea',value:item.pgto_desc,full:true})}
             ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
             <div class="form-field full" id="motivoPerdaWrap" style="display:${item.status==='perdido'?'block':'none'}">
-              <label>Motivo da Perda <span style="color:var(--danger)">*</span></label>
-              <textarea name="motivo_perda" rows="2" style="width:100%;resize:vertical">${esc(item.motivo_perda||'')}</textarea>
+              ${formField({label:'Motivo da Perda *',name:'motivo_perda',type:'select',value:item.motivo_perda||'',full:true,options:[['','— selecione —'],['sem_interesse','Sem interesse'],['sem_credito','Sem crédito / financiamento negado'],['problema_financeiro','Problema financeiro temporário'],['concorrente','Escolheu concorrente'],['sem_resposta','Sem resposta'],['desistencia','Desistência'],['oportunidade_futura','Oportunidade futura'],['outro','Outro']]})}
             </div>
             ${formField({label:'Data Assinatura',name:'data_assinatura',type:'date',value:item.data_assinatura})}
             ${formField({label:'Vendedor (Testemunha 1)',name:'vendedor',type:'select',value:item.vendedor||'',options:[['','— selecione —'],...(State.perfis||[]).filter(p=>p.ativo!==false&&['vendedor','supervisor','admin'].includes(p.perfil)&&p.nome).map(p=>[p.nome,p.nome])]})}
@@ -4515,7 +4514,7 @@ function openContratoModal(item=null){
       }
       // Contrato perdido → valida motivo e envia para Remarketing
       if(data.status === 'perdido'){
-        if(!data.motivo_perda?.trim()){ toast('Informe o motivo da perda','error'); return; }
+        if(!data.motivo_perda){ toast('Selecione o motivo da perda','error'); return; }
         if(prevStatus !== 'perdido'){
           await enviarParaRemarketing({...item,...data}, 'contrato_perdido', 'Contrato perdido: '+data.motivo_perda.trim());
         }
