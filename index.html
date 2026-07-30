@@ -1181,15 +1181,29 @@ async function renderDashboard(){
 
     // ── Funil filtrado por período ──────────────────────────────────────────
     const inPeriod = (d) => d && d >= s0 && d <= e9;
+
+    // Para etapas sem campo vendedor, rastreia pelo contrato de origem
+    const contVendIds = new Set(byVend(contratos).map(c=>String(c.id)));
+    const propVendIds = new Set(byVend(props).map(p=>String(p.id)));
+    // vistorias → via proposta_id
+    const vistByVend = fvNorm
+      ? (State.vistorias||[]).filter(v=>propVendIds.has(String(v.proposta_id)))
+      : (State.vistorias||[]);
+    // logistica/instalacao/homologacao/posvenda → via contrato_id
+    const logByVend  = fvNorm ? (State.logistica||[]).filter(l=>contVendIds.has(String(l.contrato_id)))  : (State.logistica||[]);
+    const instByVend = fvNorm ? (State.instalacoes||[]).filter(i=>contVendIds.has(String(i.contrato_id||i.logistica_id))) : (State.instalacoes||[]);
+    const homByVend  = fvNorm ? (State.homologacoes||[]).filter(h=>contVendIds.has(String(h.contrato_id))) : (State.homologacoes||[]);
+    const pvByVend   = fvNorm ? (State.posvenda||[]).filter(p=>contVendIds.has(String(p.contrato_id)))   : (State.posvenda||[]);
+
     const fnData = {
       Lead:       byVend(leads).filter(l=>inPeriod(l.criado_em)).length,
       Proposta:   byVend(props).filter(p=>inPeriod(p.criado_em)).length,
-      Vistoria:   (State.vistorias||[]).filter(v=>inPeriod(v.criado_em)).length,
+      Vistoria:   vistByVend.filter(v=>inPeriod(v.criado_em)).length,
       Contrato:   byVend(contratos).filter(c=>inPeriod(c.data_assinatura||c.criado_em)).length,
-      Logística:  (State.logistica||[]).filter(l=>inPeriod(l.criado_em)).length,
-      Instalação: (State.instalacoes||[]).filter(i=>inPeriod(i.data_instalacao||i.criado_em)).length,
-      Homologação:(State.homologacoes||[]).filter(h=>inPeriod(h.criado_em)).length,
-      'Pós Venda':(State.posvenda||[]).filter(p=>inPeriod(p.criado_em)).length,
+      Logística:  logByVend.filter(l=>inPeriod(l.criado_em)).length,
+      Instalação: instByVend.filter(i=>inPeriod(i.data_instalacao||i.criado_em)).length,
+      Homologação:homByVend.filter(h=>inPeriod(h.criado_em)).length,
+      'Pós Venda':pvByVend.filter(p=>inPeriod(p.criado_em)).length,
     };
     const maxFnD = Math.max(1,...Object.values(fnData));
     const funnelEl = $('#funnelBody');
