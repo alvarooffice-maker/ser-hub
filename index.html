@@ -911,6 +911,10 @@ async function renderDashboard(){
         <select id="dashAnoSel" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit">
           ${anosDisponiveis.map(a=>`<option value="${a}">${a}</option>`).join('')}
         </select>
+        ${!isVend() ? `<select id="dashVendSel" style="padding:6px 10px;border-radius:8px;border:1px solid var(--primary);font-size:13px;font-family:inherit;color:var(--primary);font-weight:500">
+          <option value="">👤 Todos vendedores</option>
+          ${(State.perfis||[]).filter(p=>p.ativo!==false&&['vendedor','supervisor','admin'].includes(p.perfil)&&p.nome).sort((a,b)=>a.nome.localeCompare(b.nome)).map(p=>`<option value="${esc(p.nome)}">${esc(p.nome)}</option>`).join('')}
+        </select>` : ''}
       </div>
     </div>
 
@@ -1022,6 +1026,7 @@ async function renderDashboard(){
   let dashMes = new Date().getMonth(); // 0-indexed
   let dashTri = Math.floor(new Date().getMonth()/3); // 0-3
   let dashSem = Math.floor(new Date().getMonth()/6); // 0-1
+  let dashVendedor = ''; // '' = todos
 
   const pad2 = n => String(n).padStart(2,'0');
   const lastDayOfMonth = (y,m) => new Date(y, m+1, 0).getDate();
@@ -1161,6 +1166,9 @@ async function renderDashboard(){
   function renderRankings(){
     const [startD, endD] = getDashRange();
     const s0 = startD+'T00:00:00', e9 = endD+'T23:59:59';
+    // Filtro por vendedor (admin/supervisor podem selecionar; vendedor sempre vê só o seu)
+    const fvNorm = isVend() ? normName(State.profile?.nome||'') : (dashVendedor ? normName(dashVendedor) : '');
+    const byVend = arr => fvNorm ? arr.filter(x => normName(x.vendedor||'')===fvNorm) : arr;
     const periodLabels = {
       dia:'Hoje',
       mes:`${mesesNomes[dashMes]} de ${dashAno}`,
@@ -1174,10 +1182,10 @@ async function renderDashboard(){
     // ── Funil filtrado por período ──────────────────────────────────────────
     const inPeriod = (d) => d && d >= s0 && d <= e9;
     const fnData = {
-      Lead:       (isVend()?filterByVendor(leads):leads).filter(l=>inPeriod(l.criado_em)).length,
-      Proposta:   (isVend()?filterByVendor(props):props).filter(p=>inPeriod(p.criado_em)).length,
+      Lead:       byVend(leads).filter(l=>inPeriod(l.criado_em)).length,
+      Proposta:   byVend(props).filter(p=>inPeriod(p.criado_em)).length,
       Vistoria:   (State.vistorias||[]).filter(v=>inPeriod(v.criado_em)).length,
-      Contrato:   contratos.filter(c=>inPeriod(c.data_assinatura||c.criado_em)).length,
+      Contrato:   byVend(contratos).filter(c=>inPeriod(c.data_assinatura||c.criado_em)).length,
       Logística:  (State.logistica||[]).filter(l=>inPeriod(l.criado_em)).length,
       Instalação: (State.instalacoes||[]).filter(i=>inPeriod(i.data_instalacao||i.criado_em)).length,
       Homologação:(State.homologacoes||[]).filter(h=>inPeriod(h.criado_em)).length,
@@ -1233,15 +1241,15 @@ async function renderDashboard(){
     if(haEl) haEl.textContent = avgHomol!=null ? 'ø '+avgHomol+'d' : '—';
 
     // ── Contratos filtrados por período ────────────────────────────────────
-    const contFiltrados = contratos.filter(c=>c.status==='assinado' && c.data_assinatura >= startD && c.data_assinatura <= endD);
-    const contKpi = isVend() ? contFiltrados.filter(c=>normName(c.vendedor)===normName(State.profile?.nome)) : contFiltrados;
+    const contFiltrados = byVend(contratos).filter(c=>c.status==='assinado' && c.data_assinatura >= startD && c.data_assinatura <= endD);
+    const contKpi = contFiltrados;
     const totalPeriodo = contKpi.reduce((s,c)=>s+(Number(c.valor)||0),0);
     const ticketMedio = contKpi.length ? totalPeriodo/contKpi.length : 0;
 
-    const leadsP = (isVend()?filterByVendor(leads):leads).filter(l=>l.criado_em>=s0&&l.criado_em<=e9);
+    const leadsP = byVend(leads).filter(l=>l.criado_em>=s0&&l.criado_em<=e9);
     const taxaConv = leadsP.length > 0 ? Math.round(contKpi.length/leadsP.length*100)+'%' : '—';
-    const propAb = (isVend()?filterByVendor(props):props).filter(p=>!['aceita','recusada'].includes(p.status)&&p.criado_em>=s0&&p.criado_em<=e9).length;
-    const kwpP = (isVend()?filterByVendor(State.instalacoes||[]):State.instalacoes||[])
+    const propAb = byVend(props).filter(p=>!['aceita','recusada'].includes(p.status)&&p.criado_em>=s0&&p.criado_em<=e9).length;
+    const kwpP = byVend(State.instalacoes||[])
       .filter(i=>{ const d=i.data_instalacao||i.criado_em; return d>=s0&&d<=e9; })
       .reduce((s,i)=>s+(Number(i.kwp)||0),0);
 
@@ -1307,8 +1315,7 @@ async function renderDashboard(){
     }
 
     if(dashRankTab === 'vendedores'){
-      const src = isVend() ? contFiltrados.filter(c=>normName(c.vendedor)===normName(State.profile?.nome)) : contFiltrados;
-      const rows = grpNorm(src,'vendedor',c=>Number(c.valor)||0);
+      const rows = grpNorm(contFiltrados,'vendedor',c=>Number(c.valor)||0);
       const totalVend = rows.reduce((s,r)=>s+r.val,0);
       $('#rankBody').innerHTML = rankCards(rows,{
         label:'Vendedor',
@@ -1357,6 +1364,8 @@ async function renderDashboard(){
   syncDashSelects();
   renderChart();
   renderRankings();
+
+  $('#dashVendSel')?.addEventListener('change', e=>{ dashVendedor = e.target.value; renderRankings(); });
 
   // Tempo médio por etapa
   const tmEl = $('#tempoMedioSection');
