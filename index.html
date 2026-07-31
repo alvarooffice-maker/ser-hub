@@ -2150,12 +2150,22 @@ function renderCard(item,stage){
     ? `<span style="display:inline-block;font-size:10px;background:#ede9fe;color:#6B21A8;border-radius:4px;padding:1px 6px;margin-top:2px;font-weight:600">📌 ${esc(item.projeto)}</span>`
     : '';
 
-  // SLA: dias nesta etapa (usa atualizado_em p/ leads, criado_em p/ demais)
+  // SLA por etapa: [amarelo, vermelho] em dias
+  const SLA_ETAPA = {
+    lead:        [3,  7],
+    proposta:    [5, 10],
+    vistoria:    [5, 10],
+    contrato:    [5, 10],
+    logistica:   [5, 10],
+    instalacao:  [7, 15],
+    homologacao: [20, 40],
+  };
   const _slaDate = stage.id==='lead' ? (item.atualizado_em||item.criado_em) : item.criado_em;
   const _slaDias = _slaDate ? Math.floor((Date.now()-new Date(_slaDate).getTime())/86400000) : null;
   const showSla  = _slaDias!=null && !['atendimentos','appman','posvenda'].includes(stage.id);
-  const _slaClass = !showSla || _slaDias<=3 ? '' : _slaDias<=7 ? 'sla-warn' : _slaDias<=14 ? 'sla-alert' : 'sla-danger';
-  const slaDaysLabel = showSla && _slaDias>3 ? `<span class="sla-days">${_slaDias}d</span>` : '';
+  const [_slaWarn=3, _slaDanger=7] = SLA_ETAPA[stage.id] || [3,7];
+  const _slaClass = !showSla || _slaDias<_slaWarn ? '' : _slaDias<_slaDanger ? 'sla-warn' : 'sla-danger';
+  const slaDaysLabel = showSla && _slaDias>=_slaWarn ? `<span class="sla-days">${_slaDias}d</span>` : '';
 
   return `
     <div class="kanban-card ${_slaClass}" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.responsavel||item.vendedor||'')+' '+(item.projeto||'')).toLowerCase()}">
