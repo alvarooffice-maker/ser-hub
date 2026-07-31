@@ -5970,7 +5970,7 @@ function openHomologacaoModal(item=null){
         <div class="section collapsed" style="margin-bottom:14px">
           <div class="section-header"><h4>🔧 Técnico & Custos</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
-            ${formField({label:'Google Maps URL',name:'gmap',value:item.gmap||gmap,required:true,full:true,placeholder:'Cole aqui o link do Google Maps'})}
+            ${formField({label:'Google Maps URL',name:'gmap',value:item.gmap||gmap,full:true,placeholder:'Cole aqui o link do Google Maps'})}
             ${formField({label:'Técnico',name:'tecnico',value:item.tecnico,datalist:DL_TECNICO})}
             ${formField({label:'Concessionária',name:'concessionaria',value:item.concessionaria||_v.concessionaria||_c.concessionaria||''})}
             ${formField({label:'Valor TRT',name:'trt_val',type:'number',value:item.trt_val})}
