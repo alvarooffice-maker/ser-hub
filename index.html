@@ -1968,7 +1968,7 @@ function renderStageColBody(stage, items){
   // Garante 1 card por cliente em cada coluna (aparece só na etapa mais avançada)
   if(stage.id === 'lead'){
     const promovidos = new Set((State.propostas||[]).map(p=>p.lead_id).filter(Boolean));
-    items = items.filter(l => !promovidos.has(l.id));
+    items = items.filter(l => !promovidos.has(l.id) || l.remarketing);
   }
   if(stage.id === 'proposta'){
     const promovidos = new Set((State.vistorias||[]).map(v=>v.proposta_id).filter(Boolean));
