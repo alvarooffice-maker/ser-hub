@@ -274,7 +274,7 @@ tbody tr:hover{background:#fafaf6}
 .modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;background:#fafaf6;border-radius:0 0 14px 14px}
 .flag{display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:600;border:1px solid transparent;white-space:nowrap;line-height:1.4}
 .flag.ok{background:#d1e7dd;color:#0f5132;border-color:#b8dcc9}
-.flag.teal,.flag.warn{background:#ccfbf1;color:#0f766e;border-color:#99f6e4}
+.flag.teal,.flag.warn{background:#cfe2ff;color:#084298;border-color:#b6d4fe}
 .flag.purple{background:#e2d6f3;color:#5e35b1;border-color:#d8ccf0}
 .flag.amber{background:#fde68a;color:#78350f;border-color:#f5c15b}
 .flag.danger{background:#f8d7da;color:#842029;border-color:#f5c2c7}
@@ -2485,9 +2485,9 @@ async function transitionCard(id, fromStage, toStage){
   if(!guard.ok){ toast(guard.msg, 'error'); return; }
 
   // Check duplicate — consulta o banco para evitar race condition
-  // Leads de remarketing podem ter proposta antiga: não bloquear
+  // lead→proposta nunca bloqueia (lead pode gerar nova proposta após remarketing)
   const linkField = fromStage+'_id';
-  if(!(fromStage === 'lead' && item.remarketing)){
+  if(fromStage !== 'lead'){
     const { data: dupCheck } = await supa.from(toCfg.table).select('id').eq(linkField, item.id).maybeSingle();
     if(dupCheck){ toast('Já existe registro nesta etapa para este item.','info'); return; }
   }
