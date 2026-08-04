@@ -2150,6 +2150,11 @@ function renderCard(item,stage){
     ? `<span style="display:inline-block;font-size:10px;background:#ede9fe;color:#6B21A8;border-radius:4px;padding:1px 6px;margin-top:2px;font-weight:600">📌 ${esc(item.projeto)}</span>`
     : '';
 
+  // Badge de remarketing: aparece no card do lead reativado
+  const remarketingBadge = item.remarketing
+    ? `<span style="display:inline-block;font-size:10px;background:#fce7f3;color:#be185d;border-radius:4px;padding:1px 6px;margin-top:2px;font-weight:600">🔁 Remarketing</span>`
+    : '';
+
   // SLA por etapa: [amarelo, vermelho] em dias
   const SLA_ETAPA = {
     lead:        [3,  7],
@@ -2171,7 +2176,7 @@ function renderCard(item,stage){
     <div class="kanban-card ${_slaClass}" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.responsavel||item.vendedor||'')+' '+(item.projeto||'')).toLowerCase()}">
       <div class="kanban-card-inner" style="position:relative">
         ${slaDaysLabel}
-        <div class="name">${stage.icon} ${esc(item.nome||'—')}${projetoBadge?'<br>'+projetoBadge:''}</div>
+        <div class="name">${stage.icon} ${esc(item.nome||'—')}${projetoBadge?'<br>'+projetoBadge:''}${remarketingBadge?'<br>'+remarketingBadge:''}</div>
         ${meta1?`<div class="meta">${esc(meta1)}</div>`:''}
         <div class="meta">${esc(meta2)}</div>
         ${flags}
@@ -6380,10 +6385,24 @@ async function renderRemarketing(){
     const r = items.find(x=>String(x.id)===b.dataset.react);
     if(!r) return;
     if(!confirm('Reativar este lead?')) return;
-    if(r.lead_id) await supa.from('leads').update({ status:'em_contato', motivo_perda:null }).eq('id',r.lead_id);
-    await supa.from('remarketing').update({ status:'reativado' }).eq('id',r.id);
-    toast('Lead reativado','success');
-    renderRemarketing();
+
+    let leadId = r.lead_id;
+    if(leadId){
+      // Lead original existe — reativa e marca como remarketing
+      await supa.from('leads').update({ status:'em_contato', motivo_perda:null, remarketing:true }).eq('id',leadId);
+    } else {
+      // Veio de proposta/contrato — cria novo lead com flag remarketing
+      const { data: novoLead, error: eLead } = await supa.from('leads').insert({
+        nome: r.nome, telefone: r.telefone, vendedor: r.vendedor,
+        status: 'em_contato', remarketing: true,
+        criado_por: State.user?.id
+      }).select('id').single();
+      if(eLead) return toast(eLead.message,'error');
+      leadId = novoLead.id;
+    }
+    await supa.from('remarketing').update({ status:'reativado', lead_id: leadId }).eq('id',r.id);
+    toast('Lead reativado e voltou ao pipeline ✓','success');
+    await loadAll(); renderRemarketing();
   }));
   $('#searchRem')?.addEventListener('input', e=>{
     const q = e.target.value.toLowerCase();
