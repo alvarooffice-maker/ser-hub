@@ -2485,9 +2485,12 @@ async function transitionCard(id, fromStage, toStage){
   if(!guard.ok){ toast(guard.msg, 'error'); return; }
 
   // Check duplicate — consulta o banco para evitar race condition
+  // Leads de remarketing podem ter proposta antiga: não bloquear
   const linkField = fromStage+'_id';
-  const { data: dupCheck } = await supa.from(toCfg.table).select('id').eq(linkField, item.id).maybeSingle();
-  if(dupCheck){ toast('Já existe registro nesta etapa para este item.','info'); return; }
+  if(!(fromStage === 'lead' && item.remarketing)){
+    const { data: dupCheck } = await supa.from(toCfg.table).select('id').eq(linkField, item.id).maybeSingle();
+    if(dupCheck){ toast('Já existe registro nesta etapa para este item.','info'); return; }
+  }
 
   const payload = buildTransitionPayload(item, fromStage, toStage);
   payload.criado_por = State.user?.id;
