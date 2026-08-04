@@ -274,7 +274,9 @@ tbody tr:hover{background:#fafaf6}
 .modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;background:#fafaf6;border-radius:0 0 14px 14px}
 .flag{display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:600;border:1px solid transparent;white-space:nowrap;line-height:1.4}
 .flag.ok{background:#d1e7dd;color:#0f5132;border-color:#b8dcc9}
-.flag.warn{background:#fff3cd;color:#856404;border-color:#ffe8a1}
+.flag.teal,.flag.warn{background:#ccfbf1;color:#0f766e;border-color:#99f6e4}
+.flag.purple{background:#e2d6f3;color:#5e35b1;border-color:#d8ccf0}
+.flag.amber{background:#fde68a;color:#78350f;border-color:#f5c15b}
 .flag.danger{background:#f8d7da;color:#842029;border-color:#f5c2c7}
 .flag.countdown{background:#e2d6f3;color:#5e35b1;border-color:#d8ccf0}
 .flag.countdown.urgent{background:#f8d7da;color:#842029;border-color:#f5c2c7}
@@ -2279,9 +2281,11 @@ function stageFlags(item, stage){
   // ── Cor da flag conforme o status ────────────────────────
   function cls(s){
     if(!s) return '';
-    if(/aprovada|assinado|conclu|comprado|ativo|realiz|entregue|pago|paga|recebido/.test(s)) return 'ok';
-    if(/reprova|perdido|recusad|cancel|descart/.test(s)) return 'danger';
-    return 'warn';
+    if(/aprovad|assinado|conclu|comprado|ativo|realiz|entregue|pago|paga|recebido|reativado|aceita/.test(s)) return 'ok';
+    if(/reprova|perdido|recusad|cancel|descart|inativo/.test(s)) return 'danger';
+    if(/agendad|trt_art|parecer|vistoria_final|manutencao/.test(s)) return 'purple';
+    if(/obra|sombr/.test(s)) return 'amber';
+    return 'teal';
   }
 
   // ── Flags de histórico ────────────────────────────────────
@@ -6384,14 +6388,31 @@ async function renderRemarketing(){
   $$('[data-react]').forEach(b=>b.addEventListener('click', async ()=>{
     const r = items.find(x=>String(x.id)===b.dataset.react);
     if(!r) return;
-    if(!confirm('Reativar este lead?')) return;
+
+    const confirmado = await new Promise(resolve => {
+      openModal(`
+        <div style="text-align:center;padding:8px 0 4px;max-width:320px;margin:0 auto">
+          <div style="font-size:32px;margin-bottom:12px">🔁</div>
+          <h3 style="margin:0 0 8px">Reativar lead?</h3>
+          <p style="color:#555;font-size:13px;margin:0 0 24px">
+            <strong>${esc(r.nome)}</strong> voltará para a aba
+            <strong>Lead</strong> do pipeline.
+          </p>
+          <div style="display:flex;gap:10px;justify-content:center">
+            <button class="btn btn-secondary" id="cancelReact">Não, cancelar</button>
+            <button class="btn" id="confirmReact" style="background:#6B21A8;color:#fff">Sim, reativar</button>
+          </div>
+        </div>
+      `);
+      $('#confirmReact')?.addEventListener('click', () => { closeModal(); resolve(true); });
+      $('#cancelReact')?.addEventListener('click',  () => { closeModal(); resolve(false); });
+    });
+    if(!confirmado) return;
 
     let leadId = r.lead_id;
     if(leadId){
-      // Lead original existe — reativa e marca como remarketing
       await supa.from('leads').update({ status:'em_contato', motivo_perda:null, remarketing:true }).eq('id',leadId);
     } else {
-      // Veio de proposta/contrato — cria novo lead com flag remarketing
       const { data: novoLead, error: eLead } = await supa.from('leads').insert({
         nome: r.nome, telefone: r.telefone, vendedor: r.vendedor,
         status: 'em_contato', remarketing: true,
@@ -6401,8 +6422,9 @@ async function renderRemarketing(){
       leadId = novoLead.id;
     }
     await supa.from('remarketing').update({ status:'reativado', lead_id: leadId }).eq('id',r.id);
-    toast('Lead reativado e voltou ao pipeline ✓','success');
-    await loadAll(); renderRemarketing();
+    await loadAll();
+    toast('Lead reativado ✓ Redirecionando para o pipeline…','success');
+    navigate('pipeline');
   }));
   $('#searchRem')?.addEventListener('input', e=>{
     const q = e.target.value.toLowerCase();
