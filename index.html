@@ -724,7 +724,7 @@ function visibleRoutes(){
     if(r.id==='gestao_custos') return isGestor();
     if(role==='financeiro') return ['dashboard','calendario','clientes','custo_projeto','financeiro'].includes(r.id);
     if(role==='vendedor') return ['dashboard','calendario','clientes','pipeline','reservico','appmanutencao','remarketing','baterias','disparador','posvenda_rel'].includes(r.id);
-    if(role==='tec_vistoria') return ['dashboard','calendario','clientes','vistoriador'].includes(r.id);
+    if(role==='tec_vistoria') return ['dashboard','calendario','clientes','vistoriador','reservico','appmanutencao'].includes(r.id);
     if(role==='tec_instalacao') return ['dashboard','calendario','clientes','instalador','reservico','appmanutencao'].includes(r.id);
     if(role==='tec_homologacao') return ['dashboard','calendario','clientes','homologador'].includes(r.id);
     if(['vistoriador','instalador','homologador'].includes(r.id)) return false; // oculto para outros perfis
@@ -1714,7 +1714,11 @@ async function renderHomologadorKanban(){
 async function renderReservicoKanban(){
   await loadAll();
   const role = userRole();
-  const items = State.atendimentos || [];
+  const tecNome = (State.profile?.nome||'').toLowerCase().trim();
+  const isTec = ['tec_vistoria','tec_instalacao','tec_vistoria_instalacao'].includes(role);
+  const items = (State.atendimentos || []).filter(i =>
+    !isTec || (i.responsavel||'').toLowerCase().trim() === tecNome
+  );
 
   const cols = [
     { status:'aberto',       label:'Aberto',       icon:'🔴', color:'#fef3c7' },
@@ -1768,7 +1772,11 @@ async function renderReservicoKanban(){
 async function renderAppManKanban(){
   await loadAll();
   const role = userRole();
-  const items = State.appman || [];
+  const tecNome = (State.profile?.nome||'').toLowerCase().trim();
+  const isTec = ['tec_vistoria','tec_instalacao','tec_vistoria_instalacao'].includes(role);
+  const items = (State.appman || []).filter(i =>
+    !isTec || (i.tecnico_responsavel||'').toLowerCase().trim() === tecNome
+  );
 
   const cols = [
     { status:'aberto',       label:'Aberto',       icon:'🔴', color:'#fef3c7' },
