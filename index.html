@@ -3431,8 +3431,9 @@ function openPropostaModal(item=null){
 /* ============================================================
    FILE UPLOAD HELPER
    ============================================================ */
-async function compressImage(file, maxPx=1920, quality=0.82){
-  if(!file.type.startsWith('image/')) return file;
+async function compressImage(file, maxPx=1280, quality=0.72){
+  const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(file.name);
+  if(!isImage) return file;
   return new Promise(resolve => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -3440,14 +3441,17 @@ async function compressImage(file, maxPx=1920, quality=0.82){
       URL.revokeObjectURL(url);
       let { width, height } = img;
       if(width > maxPx || height > maxPx){
-        if(width > height){ height = Math.round(height * maxPx / width); width = maxPx; }
-        else { width = Math.round(width * maxPx / height); height = maxPx; }
+        if(width >= height){ height = Math.round(height * maxPx / width); width = maxPx; }
+        else               { width  = Math.round(width  * maxPx / height); height = maxPx; }
       }
       const canvas = document.createElement('canvas');
       canvas.width = width; canvas.height = height;
       canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-      canvas.toBlob(blob => resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {type:'image/jpeg'})),
-        'image/jpeg', quality);
+      canvas.toBlob(blob => {
+        if(!blob){ resolve(file); return; }
+        const compressed = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {type:'image/jpeg'});
+        resolve(compressed);
+      }, 'image/jpeg', quality);
     };
     img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
     img.src = url;
