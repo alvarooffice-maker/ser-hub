@@ -3518,6 +3518,11 @@ function attachFileUploads(rootEl, fileStore){
       const name = inp.dataset.name;
       fileStore[name] = fileStore[name] || [];
       for(const file of inp.files){
+        const MB = file.size / 1024 / 1024;
+        if(MB > 48){
+          toast(`❌ Arquivo muito grande (${MB.toFixed(0)} MB). Limite: 48 MB. Comprima o PDF antes de enviar.`,'error',6000);
+          continue;
+        }
         try{
           toast('Enviando '+file.name+'…','info',1500);
           const f = await uploadFile(bucket, file, name);
