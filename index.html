@@ -1729,7 +1729,7 @@ async function renderReservicoKanban(){
 
   const tipoMap = {retorno_tecnico:'Retorno Técnico',sombreamento:'Sombreamento',goteira:'Goteira',falta_de_energia:'Falta de Energia',outros:'Outros'};
 
-  const canEdit = ['admin','supervisor','vendedor','tec_instalacao'].includes(role);
+  const canEdit = ['admin','supervisor','vendedor','tec_instalacao','tec_vistoria'].includes(role);
   $('#pageActions').innerHTML = canEdit ? `<button class="btn btn-primary" id="newReservicoBtn">+ Novo Re-Serviço</button>` : '';
   $('#newReservicoBtn')?.addEventListener('click', ()=> openAtendimentoModal());
 
@@ -1787,7 +1787,7 @@ async function renderAppManKanban(){
 
   const ITENS_LABEL = {app:'App Monitoramento',manutencao_preventiva:'Manutenção Preventiva',manutencao_corretiva:'Manutenção Corretiva',limpeza:'Limpeza de Módulos',vistoria_tecnica:'Vistoria Técnica',troca_inversor:'Troca de Inversor'};
 
-  const canEdit = ['admin','supervisor','vendedor','tec_instalacao'].includes(role);
+  const canEdit = ['admin','supervisor','vendedor','tec_instalacao','tec_vistoria'].includes(role);
   $('#pageActions').innerHTML = canEdit ? `<button class="btn btn-primary" id="newAppManBtn">+ Novo App/Manutenção</button>` : '';
   $('#newAppManBtn')?.addEventListener('click', ()=> openAppManModal());
 
