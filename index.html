@@ -5784,7 +5784,8 @@ function openInstalacaoModal(item=null){
   const contrato = (State.contratos||[]).find(c=>String(c.id)===String(item.contrato_id||logistica?.contrato_id));
   const endContrato = contrato ? [contrato.rua, contrato.numero?`nº ${contrato.numero}`:'', contrato.complemento, contrato.bairro, contrato.cidade, contrato.estado].filter(Boolean).join(', ') : '';
   const enderecoFinal = item.endereco || endContrato || '';
-  const gmapFinal = item.gmap || contrato?.gmap || '';
+  const vistoria = (State.vistorias||[]).find(v=>String(v.contrato_id)===String(item.contrato_id||logistica?.contrato_id));
+  const gmapFinal = item.gmap || vistoria?.gmap || contrato?.gmap || '';
   const cepFinal = item.cep || contrato?.cep || '';
 
   openModal(`
