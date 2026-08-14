@@ -7351,10 +7351,12 @@ async function renderFinanceiro(){
     <button class="btn btn-secondary" id="newReceitaBtn">+ Receita</button>
     <button class="btn btn-primary" id="newDespesaBtn">+ Despesa</button>
     <button class="btn btn-secondary" id="despPadraoBtn" title="Verificar e preencher despesas padrão em lote">📋 Despesas Padrão</button>
+    <button class="btn btn-secondary" id="auditReceitasBtn" title="Auditar contratos sem receita">🔍 Auditar Receitas</button>
   `;
   $('#newReceitaBtn').addEventListener('click', ()=> openReceitaModal());
   $('#newDespesaBtn').addEventListener('click', ()=> openDespesaModal());
   $('#despPadraoBtn').addEventListener('click', ()=> openDespesasPadraoModal());
+  $('#auditReceitasBtn').addEventListener('click', ()=> openAuditoriaReceitasModal());
 
   $('#content').innerHTML = `
     <div class="metrics">
@@ -7694,6 +7696,116 @@ async function openDespesasPadraoModal(){
 
     closeModal();
     toast(`✓ ${inserts.length} despesa(s) inserida(s) em ${selecionados.length} contrato(s)`, 'success', 5000);
+    await renderFinanceiro();
+  });
+}
+
+/* ============================================================
+   AUDITORIA DE RECEITAS
+   ============================================================ */
+async function openAuditoriaReceitasModal(){
+  await Promise.all([
+    loadTable('contratos'), loadTable('financeiro_receitas')
+  ]);
+
+  const receitas  = State.receitas || [];
+  const contratos = (State.contratos || []).filter(c => c.status !== 'cancelado' && Number(c.valor) > 0);
+
+  // Contratos sem nenhuma receita vinculada
+  const semReceita = contratos.filter(c =>
+    !receitas.some(r => String(r.contrato_id) === String(c.id))
+  );
+
+  if(!semReceita.length){
+    toast('Todos os contratos já têm receita lançada ✓','success');
+    return;
+  }
+
+  const fR = v => 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
+
+  openModal(`
+    <div class="modal-header">
+      <h2>🔍 Auditoria de Receitas</h2>
+      <button class="modal-close">×</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <p style="padding:12px 20px 8px;font-size:13px;color:#555;margin:0">
+        ${semReceita.length} contrato(s) sem receita lançada. Marque os que deseja registrar e clique em <strong>Aplicar</strong>.
+      </p>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:#f5f0fc;text-align:left">
+              <th style="padding:8px 12px"><input type="checkbox" id="arSelectAll" title="Selecionar todos"></th>
+              <th style="padding:8px 12px">Cliente</th>
+              <th style="padding:8px 12px">Vendedor</th>
+              <th style="padding:8px 12px">Data assinatura</th>
+              <th style="padding:8px 12px;text-align:right">Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${semReceita.map((c,i) => `
+              <tr style="border-top:1px solid #eee" data-idx="${i}">
+                <td style="padding:8px 12px"><input type="checkbox" class="ar-chk" value="${i}" checked></td>
+                <td style="padding:8px 12px;font-weight:600;color:#1a0a2e">${esc(c.nome||c.cliente||'—')}</td>
+                <td style="padding:8px 12px;color:#555">${esc(c.vendedor||'—')}</td>
+                <td style="padding:8px 12px;color:#555">${c.data_assinatura ? new Date(c.data_assinatura+'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+                <td style="padding:8px 12px;text-align:right;font-weight:700;color:#064e3b">${fR(c.valor)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr style="background:#f9f5ff;border-top:2px solid #e9d5ff">
+              <td colspan="4" style="padding:8px 12px;font-weight:700;font-size:12px">TOTAL SELECIONADO</td>
+              <td id="arTotal" style="padding:8px 12px;text-align:right;font-weight:700;color:#4B0082;font-size:13px">${fR(semReceita.reduce((s,c)=>s+(Number(c.valor)||0),0))}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span id="arCount" style="font-size:12px;color:#555">${semReceita.length} contrato(s) selecionado(s)</span>
+      <button class="btn btn-secondary modal-close">Cancelar</button>
+      <button class="btn btn-primary" id="arAplicarBtn">Aplicar</button>
+    </div>
+  `, 'lg');
+
+  const updateTotals = () => {
+    const checked = [...document.querySelectorAll('.ar-chk:checked')];
+    const total = checked.reduce((s,c) => s + (Number(semReceita[Number(c.value)].valor)||0), 0);
+    $('#arCount').textContent = `${checked.length} contrato(s) selecionado(s)`;
+    $('#arTotal').textContent = fR(total);
+  };
+
+  $('#arSelectAll').addEventListener('change', e => {
+    document.querySelectorAll('.ar-chk').forEach(c => c.checked = e.target.checked);
+    updateTotals();
+  });
+  document.querySelectorAll('.ar-chk').forEach(c => c.addEventListener('change', updateTotals));
+
+  $('#arAplicarBtn').addEventListener('click', async () => {
+    const selecionados = [...document.querySelectorAll('.ar-chk:checked')].map(c => semReceita[Number(c.value)]);
+    if(!selecionados.length){ toast('Nenhum contrato selecionado','info'); return; }
+
+    const btn = $('#arAplicarBtn');
+    btn.disabled = true;
+    btn.textContent = 'Aplicando…';
+
+    const inserts = selecionados.map(c => ({
+      descricao: c.nome || c.cliente || 'Projeto Solar',
+      valor: Number(c.valor),
+      categoria: 'venda',
+      status: 'recebido',
+      data_recebimento: c.data_assinatura || null,
+      contrato_id: c.id,
+      criado_por: State.user?.id
+    }));
+
+    const { error } = await supa.from('financeiro_receitas').insert(inserts);
+    if(error){ toast(error.message,'error'); btn.disabled=false; btn.textContent='Aplicar'; return; }
+
+    closeModal();
+    toast(`✓ ${inserts.length} receita(s) lançada(s)`, 'success', 5000);
     await renderFinanceiro();
   });
 }
