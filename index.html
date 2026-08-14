@@ -5741,6 +5741,26 @@ function openLogisticaModal(item=null){
         return;
       }
     }
+    // Sincroniza despesa de Kit com Financeiro
+    if(data.valor_compra && item.contrato_id){
+      const { data: kitExist } = await supa.from('financeiro_despesas')
+        .select('id').eq('contrato_id', item.contrato_id).eq('categoria','kit').maybeSingle();
+      const kitPayload = {
+        descricao: 'Kit Solar',
+        valor: Number(data.valor_compra),
+        recebedor: data.distribuidora || item.distribuidora || '',
+        categoria: 'kit',
+        status: 'pendente',
+        contrato_id: item.contrato_id,
+      };
+      if(kitExist){
+        await supa.from('financeiro_despesas').update(kitPayload).eq('id', kitExist.id);
+      } else {
+        kitPayload.criado_por = State.user?.id;
+        await supa.from('financeiro_despesas').insert(kitPayload);
+      }
+    }
+
     toast('Salvo','success'); await loadAll(); closeModal(); renderPipeline();
   });
   $('#delLogBtn')?.addEventListener('click', async ()=>{
@@ -7535,13 +7555,14 @@ function openDespesaModal(item=null, opts={}){
 async function openDespesasPadraoModal(){
   await Promise.all([
     loadTable('contratos'), loadTable('vistorias'), loadTable('instalacoes'),
-    loadTable('homologacoes'), loadTable('financeiro_despesas')
+    loadTable('homologacoes'), loadTable('financeiro_despesas'), loadTable('logistica')
   ]);
 
-  const despesas   = State.despesas || [];
-  const contratos  = (State.contratos || []).filter(c => c.status !== 'cancelado');
-  const vistorias  = State.vistorias  || [];
+  const despesas    = State.despesas || [];
+  const contratos   = (State.contratos || []).filter(c => c.status !== 'cancelado');
+  const vistorias   = State.vistorias   || [];
   const instalacoes = State.instalacoes || [];
+  const logisticas  = State.logistica   || [];
 
   // Valor vistoria por resultado
   function valorVistoria(resultado){
@@ -7597,6 +7618,12 @@ async function openDespesasPadraoModal(){
       const iVal = valorInstalacao(kwp);
       if(iVal)
         rows.push({ descricao:'Instalação', recebedor:'Instalação - Paulo Oliveira', valor:iVal, categoria:'instalacao', _info:`${kwp} kWp` });
+    }
+
+    // Kit Solar — só aparece se logística tem valor_compra e não há despesa de kit
+    const log = logisticas.find(l => String(l.contrato_id) === String(cid));
+    if(log?.valor_compra && !temDesp(cid, 'kit')){
+      rows.push({ descricao:'Kit Solar', recebedor: log.distribuidora || '', valor: Number(log.valor_compra), categoria:'kit', _info: log.distribuidora||'' });
     }
 
     if(rows.length) pendencias.push({ contrato: c, rows });
