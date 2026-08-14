@@ -2578,7 +2578,13 @@ function buildTransitionPayload(item, fromStage, toStage){
   const lead = lead_id ? (State.leads||[]).find(l=>l.id===lead_id) : null;
   const projeto = item.projeto || lead?.projeto || null;
   const base = { nome:item.nome, telefone:item.telefone, vendedor:item.vendedor, lead_id, projeto };
-  if(toStage==='proposta') return { ...base, kwh:item.kwh, status:'em_aberto' };
+  if(toStage==='proposta') return { ...base, kwh:item.kwh,
+    email:item.email, cep:item.cep, rua:item.rua, numero:item.numero, complemento:item.complemento,
+    bairro:item.bairro, cidade:item.cidade, estado:item.estado,
+    qtd_modulos:item.qtd_modulos, marca_modulo:item.marca_modulo, pot_modulo:item.pot_modulo,
+    qtd_inversores:item.qtd_inversores, marca_inversor:item.marca_inversor, pot_inversor:item.pot_inversor,
+    qtd_baterias:item.qtd_baterias, marca_bateria:item.marca_bateria, pot_bateria:item.pot_bateria, kwp:item.kwp,
+    status:'em_aberto' };
   if(toStage==='vistoria') return {
     ...base, proposta_id:item.id, email:item.email, cep:item.cep, rua:item.rua, numero:item.numero, complemento:item.complemento,
     bairro:item.bairro, cidade:item.cidade, estado:item.estado, qtd_modulos:item.qtd_modulos, marca_modulo:item.marca_modulo,
@@ -5289,14 +5295,6 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
       </div>
       <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#374151">
         <span style="color:#6B21A8;font-weight:900;font-size:15px;line-height:1.1;flex-shrink:0">✓</span>
-        <span><strong style="color:#1a0a2e;display:block;margin-bottom:1px">Suporte e monitoramento</strong>pós-instalação</span>
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#374151">
-        <span style="color:#6B21A8;font-weight:900;font-size:15px;line-height:1.1;flex-shrink:0">✓</span>
-        <span><strong style="color:#1a0a2e;display:block;margin-bottom:1px">Garantia de 10 anos</strong>no sistema instalado</span>
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#374151">
-        <span style="color:#6B21A8;font-weight:900;font-size:15px;line-height:1.1;flex-shrink:0">✓</span>
         <span><strong style="color:#1a0a2e;display:block;margin-bottom:1px">ART e documentação</strong>técnica completa</span>
       </div>
     </div>
@@ -5304,9 +5302,9 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
 
   <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;width:100%;max-width:500px">
     <div style="border:2px solid #e9e2f5;border-radius:12px;padding:12px 16px;text-align:center;flex:1">
-      <div style="font-size:20px;margin-bottom:4px">🛡️</div>
-      <div style="font-size:11px;font-weight:800;color:#4B0082">10 ANOS</div>
-      <div style="font-size:9px;color:#6b7280;margin-top:2px">Garantia do sistema</div>
+      <div style="font-size:20px;margin-bottom:4px">⚡</div>
+      <div style="font-size:11px;font-weight:800;color:#4B0082">ÁGIL</div>
+      <div style="font-size:9px;color:#6b7280;margin-top:2px">Homologação rápida</div>
     </div>
     <div style="border:2px solid #e9e2f5;border-radius:12px;padding:12px 16px;text-align:center;flex:1">
       <div style="font-size:20px;margin-bottom:4px">⚡</div>
@@ -7352,9 +7350,11 @@ async function renderFinanceiro(){
   $('#pageActions').innerHTML = `
     <button class="btn btn-secondary" id="newReceitaBtn">+ Receita</button>
     <button class="btn btn-primary" id="newDespesaBtn">+ Despesa</button>
+    <button class="btn btn-secondary" id="despPadraoBtn" title="Verificar e preencher despesas padrão em lote">📋 Despesas Padrão</button>
   `;
   $('#newReceitaBtn').addEventListener('click', ()=> openReceitaModal());
   $('#newDespesaBtn').addEventListener('click', ()=> openDespesaModal());
+  $('#despPadraoBtn').addEventListener('click', ()=> openDespesasPadraoModal());
 
   $('#content').innerHTML = `
     <div class="metrics">
@@ -7524,6 +7524,177 @@ function openDespesaModal(item=null, opts={}){
     await loadTable('financeiro_despesas');
     closeModal();
     if(onSave) onSave(); else renderFinanceiro();
+  });
+}
+
+/* ============================================================
+   DESPESAS PADRÃO EM LOTE
+   ============================================================ */
+async function openDespesasPadraoModal(){
+  await Promise.all([
+    loadTable('contratos'), loadTable('vistorias'), loadTable('instalacoes'),
+    loadTable('homologacoes'), loadTable('financeiro_despesas')
+  ]);
+
+  const despesas   = State.despesas || [];
+  const contratos  = (State.contratos || []).filter(c => c.status !== 'cancelado');
+  const vistorias  = State.vistorias  || [];
+  const instalacoes = State.instalacoes || [];
+
+  // Valor vistoria por resultado
+  function valorVistoria(resultado){
+    const map = {
+      aprovado: 120, aprovado_com_obra: 120,
+      aprovado_com_sombreamento: 150,
+      aprovado_com_obra_e_sombreamento: 120,
+      reprovado: 120
+    };
+    return map[resultado] || null;
+  }
+
+  // Valor instalação por kWp
+  function valorInstalacao(kwp){
+    const k = Number(kwp) || 0;
+    if(!k) return null;
+    if(k <= 4.5)  return parseFloat((k * 500).toFixed(2));
+    if(k <= 6.5)  return parseFloat((k * 450).toFixed(2));
+    if(k <= 10)   return parseFloat((k * 380).toFixed(2));
+    if(k <= 15)   return parseFloat((k * 350).toFixed(2));
+    return parseFloat((k * 320).toFixed(2));
+  }
+
+  // Verifica se já existe despesa com essa descrição no contrato
+  function temDesp(contratoId, desc){
+    return despesas.some(d =>
+      String(d.contrato_id) === String(contratoId) &&
+      (d.descricao||'').toLowerCase().includes(desc.toLowerCase())
+    );
+  }
+
+  // Monta lista de pendências por contrato
+  const pendencias = [];
+  for(const c of contratos){
+    const cid = c.id;
+    const vis = vistorias.find(v => String(v.contrato_id) === String(cid) || String(v.proposta_id) === String(c.proposta_id));
+    const inst = instalacoes.find(i => String(i.contrato_id) === String(cid));
+    const rows = [];
+
+    if(!temDesp(cid, 'taxa trt'))
+      rows.push({ descricao:'Taxa TRT', recebedor:'Crea', valor:68.17, categoria:'homologacao' });
+    if(!temDesp(cid, 'homologação') && !temDesp(cid, 'homologacao'))
+      rows.push({ descricao:'Homologação', recebedor:'Michel Darlan Britto da Silva', valor:300, categoria:'homologacao' });
+
+    if(vis && vis.resultado){
+      const vVal = valorVistoria(vis.resultado);
+      if(vVal && !temDesp(cid, 'parecer') && !temDesp(cid, 'vistoria'))
+        rows.push({ descricao:'Parecer Final da Vistoria', recebedor:'Paulo Adriano - Vistoria', valor:vVal, categoria:'vistoria', _info: vis.resultado });
+    }
+
+    const kwp = inst?.kwp || c.kwp;
+    if(kwp && !temDesp(cid, 'instalação') && !temDesp(cid, 'instalacao')){
+      const iVal = valorInstalacao(kwp);
+      if(iVal)
+        rows.push({ descricao:'Instalação', recebedor:'Instalação - Paulo Oliveira', valor:iVal, categoria:'instalacao', _info:`${kwp} kWp` });
+    }
+
+    if(rows.length) pendencias.push({ contrato: c, rows });
+  }
+
+  if(!pendencias.length){
+    toast('Todos os contratos já têm as despesas padrão preenchidas ✓','success');
+    return;
+  }
+
+  const fR = v => 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
+
+  openModal(`
+    <div class="modal-header">
+      <h2>📋 Despesas Padrão em Lote</h2>
+      <button class="modal-close">×</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <p style="padding:12px 20px 8px;font-size:13px;color:#555;margin:0">
+        Contratos com despesas padrão faltando. Marque os que deseja preencher e clique em <strong>Aplicar</strong>.
+      </p>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:#f5f0fc;text-align:left">
+              <th style="padding:8px 12px"><input type="checkbox" id="dpSelectAll" title="Selecionar todos"></th>
+              <th style="padding:8px 12px">Cliente</th>
+              <th style="padding:8px 12px">Despesas a inserir</th>
+              <th style="padding:8px 12px;text-align:right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pendencias.map((p,i) => `
+              <tr style="border-top:1px solid #eee;vertical-align:top" data-idx="${i}">
+                <td style="padding:8px 12px"><input type="checkbox" class="dp-chk" value="${i}" checked></td>
+                <td style="padding:8px 12px;font-weight:600;color:#1a0a2e">${esc(p.contrato.nome||p.contrato.cliente||'—')}</td>
+                <td style="padding:8px 12px">
+                  ${p.rows.map(r=>`<div style="margin-bottom:3px">
+                    <span style="display:inline-block;background:#e9d5ff;color:#4c1d95;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-right:4px">${r.categoria}</span>
+                    ${esc(r.descricao)} — <em>${esc(r.recebedor)}</em> — <strong>${fR(r.valor)}</strong>
+                    ${r._info?`<span style="color:#6b7280;font-size:10px"> (${esc(r._info)})</span>`:''}
+                  </div>`).join('')}
+                </td>
+                <td style="padding:8px 12px;text-align:right;font-weight:700;color:#4B0082">
+                  ${fR(p.rows.reduce((s,r)=>s+r.valor,0))}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span id="dpCount" style="font-size:12px;color:#555">${pendencias.length} contrato(s) selecionado(s)</span>
+      <button class="btn btn-secondary modal-close">Cancelar</button>
+      <button class="btn btn-primary" id="dpAplicarBtn">Aplicar</button>
+    </div>
+  `, 'lg');
+
+  // Select all toggle
+  const selAll = $('#dpSelectAll');
+  const updateCount = () => {
+    const n = document.querySelectorAll('.dp-chk:checked').length;
+    $('#dpCount').textContent = `${n} contrato(s) selecionado(s)`;
+  };
+  selAll.addEventListener('change', () => {
+    document.querySelectorAll('.dp-chk').forEach(c => c.checked = selAll.checked);
+    updateCount();
+  });
+  document.querySelectorAll('.dp-chk').forEach(c => c.addEventListener('change', updateCount));
+
+  $('#dpAplicarBtn').addEventListener('click', async () => {
+    const selecionados = [...document.querySelectorAll('.dp-chk:checked')].map(c => pendencias[Number(c.value)]);
+    if(!selecionados.length){ toast('Nenhum contrato selecionado','info'); return; }
+
+    const btn = $('#dpAplicarBtn');
+    btn.disabled = true;
+    btn.textContent = 'Aplicando…';
+
+    const inserts = [];
+    for(const p of selecionados){
+      for(const r of p.rows){
+        inserts.push({
+          descricao: r.descricao,
+          recebedor: r.recebedor,
+          valor: r.valor,
+          categoria: r.categoria,
+          status: 'pendente',
+          contrato_id: p.contrato.id,
+          criado_por: State.user?.id
+        });
+      }
+    }
+
+    const { error } = await supa.from('financeiro_despesas').insert(inserts);
+    if(error){ toast(error.message,'error'); btn.disabled=false; btn.textContent='Aplicar'; return; }
+
+    closeModal();
+    toast(`✓ ${inserts.length} despesa(s) inserida(s) em ${selecionados.length} contrato(s)`, 'success', 5000);
+    await renderFinanceiro();
   });
 }
 
