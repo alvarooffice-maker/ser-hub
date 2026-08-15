@@ -1239,22 +1239,23 @@ async function renderDashboard(){
     if(tlEl) tlEl.textContent = avgTL!=null ? avgTL+'d' : '—';
 
     // ── Recorde Homologação: dias contrato assinado → homologação aprovada ──
-    const diasHomol = (State.homologacoes||[])
+    const homolEntries = (State.homologacoes||[])
       .filter(h => h.etapa==='aprovada' && h.contrato_id && h.data_aprovacao)
       .map(h => {
         const cont = (State.contratos||[]).find(c=>String(c.id)===String(h.contrato_id));
         if(!cont?.data_assinatura) return null;
-        const dataAprov = h.data_aprovacao;
-        const dias = Math.floor((new Date(dataAprov).getTime() - new Date(cont.data_assinatura).getTime()) / 86400000);
-        return dias >= 0 ? dias : null;
+        const dias = Math.floor((new Date(h.data_aprovacao).getTime() - new Date(cont.data_assinatura).getTime()) / 86400000);
+        return dias >= 0 ? { dias, nome: cont.nome||'—' } : null;
       })
       .filter(d => d != null);
-    const recHomol = diasHomol.length ? Math.min(...diasHomol) : null;
-    const avgHomol = diasHomol.length ? Math.round(diasHomol.reduce((a,b)=>a+b,0)/diasHomol.length) : null;
+    const recEntry = homolEntries.length ? homolEntries.reduce((a,b)=>a.dias<=b.dias?a:b) : null;
+    const avgHomol = homolEntries.length ? Math.round(homolEntries.reduce((s,d)=>s+d.dias,0)/homolEntries.length) : null;
     const hrEl = $('#kpiHomolRec');
     const haEl = $('#kpiHomolAvg');
-    if(hrEl) hrEl.textContent = recHomol!=null ? '🏅 '+recHomol+'d' : '—';
+    if(hrEl) hrEl.textContent = recEntry ? '🏅 '+recEntry.dias+'d' : '—';
     if(haEl) haEl.textContent = avgHomol!=null ? 'Média: '+avgHomol+' dias' : '—';
+    const hSubEl = hrEl?.closest('.metric')?.querySelector('.metric-sub');
+    if(hSubEl) hSubEl.textContent = recEntry ? recEntry.nome : 'recorde · média (dias contrato→homol)';
 
     // ── Contratos filtrados por período ────────────────────────────────────
     const contFiltrados = byVend(contratos).filter(c=>c.status==='assinado' && c.data_assinatura >= startD && c.data_assinatura <= endD);
