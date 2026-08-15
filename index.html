@@ -867,30 +867,78 @@ async function renderHomeVendedor(){
 
   $('#pageActions').innerHTML = '';
   $('#content').innerHTML = `
-    <div style="min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:48px;padding:32px;text-align:center">
-      <div>
-        <div style="font-size:13px;font-weight:700;letter-spacing:2px;color:var(--text-light);text-transform:uppercase;margin-bottom:8px">SER Energia Renovável</div>
-        <div style="font-size:28px;font-weight:800;color:var(--primary)">Mais do que falar é preciso SER.</div>
+    <style>
+      @keyframes hvPulse { 0%,100%{opacity:.18;transform:scale(1)} 50%{opacity:.32;transform:scale(1.08)} }
+      @keyframes hvFadeUp { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
+      @keyframes hvCount { from{opacity:0;transform:scale(.7)} to{opacity:1;transform:scale(1)} }
+      .hv-wrap{
+        position:relative;min-height:calc(100vh - 120px);display:flex;flex-direction:column;
+        align-items:center;justify-content:center;gap:0;overflow:hidden;
+        background:linear-gradient(160deg,#0a1628 0%,#0d2444 40%,#0a1628 100%);
+        border-radius:16px;padding:48px 24px;
+      }
+      .hv-glow{
+        position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;
+      }
+      .hv-brand{animation:hvFadeUp .7s ease both}
+      .hv-brand-label{font-size:11px;font-weight:800;letter-spacing:4px;color:#f59e0b;text-transform:uppercase;margin-bottom:10px}
+      .hv-brand-title{font-size:clamp(22px,4vw,36px);font-weight:900;color:#fff;line-height:1.2}
+      .hv-brand-sub{font-size:14px;color:#94a3b8;margin-top:6px;font-style:italic}
+      .hv-cards{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;margin:40px 0 36px;animation:hvFadeUp .8s .2s ease both}
+      .hv-card{
+        background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);
+        border-radius:24px;padding:36px 44px;min-width:220px;text-align:center;
+        backdrop-filter:blur(12px);position:relative;overflow:hidden;
+        transition:transform .25s,box-shadow .25s;cursor:default;
+      }
+      .hv-card:hover{transform:translateY(-6px);box-shadow:0 24px 60px rgba(0,0,0,.4)}
+      .hv-card-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:24px 24px 0 0}
+      .hv-card-icon{font-size:28px;margin-bottom:12px}
+      .hv-card-label{font-size:11px;font-weight:800;letter-spacing:2px;color:#94a3b8;text-transform:uppercase;margin-bottom:16px}
+      .hv-card-num{font-size:clamp(72px,10vw,96px);font-weight:900;line-height:1;animation:hvCount .6s .4s ease both}
+      .hv-card-unit{font-size:16px;font-weight:700;margin-top:4px;opacity:.7}
+      .hv-card-client{font-size:12px;color:#64748b;margin-top:10px;font-weight:500}
+      .hv-btns{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;animation:hvFadeUp .8s .45s ease both}
+      .hv-btn{
+        font-size:15px;font-weight:800;padding:16px 40px;border-radius:14px;border:none;cursor:pointer;
+        letter-spacing:.5px;transition:transform .2s,box-shadow .2s;
+      }
+      .hv-btn:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.35)}
+      .hv-btn-primary{background:linear-gradient(135deg,#f59e0b,#d97706);color:#0a1628}
+      .hv-btn-secondary{background:rgba(255,255,255,.08);color:#e2e8f0;border:1px solid rgba(255,255,255,.15)}
+    </style>
+    <div class="hv-wrap">
+      <div class="hv-glow" style="width:500px;height:500px;background:#1d4ed8;top:-200px;left:-150px;animation:hvPulse 6s ease-in-out infinite"></div>
+      <div class="hv-glow" style="width:400px;height:400px;background:#f59e0b;bottom:-180px;right:-100px;animation:hvPulse 7s 1s ease-in-out infinite"></div>
+
+      <div class="hv-brand" style="text-align:center;margin-bottom:0">
+        <div class="hv-brand-label">SER Energia Renovável</div>
+        <div class="hv-brand-title">Mais do que falar é preciso SER.</div>
+        <div class="hv-brand-sub">Agilidade que você pode comprovar</div>
       </div>
 
-      <div style="display:flex;gap:32px;flex-wrap:wrap;justify-content:center">
-        <div style="background:var(--bg-alt);border:2px solid var(--border);border-radius:20px;padding:32px 40px;min-width:200px">
-          <div style="font-size:13px;font-weight:700;letter-spacing:1px;color:var(--text-light);text-transform:uppercase;margin-bottom:12px">⚡ Recorde de Instalação</div>
-          <div style="font-size:64px;font-weight:900;color:var(--primary);line-height:1">${recInstal ? recInstal.d : '—'}</div>
-          <div style="font-size:18px;font-weight:600;color:var(--text-light);margin-bottom:8px">dias</div>
-          ${recInstal ? `<div style="font-size:13px;color:var(--text-light);margin-top:4px">${esc(recInstal.nome)}</div>` : ''}
+      <div class="hv-cards">
+        <div class="hv-card">
+          <div class="hv-card-accent" style="background:linear-gradient(90deg,#f59e0b,#fbbf24)"></div>
+          <div class="hv-card-icon">⚡</div>
+          <div class="hv-card-label">Recorde de Instalação</div>
+          <div class="hv-card-num" style="color:#fbbf24">${recInstal ? recInstal.d : '—'}</div>
+          <div class="hv-card-unit" style="color:#fbbf24">dias</div>
+          ${recInstal ? `<div class="hv-card-client">${esc(recInstal.nome)}</div>` : ''}
         </div>
-        <div style="background:var(--bg-alt);border:2px solid var(--border);border-radius:20px;padding:32px 40px;min-width:200px">
-          <div style="font-size:13px;font-weight:700;letter-spacing:1px;color:var(--text-light);text-transform:uppercase;margin-bottom:12px">🏆 Recorde de Homologação</div>
-          <div style="font-size:64px;font-weight:900;color:var(--primary);line-height:1">${recHomol ? recHomol.d : '—'}</div>
-          <div style="font-size:18px;font-weight:600;color:var(--text-light);margin-bottom:8px">dias</div>
-          ${recHomol ? `<div style="font-size:13px;color:var(--text-light);margin-top:4px">${esc(recHomol.nome)}</div>` : ''}
+        <div class="hv-card">
+          <div class="hv-card-accent" style="background:linear-gradient(90deg,#3b82f6,#60a5fa)"></div>
+          <div class="hv-card-icon">🏆</div>
+          <div class="hv-card-label">Recorde de Homologação</div>
+          <div class="hv-card-num" style="color:#60a5fa">${recHomol ? recHomol.d : '—'}</div>
+          <div class="hv-card-unit" style="color:#60a5fa">dias</div>
+          ${recHomol ? `<div class="hv-card-client">${esc(recHomol.nome)}</div>` : ''}
         </div>
       </div>
 
-      <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
-        <button id="hvNovoLead" class="btn btn-primary" style="font-size:16px;padding:14px 36px;border-radius:12px;font-weight:700">➕ Novo Lead</button>
-        <button id="hvAppMan" class="btn btn-secondary" style="font-size:16px;padding:14px 36px;border-radius:12px;font-weight:700">📱 App / Manutenção</button>
+      <div class="hv-btns">
+        <button id="hvNovoLead" class="hv-btn hv-btn-primary">➕ Novo Lead</button>
+        <button id="hvAppMan" class="hv-btn hv-btn-secondary">📱 App / Manutenção</button>
       </div>
     </div>
   `;
