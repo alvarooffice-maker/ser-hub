@@ -7207,7 +7207,7 @@ function openComissaoModal(item=null, nomePreenchido=null){
 
   // Listas por perfil vindas de State.perfis
   const perfisAtivos = (State.perfis||[]).filter(p=>p.ativo!==false && p.nome);
-  const nomesPorPerfil = perfil => ['',  ...perfisAtivos.filter(p=>p.perfil===perfil).map(p=>p.nome)];
+  const nomesPorPerfil = perfil => ['', ...perfisAtivos.filter(p=> perfil==='vendedor' ? ['vendedor','supervisor'].includes(p.perfil) : p.perfil===perfil).map(p=>p.nome)];
   const selectOpts    = perfil => nomesPorPerfil(perfil).map(n=>n?[n,n]:['','— selecione —']);
 
   // Todos os contratos válidos (exceto cancelado/perdido) para busca de cliente
