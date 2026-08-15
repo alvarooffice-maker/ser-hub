@@ -7223,15 +7223,15 @@ function openComissaoModal(item=null, nomePreenchido=null){
   if(item.contrato_id){
     applyAutoFill(contratosAssinados.find(c=>c.id===item.contrato_id));
   } else if(item.nome){
-    applyAutoFill(contratosAssinados.find(c=>(c.nome||'').toLowerCase()===item.nome.trim().toLowerCase()));
+    applyAutoFill(contratosAssinados.find(c=>(c.nome||'').trim().toLowerCase()===item.nome.trim().toLowerCase()));
   }
 
   // Auto-preenche Valor Vendido com o valor do contrato ao digitar/selecionar o cliente
   form.elements['nome'].addEventListener('change', ()=>{
-    applyAutoFill(contratosAssinados.find(c=>(c.nome||'').toLowerCase()===form.elements['nome'].value.trim().toLowerCase()));
+    applyAutoFill(contratosAssinados.find(c=>(c.nome||'').trim().toLowerCase()===form.elements['nome'].value.trim().toLowerCase()));
   });
   form.elements['nome'].addEventListener('input', ()=>{
-    const contrato = contratosAssinados.find(c=>(c.nome||'').toLowerCase()===form.elements['nome'].value.trim().toLowerCase());
+    const contrato = contratosAssinados.find(c=>(c.nome||'').trim().toLowerCase()===form.elements['nome'].value.trim().toLowerCase());
     applyAutoFill(contrato);
   });
 
