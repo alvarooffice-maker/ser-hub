@@ -5942,15 +5942,7 @@ function openInstalacaoModal(item=null){
           ${formField({label:'Hora',name:'hora_instalacao',type:'time',value:item.hora_instalacao})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'aguardando_agendamento',options:statusOpts})}
         </div>
-        <div class="section collapsed" style="margin-top:14px"><div class="section-header"><h4>🕐 Horário e Presença</h4><span class="section-toggle">▼</span></div>
-          <div class="section-body"><div class="form-grid">
-            ${formField({label:'Hora Início',name:'_hi',type:'time',value:dadosSalvos.hora_inicio||''})}
-            ${formField({label:'Hora Fim',name:'_hf',type:'time',value:dadosSalvos.hora_fim||''})}
-            ${formField({label:'Cliente no Local',name:'_cp',type:'toggle',value:dadosSalvos.cliente_presente??true})}
-            ${formField({label:'Acompanhante',name:'_acomp',value:dadosSalvos.acompanhante||'',placeholder:'Nome do responsável presente'})}
-          </div></div>
-        </div>
-        <div class="section" style="margin-top:10px"><div class="section-header"><h4>📍 Endereço da Instalação</h4><span class="section-toggle">▼</span></div>
+        <div class="section" style="margin-top:14px"><div class="section-header"><h4>📍 Endereço da Instalação</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
             ${formField({label:'CEP',name:'cep',value:cepFinal})}
             ${formField({label:'Endereço completo',name:'endereco',value:enderecoFinal,full:true})}
