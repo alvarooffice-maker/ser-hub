@@ -5918,6 +5918,48 @@ function openInstalacaoModal(item=null){
   const homDocs = homologacao?.docs || {};
   const cepFinal = item.cep || contrato?.cep || '';
 
+  // Dados do Laudo salvos anteriormente
+  const dadosSalvos = fotos._dados || {};
+  const cl = dadosSalvos.checklist || {};
+  const kc = dadosSalvos.kit_confirmado || {};
+  const leit = dadosSalvos.leitura || {};
+
+  const chkRow = (key, label) => {
+    const d = cl[key] || {};
+    return `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:0 0 160px;font-weight:600;font-size:13px;padding-top:6px">${label}</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;flex-shrink:0;padding-top:2px;cursor:pointer">
+        <input type="checkbox" name="_cl_${key}_ok" ${d.ok?'checked':''}> OK
+      </label>
+      <input type="text" name="_cl_${key}_obs" value="${esc(d.obs||'')}" placeholder="Observação..." style="flex:1;border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;background:var(--bg);color:var(--text)">
+    </div>`;
+  };
+  const aguasRow = () => {
+    const fa = cl.fixacao_modulos || {};
+    let aguas = '';
+    for(let i=1;i<=6;i++){
+      const v = fa[`agua${i}`]||'';
+      aguas += `<div style="display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px">
+        <span style="color:var(--text-muted)">${i}ª</span>
+        <select name="_cl_agua${i}" style="border:none;background:transparent;font-size:12px;color:var(--text)">
+          <option value="" ${!v?'selected':''}>—</option>
+          <option value="ok" ${v==='ok'?'selected':''}>✓ OK</option>
+          <option value="nok" ${v==='nok'?'selected':''}>✗ NOK</option>
+        </select>
+      </div>`;
+    }
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <div style="flex:0 0 160px;font-weight:600;font-size:13px">Fixação de Módulos</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;flex-shrink:0;cursor:pointer">
+          <input type="checkbox" name="_cl_fixacao_modulos_ok" ${fa.ok?'checked':''}> OK
+        </label>
+        <input type="text" name="_cl_fixacao_modulos_obs" value="${esc(fa.obs||'')}" placeholder="Observação..." style="flex:1;border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;background:var(--bg);color:var(--text)">
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;padding-left:172px">${aguas}</div>
+    </div>`;
+  };
+
   openModal(`
     <div class="modal-header">
       <h2>Instalação — ${esc(item.nome||'')}</h2>
@@ -5942,7 +5984,15 @@ function openInstalacaoModal(item=null){
           ${formField({label:'Hora',name:'hora_instalacao',type:'time',value:item.hora_instalacao})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'aguardando_agendamento',options:statusOpts})}
         </div>
-        <div class="section" style="margin-top:14px"><div class="section-header"><h4>📍 Endereço da Instalação</h4><span class="section-toggle">▼</span></div>
+        <div class="section collapsed" style="margin-top:14px"><div class="section-header"><h4>🕐 Horário e Presença</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body"><div class="form-grid">
+            ${formField({label:'Hora Início',name:'_hi',type:'time',value:dadosSalvos.hora_inicio||''})}
+            ${formField({label:'Hora Fim',name:'_hf',type:'time',value:dadosSalvos.hora_fim||''})}
+            ${formField({label:'Cliente no Local',name:'_cp',type:'toggle',value:dadosSalvos.cliente_presente??true})}
+            ${formField({label:'Acompanhante',name:'_acomp',value:dadosSalvos.acompanhante||'',placeholder:'Nome do responsável presente'})}
+          </div></div>
+        </div>
+        <div class="section" style="margin-top:10px"><div class="section-header"><h4>📍 Endereço da Instalação</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
             ${formField({label:'CEP',name:'cep',value:cepFinal})}
             ${formField({label:'Endereço completo',name:'endereco',value:enderecoFinal,full:true})}
@@ -5959,11 +6009,56 @@ function openInstalacaoModal(item=null){
             ${formField({label:'Pago',name:'pago',type:'number',value:item.pago})}
           </div></div>
         </div>
-        ${formField({label:'Observações',name:'obs',type:'textarea',value:item.obs,full:true})}
-        <div class="section" style="margin-top:14px"><div class="section-header"><h4>📸 Fotos Pós-Instalação</h4><span class="section-toggle">▼</span></div>
+        <div class="section collapsed" style="margin-top:10px"><div class="section-header"><h4>📦 Conferência do Kit Instalado</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body"><div class="form-grid">
+            ${formField({label:'Qtd Módulos',name:'_kc_qm',type:'number',value:kc.qtd_modulos??vistoria?.qtd_modulos??''})}
+            ${formField({label:'Marca Módulo',name:'_kc_mm',value:kc.marca_modulo??vistoria?.marca_modulo??''})}
+            ${formField({label:'Pot. Módulo (W)',name:'_kc_pm',type:'number',value:kc.pot_modulo??vistoria?.pot_modulo??''})}
+            ${formField({label:'Qtd Inversores',name:'_kc_qi',type:'number',value:kc.qtd_inversores??vistoria?.qtd_inversores??''})}
+            ${formField({label:'Marca Inversor',name:'_kc_mi',value:kc.marca_inversor??vistoria?.marca_inversor??''})}
+            ${formField({label:'Pot. Inversor (kW)',name:'_kc_pi',type:'number',value:kc.pot_inversor??vistoria?.pot_inversor??''})}
+            ${formField({label:'Qtd Baterias',name:'_kc_qb',type:'number',value:kc.qtd_baterias??vistoria?.qtd_baterias??''})}
+            ${formField({label:'Marca Bateria',name:'_kc_mb',value:kc.marca_bateria??vistoria?.marca_bateria??''})}
+            ${formField({label:'Pot. Bateria (kWh)',name:'_kc_pb',type:'number',value:kc.pot_bateria??vistoria?.pot_bateria??''})}
+          </div></div>
+        </div>
+        <div class="section" style="margin-top:10px"><div class="section-header"><h4>✅ Checklist Técnico</h4><span class="section-toggle">▼</span></div>
           <div class="section-body">
-            ${fileUploadBlock('Fotos da instalação','geral','instalacoes',fotos.geral||[],true)}
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Marque OK se o item está conforme. Adicione observação se necessário.</div>
+            ${chkRow('aterramento','Aterramento')}
+            ${chkRow('string_box','String Box')}
+            ${chkRow('cabeamento','Cabeamento')}
+            ${aguasRow()}
+            ${chkRow('padrao_entrada','Padrão de Entrada')}
+            ${chkRow('estrutura','Estrutura')}
           </div>
+        </div>
+        ${formField({label:'Observações / Pendências',name:'obs',type:'textarea',value:item.obs,full:true})}
+        <div class="section" style="margin-top:14px"><div class="section-header"><h4>📸 Registros Fotográficos</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body">
+            <div style="font-weight:600;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Antes da Instalação</div>
+            ${fileUploadBlock('Módulos','antes_modulos','instalacoes',fotos.antes_modulos||[],false)}
+            ${fileUploadBlock('Inversor','antes_inversor','instalacoes',fotos.antes_inversor||[],false)}
+            ${fileUploadBlock('Estrutura','antes_estrutura','instalacoes',fotos.antes_estrutura||[],false)}
+            ${fileUploadBlock('Cabos','antes_cabos','instalacoes',fotos.antes_cabos||[],false)}
+            ${fileUploadBlock('Padrão','antes_padrao','instalacoes',fotos.antes_padrao||[],false)}
+            <div style="font-weight:600;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 10px">Depois da Instalação</div>
+            ${fileUploadBlock('Painel Pronto','painel_pronto','instalacoes',fotos.painel_pronto||[],false)}
+            ${fileUploadBlock('Inversor Instalado','inversor_instalado','instalacoes',fotos.inversor_instalado||[],false)}
+            ${fileUploadBlock('String Box','string_box_foto','instalacoes',fotos.string_box_foto||[],false)}
+            ${fileUploadBlock('Medições por String','medicoes_strings','instalacoes',fotos.medicoes_strings||[],true)}
+            ${fileUploadBlock('Módulos (Geral)','geral_modulos','instalacoes',fotos.geral_modulos||[],true)}
+            ${fileUploadBlock('Etiqueta Inversor','etiqueta_inversor','instalacoes',fotos.etiqueta_inversor||[],false)}
+            ${fileUploadBlock('Etiqueta Datalogger','etiqueta_datalogger','instalacoes',fotos.etiqueta_datalogger||[],false)}
+            <div style="font-weight:600;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 10px">Geral</div>
+            ${fileUploadBlock('Foto Geral','geral','instalacoes',fotos.geral||[],true)}
+          </div>
+        </div>
+        <div class="section collapsed" style="margin-top:10px"><div class="section-header"><h4>⚡ Leitura do Inversor</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body"><div class="form-grid">
+            ${formField({label:'Potência Medida (W)',name:'_leit_pot',type:'number',value:leit.potencia||''})}
+            ${formField({label:'Tensão Medida (V)',name:'_leit_ten',type:'number',value:leit.tensao||''})}
+          </div></div>
         </div>
         ${(()=>{
           const docsMeta = [
@@ -5984,6 +6079,7 @@ function openInstalacaoModal(item=null){
       <div class="modal-footer">
         ${isAdmin()?`<button type="button" class="btn btn-danger" id="delInstBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+        <button type="button" class="btn btn-secondary" id="btnLaudoInst" style="background:linear-gradient(135deg,#6B21A8,#9333ea);color:#fff;border:none">📄 Laudo PDF</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
       </div>
     </form>
@@ -5991,7 +6087,21 @@ function openInstalacaoModal(item=null){
   const form = $('#instForm');
   attachLinkedDocListeners(linked);
   carregarHistorico($('#histList'), 'instalacoes', item.id);
-  const filesStore = { geral: (fotos.geral||[]).slice() };
+  const filesStore = {
+    geral: (fotos.geral||[]).slice(),
+    antes_modulos: (fotos.antes_modulos||[]).slice(),
+    antes_inversor: (fotos.antes_inversor||[]).slice(),
+    antes_estrutura: (fotos.antes_estrutura||[]).slice(),
+    antes_cabos: (fotos.antes_cabos||[]).slice(),
+    antes_padrao: (fotos.antes_padrao||[]).slice(),
+    painel_pronto: (fotos.painel_pronto||[]).slice(),
+    inversor_instalado: (fotos.inversor_instalado||[]).slice(),
+    string_box_foto: (fotos.string_box_foto||[]).slice(),
+    medicoes_strings: (fotos.medicoes_strings||[]).slice(),
+    geral_modulos: (fotos.geral_modulos||[]).slice(),
+    etiqueta_inversor: (fotos.etiqueta_inversor||[]).slice(),
+    etiqueta_datalogger: (fotos.etiqueta_datalogger||[]).slice(),
+  };
   attachFileUploads(form, filesStore);
 
   // ── Auto-save: persiste o rascunho no localStorage ───────
@@ -6049,12 +6159,38 @@ function openInstalacaoModal(item=null){
   // ─────────────────────────────────────────────────────────
 
   const statusInstMap = {aguardando_agendamento:'Aguardando Agendamento', agendada:'Agendada', em_andamento:'Em andamento', concluida:'Concluída', cancelada:'Cancelada'};
+
+  const buildLaudoDados = (data) => ({
+    hora_inicio: data._hi||null,
+    hora_fim: data._hf||null,
+    cliente_presente: data._cp ?? true,
+    acompanhante: data._acomp||null,
+    kit_confirmado: {
+      qtd_modulos: data._kc_qm||null, marca_modulo: data._kc_mm||null, pot_modulo: data._kc_pm||null,
+      qtd_inversores: data._kc_qi||null, marca_inversor: data._kc_mi||null, pot_inversor: data._kc_pi||null,
+      qtd_baterias: data._kc_qb||null, marca_bateria: data._kc_mb||null, pot_bateria: data._kc_pb||null,
+    },
+    checklist: {
+      aterramento:    { ok: !!data._cl_aterramento_ok,    obs: data._cl_aterramento_obs||'' },
+      string_box:     { ok: !!data._cl_string_box_ok,     obs: data._cl_string_box_obs||'' },
+      cabeamento:     { ok: !!data._cl_cabeamento_ok,     obs: data._cl_cabeamento_obs||'' },
+      fixacao_modulos:{ ok: !!data._cl_fixacao_modulos_ok, obs: data._cl_fixacao_modulos_obs||'',
+        agua1: data._cl_agua1||null, agua2: data._cl_agua2||null,
+        agua3: data._cl_agua3||null, agua4: data._cl_agua4||null,
+        agua5: data._cl_agua5||null, agua6: data._cl_agua6||null },
+      padrao_entrada: { ok: !!data._cl_padrao_entrada_ok, obs: data._cl_padrao_entrada_obs||'' },
+      estrutura:      { ok: !!data._cl_estrutura_ok,      obs: data._cl_estrutura_obs||'' },
+    },
+    leitura: { potencia: data._leit_pot||null, tensao: data._leit_ten||null },
+  });
+
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
     ['val_poste','val_troca_padrao','estimado','pago'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
+    const laudoDados = buildLaudoDados(data);
     Object.keys(data).filter(k=>k.startsWith('_')).forEach(k=>delete data[k]);
-    data.fotos = filesStore;
+    data.fotos = { ...filesStore, _dados: laudoDados };
     const { error } = await supa.from('instalacoes').update(data).eq('id',item.id);
     if(error) return toast('Erro ao salvar: '+error.message,'error');
     const mud = detectMudancas(item, data, [
@@ -6066,11 +6202,178 @@ function openInstalacaoModal(item=null){
     localStorage.removeItem(_draftKeyInst);
     toast('Salvo','success'); await loadAll(); closeModal(); renderPipeline();
   });
+  $('#btnLaudoInst')?.addEventListener('click', ()=>{
+    const data = readForm(form);
+    const laudoDados = buildLaudoDados(data);
+    const itemLive = { ...item, obs: data.obs, tecnico: data.tecnico, data_instalacao: data.data_instalacao, hora_instalacao: data.hora_instalacao };
+    abrirInstalacaoLaudo(itemLive, laudoDados, filesStore);
+  });
   $('#delInstBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDel('Excluir?')) return;
     await supa.from('instalacoes').delete().eq('id',item.id);
     toast('Excluído','success'); await loadAll(); closeModal(); renderPipeline();
   });
+}
+
+/* ============================================================
+   LAUDO DE INSTALAÇÃO — PDF
+   ============================================================ */
+function abrirInstalacaoLaudo(item, ld, filesStore){
+  const txt  = x => x||'—';
+  const num  = (x,d=0) => x!=null && x!=='' ? Number(x).toFixed(d) : '—';
+  const dt   = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+  const bool = b => b ? 'Sim' : 'Não';
+  const kc   = ld.kit_confirmado || {};
+  const cl   = ld.checklist || {};
+  const leit = ld.leitura || {};
+
+  const statusBadge = (ok) => ok
+    ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#d1fae5;color:#065f46;font-weight:700;font-size:10px;padding:2px 8px;border-radius:10px">✓ OK</span>`
+    : `<span style="display:inline-flex;align-items:center;gap:4px;background:#fee2e2;color:#991b1b;font-weight:700;font-size:10px;padding:2px 8px;border-radius:10px">✗ NOK</span>`;
+
+  const chkRow = (key, label) => {
+    const d = cl[key] || {};
+    const aguas = key === 'fixacao_modulos'
+      ? [1,2,3,4,5,6].filter(i=>d[`agua${i}`]).map(i=>{
+          const v = d[`agua${i}`];
+          const cor = v==='ok'?'#d1fae5':'#fee2e2'; const tc = v==='ok'?'#065f46':'#991b1b';
+          return `<span style="background:${cor};color:${tc};font-size:9px;padding:1px 6px;border-radius:8px;font-weight:700">${i}ª: ${v.toUpperCase()}</span>`;
+        }).join(' ') : '';
+    return `<tr>
+      <td style="padding:6px 8px;font-size:11.5px;border-bottom:1px solid #e9e2f5">${label}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e9e2f5">${statusBadge(d.ok)}</td>
+      <td style="padding:6px 8px;font-size:11px;color:#555;border-bottom:1px solid #e9e2f5">${d.obs||''} ${aguas}</td>
+    </tr>`;
+  };
+
+  const fotoGrid = (urls, label) => {
+    if(!urls || !urls.length) return '';
+    const imgs = urls.map(u=>`<div class="foto-item"><img src="${u}" onerror="this.style.display='none'"><div class="foto-lbl">${label}</div></div>`).join('');
+    return imgs;
+  };
+
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<title>Laudo de Instalação — ${esc(item.nome||'')}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;background:#f0eaf8;color:#111;padding:20px}
+.print-bar{position:sticky;top:0;z-index:100;background:#fff;padding:10px 20px;border-bottom:2px solid #4B0082;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.print-bar span{font-size:13px;color:#4B0082;font-weight:700}
+.print-bar button{background:#4B0082;color:#fff;border:none;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
+.wrap{max-width:820px;margin:0 auto;background:#fff;padding:36px 44px;box-shadow:0 2px 16px rgba(0,0,0,.1)}
+.doc-header{text-align:center;margin-bottom:20px}
+.doc-header img{height:60px;margin-bottom:10px;display:block;margin-left:auto;margin-right:auto}
+.doc-header h1{font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#1a0a2e}
+.doc-header .sub{font-size:10px;color:#666;margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
+hr.rule{border:none;border-top:2px solid #6B21A8;margin:14px 0 20px}
+.id-box{background:#f5f0fc;border-left:4px solid #6B21A8;border-radius:6px;padding:14px 18px;margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 16px;font-size:11.5px}
+.id-box .lbl{font-weight:600;color:#4B0082;font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+.id-box .val{color:#1a0a2e;margin-top:1px}
+h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#4B0082;padding:5px 0 4px;border-bottom:1px solid #c4b5fd;margin:20px 0 10px}
+table{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:11px}
+table th{background:#4B0082;color:#fff;padding:6px 8px;text-align:left;font-size:10px;letter-spacing:.04em;font-weight:700}
+table td{vertical-align:top}
+table tr:nth-child(even) td{background:#faf7ff}
+.hl{color:#4B0082;font-weight:700}
+.foto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.foto-item{break-inside:avoid;page-break-inside:avoid}
+.foto-item img{width:100%;height:140px;object-fit:cover;border-radius:6px;border:1px solid #ddd;display:block}
+.foto-lbl{font-size:9px;text-align:center;color:#6b5f7a;margin-top:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.foto-section-lbl{font-weight:700;font-size:10px;color:#4B0082;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px;border-bottom:1px dashed #c4b5fd;padding-bottom:4px}
+.obs-box{background:#f5f0fc;border-radius:6px;padding:12px 16px;font-size:12px;line-height:1.7;white-space:pre-wrap}
+.leit-box{display:flex;gap:24px}
+.leit-item .lbl{font-size:10px;font-weight:600;color:#4B0082;text-transform:uppercase;letter-spacing:.05em}
+.leit-item .val{font-size:20px;font-weight:800;color:#1a0a2e;margin-top:2px}
+.leit-item .unit{font-size:11px;color:#666}
+@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;padding:24px 32px}.print-bar{display:none!important}.foto-grid{grid-template-columns:repeat(3,1fr);gap:8px}.foto-item img{height:110px}}
+</style></head><body>
+<div class="print-bar">
+  <span>SER Energia — Laudo de Instalação Técnica</span>
+  <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+</div>
+<div class="wrap">
+
+<div class="doc-header">
+  <img src="https://alvarooffice-maker.github.io/ser-hub/logo.png" alt="SER"/>
+  <h1>Laudo de Instalação Técnica</h1>
+  <div class="sub">SER Energia Renovável · CNPJ 58.656.750/0001-04</div>
+</div>
+<hr class="rule"/>
+
+<div class="id-box">
+  <div><div class="lbl">Cliente</div><div class="val"><strong>${txt(item.nome)}</strong></div></div>
+  <div><div class="lbl">Data Instalação</div><div class="val">${dt(item.data_instalacao)}</div></div>
+  <div><div class="lbl">Técnico Responsável</div><div class="val">${txt(item.tecnico)}</div></div>
+  <div><div class="lbl">Hora Início</div><div class="val">${txt(ld.hora_inicio)}</div></div>
+  <div><div class="lbl">Hora Fim</div><div class="val">${txt(ld.hora_fim)}</div></div>
+  <div><div class="lbl">kWp</div><div class="val">${txt(item.kwp)}</div></div>
+  <div><div class="lbl">Cliente no Local</div><div class="val">${bool(ld.cliente_presente)}</div></div>
+  <div style="grid-column:span 2"><div class="lbl">Acompanhante</div><div class="val">${txt(ld.acompanhante)}</div></div>
+  ${item.endereco?`<div style="grid-column:span 3"><div class="lbl">Endereço</div><div class="val">${txt(item.endereco)}</div></div>`:''}
+</div>
+
+<h2>📦 Conferência do Kit Instalado</h2>
+<table>
+  <thead><tr><th>ITEM</th><th>QTD.</th><th>MARCA</th><th>POTÊNCIA</th></tr></thead>
+  <tbody>
+    <tr><td>Módulos Solares</td><td class="hl">${txt(kc.qtd_modulos)} un.</td><td>${txt(kc.marca_modulo)}</td><td>${num(kc.pot_modulo)} W</td></tr>
+    <tr><td>Inversores</td><td class="hl">${txt(kc.qtd_inversores)} un.</td><td>${txt(kc.marca_inversor)}</td><td>${num(kc.pot_inversor)} kW</td></tr>
+    ${(kc.qtd_baterias||0)>0?`<tr><td>Baterias</td><td class="hl">${txt(kc.qtd_baterias)} un.</td><td>${txt(kc.marca_bateria)}</td><td>${num(kc.pot_bateria)} kWh</td></tr>`:''}
+  </tbody>
+</table>
+
+<h2>✅ Checklist Técnico</h2>
+<table>
+  <thead><tr><th style="width:180px">ITEM</th><th style="width:80px">STATUS</th><th>OBSERVAÇÃO</th></tr></thead>
+  <tbody>
+    ${chkRow('aterramento','Aterramento')}
+    ${chkRow('string_box','String Box')}
+    ${chkRow('cabeamento','Cabeamento')}
+    ${chkRow('fixacao_modulos','Fixação de Módulos')}
+    ${chkRow('padrao_entrada','Padrão de Entrada')}
+    ${chkRow('estrutura','Estrutura')}
+  </tbody>
+</table>
+
+${leit.potencia||leit.tensao?`
+<h2>⚡ Leitura do Inversor</h2>
+<div class="leit-box">
+  ${leit.potencia?`<div class="leit-item"><div class="lbl">Potência Medida</div><div class="val">${num(leit.potencia)} <span class="unit">W</span></div></div>`:''}
+  ${leit.tensao?`<div class="leit-item"><div class="lbl">Tensão Medida</div><div class="val">${num(leit.tensao)} <span class="unit">V</span></div></div>`:''}
+</div>`:''}
+
+${item.obs?`<h2>📝 Observações / Pendências</h2><div class="obs-box">${esc(item.obs)}</div>`:''}
+
+${(()=>{
+  const antes = [
+    [filesStore.antes_modulos,'Módulos (Antes)'],
+    [filesStore.antes_inversor,'Inversor (Antes)'],
+    [filesStore.antes_estrutura,'Estrutura (Antes)'],
+    [filesStore.antes_cabos,'Cabos (Antes)'],
+    [filesStore.antes_padrao,'Padrão (Antes)'],
+  ].filter(([u])=>u?.length);
+  const depois = [
+    [filesStore.painel_pronto,'Painel Pronto'],
+    [filesStore.inversor_instalado,'Inversor Instalado'],
+    [filesStore.string_box_foto,'String Box'],
+    [filesStore.medicoes_strings,'Medições (Strings)'],
+    [filesStore.geral_modulos,'Módulos (Geral)'],
+    [filesStore.etiqueta_inversor,'Etiqueta Inversor'],
+    [filesStore.etiqueta_datalogger,'Etiqueta Datalogger'],
+    [filesStore.geral,'Foto Geral'],
+  ].filter(([u])=>u?.length);
+  if(!antes.length && !depois.length) return '';
+  let html = '<h2>📸 Registros Fotográficos</h2><div class="foto-grid">';
+  if(antes.length){ html = '<h2>📸 Registros Fotográficos</h2>'; html += '<div class="foto-section-lbl">Antes da Instalação</div><div class="foto-grid">'; html += antes.flatMap(([urls,lbl])=>urls.map(u=>`<div class="foto-item"><img src="${u}" onerror="this.style.display='none'"><div class="foto-lbl">${lbl}</div></div>`)).join(''); html += '</div>'; }
+  if(depois.length){ html += '<div class="foto-section-lbl">Depois da Instalação</div><div class="foto-grid">'; html += depois.flatMap(([urls,lbl])=>urls.map(u=>`<div class="foto-item"><img src="${u}" onerror="this.style.display='none'"><div class="foto-lbl">${lbl}</div></div>`)).join(''); html += '</div>'; }
+  return html;
+})()}
+
+</div></body></html>`);
+  win.document.close();
 }
 
 /* ============================================================
