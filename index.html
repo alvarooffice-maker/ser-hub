@@ -930,6 +930,7 @@ async function renderDashboard(){
       <div class="metric"><div class="metric-label">Taxa Conversão</div><div class="metric-value">${(()=>{ const l=isVend()?filterByVendor(leads).length:leads.length; const c=isVend()?filterByVendor(contratos).filter(x=>x.status==='assinado').length:contratosAssin; return l>0?Math.round(c/l*100)+'%':'—'; })()}</div></div>
       <div class="metric"><div class="metric-label">⏱️ Time Lead</div><div class="metric-value" id="kpiTimeLead">—</div><div class="metric-sub" style="font-size:10px;color:var(--text-light);text-align:center">dias lead→contrato</div></div>
       <div class="metric"><div class="metric-label">🏆 Rec. Homologação</div><div class="metric-value" id="kpiHomolRec">—</div><div class="metric-value" style="font-size:13px;color:var(--text-light)" id="kpiHomolAvg">—</div><div class="metric-sub" style="font-size:10px;color:var(--text-light);text-align:center">recorde · média (dias contrato→homol)</div></div>
+      <div class="metric"><div class="metric-label">⚡ Rec. Instalação</div><div class="metric-value" id="kpiInstalRec">—</div><div class="metric-value" style="font-size:13px;color:var(--text-light)" id="kpiInstalAvg">—</div><div class="metric-sub" style="font-size:10px;color:var(--text-light);text-align:center">recorde · média (dias contrato→instal)</div></div>
     </div>
 
     <div style="display:grid;grid-template-columns:180px 1fr 220px;gap:16px;margin-bottom:16px">
@@ -1256,6 +1257,24 @@ async function renderDashboard(){
     if(haEl) haEl.textContent = avgHomol!=null ? 'Média: '+avgHomol+' dias' : '—';
     const hSubEl = hrEl?.closest('.metric')?.querySelector('.metric-sub');
     if(hSubEl) hSubEl.textContent = recEntry ? recEntry.nome : 'recorde · média (dias contrato→homol)';
+
+    // ── Recorde Instalação: dias contrato assinado → data instalação ──
+    const instalEntries = (State.instalacoes||[])
+      .filter(i => i.data_instalacao && i.contrato_id)
+      .map(i => {
+        const cont = (State.contratos||[]).find(c=>String(c.id)===String(i.contrato_id));
+        if(!cont?.data_assinatura) return null;
+        const dias = Math.floor((new Date(i.data_instalacao).getTime() - new Date(cont.data_assinatura).getTime()) / 86400000);
+        return dias >= 0 ? { dias, nome: cont.nome||'—' } : null;
+      })
+      .filter(d => d != null);
+    const recInstal = instalEntries.length ? instalEntries.reduce((a,b)=>a.dias<=b.dias?a:b) : null;
+    const avgInstal = instalEntries.length ? Math.round(instalEntries.reduce((s,d)=>s+d.dias,0)/instalEntries.length) : null;
+    const irEl = $('#kpiInstalRec'), iaEl = $('#kpiInstalAvg');
+    if(irEl) irEl.textContent = recInstal ? '⚡ '+recInstal.dias+'d' : '—';
+    if(iaEl) iaEl.textContent = avgInstal!=null ? 'Média: '+avgInstal+' dias' : '—';
+    const iSubEl = irEl?.closest('.metric')?.querySelector('.metric-sub');
+    if(iSubEl) iSubEl.textContent = recInstal ? recInstal.nome : 'recorde · média (dias contrato→instal)';
 
     // ── Contratos filtrados por período ────────────────────────────────────
     const contFiltrados = byVend(contratos).filter(c=>c.status==='assinado' && c.data_assinatura >= startD && c.data_assinatura <= endD);
