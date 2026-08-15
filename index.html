@@ -7221,7 +7221,7 @@ function openComissaoModal(item=null, nomePreenchido=null){
     if(item.contrato_id){
       const contratoExato = contratosAssinados.find(c=>c.id===item.contrato_id);
       if(contratoExato?.valor){
-        form.elements['valor_contrato'].value = fmtInputNum(contratoExato.valor);
+        if(!Number(item.valor_contrato)) form.elements['valor_contrato'].value = fmtInputNum(contratoExato.valor);
         form.elements['valor_vendido'].value  = fmtInputNum(contratoExato.valor);
         recalc();
       }
