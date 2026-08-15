@@ -1240,11 +1240,11 @@ async function renderDashboard(){
 
     // ── Recorde Homologação: dias contrato assinado → homologação aprovada ──
     const diasHomol = (State.homologacoes||[])
-      .filter(h => h.etapa==='aprovada' && h.contrato_id && (h.data_aprovacao || h.atualizado_em))
+      .filter(h => h.etapa==='aprovada' && h.contrato_id && h.data_aprovacao)
       .map(h => {
         const cont = (State.contratos||[]).find(c=>String(c.id)===String(h.contrato_id));
         if(!cont?.data_assinatura) return null;
-        const dataAprov = h.data_aprovacao || h.atualizado_em;
+        const dataAprov = h.data_aprovacao;
         const dias = Math.floor((new Date(dataAprov).getTime() - new Date(cont.data_assinatura).getTime()) / 86400000);
         return dias >= 0 ? dias : null;
       })
