@@ -7157,7 +7157,7 @@ function openComissaoModal(item=null, nomePreenchido=null){
         <div class="form-grid">
           ${formField({label:'Cliente',name:'nome',value:item.nome,required:true,datalist:clientesDL})}
           ${formField({label:'Valor Referência',name:'valor_contrato',type:'number',value:item.valor_contrato,required:true})}
-          ${formField({label:'Valor Vendido (R$)',name:'valor_vendido',type:'number',value:item.valor_vendido})}
+          ${formField({label:'Valor Vendido (R$)',name:'valor_vendido',type:'number',value:item.valor_vendido,readonly:true})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
         </div>
         <div class="section"><div class="section-header"><h4>Vendedor</h4><span class="section-toggle">▼</span></div>
@@ -7206,49 +7206,33 @@ function openComissaoModal(item=null, nomePreenchido=null){
 
   const form = $('#comForm');
 
-  const autoFillContrato = (nome) => {
-    const contrato = contratosAssinados.find(c=>(c.nome||'').toLowerCase()===nome.trim().toLowerCase());
-    if(contrato?.valor){
-      form.elements['valor_contrato'].value = fmtInputNum(contrato.valor);
-      form.elements['valor_vendido'].value  = fmtInputNum(contrato.valor);
-      recalc();
+  const logisticasAll = State.logistica || [];
+
+  // Preenche valor_vendido (readonly) com contrato.valor e valor_contrato com kit*2.5 (se vazio)
+  const applyAutoFill = (contrato) => {
+    if(!contrato) return;
+    if(contrato.valor) form.elements['valor_vendido'].value = fmtInputNum(contrato.valor);
+    if(!Number(parseBR(form.elements['valor_contrato'].value))){
+      const log = logisticasAll.find(l=>String(l.contrato_id)===String(contrato.id));
+      if(log?.valor_compra) form.elements['valor_contrato'].value = fmtInputNum(Number(log.valor_compra)*2.5);
     }
+    recalc();
   };
 
-  // Se editando e valor_vendido está zerado, tenta preencher automaticamente do contrato
-  if(!isNew && !(Number(item.valor_vendido))){
-    // Usa contrato_id direto se disponível, para evitar pegar contrato errado em clientes com múltiplos projetos
-    if(item.contrato_id){
-      const contratoExato = contratosAssinados.find(c=>c.id===item.contrato_id);
-      if(contratoExato?.valor){
-        if(!Number(item.valor_contrato)) form.elements['valor_contrato'].value = fmtInputNum(contratoExato.valor);
-        form.elements['valor_vendido'].value  = fmtInputNum(contratoExato.valor);
-        recalc();
-      }
-    } else {
-      autoFillContrato(item.nome||'');
-    }
+  // Ao abrir: preenche a partir do contrato vinculado
+  if(item.contrato_id){
+    applyAutoFill(contratosAssinados.find(c=>c.id===item.contrato_id));
+  } else if(item.nome){
+    applyAutoFill(contratosAssinados.find(c=>(c.nome||'').toLowerCase()===item.nome.trim().toLowerCase()));
   }
-
-  // Quando valor_contrato muda e valor_vendido está vazio, sincroniza
-  form.elements['valor_contrato'].addEventListener('input', ()=>{
-    const vv = form.elements['valor_vendido'];
-    if(!Number(parseBR(vv.value))) vv.value = form.elements['valor_contrato'].value;
-    recalc();
-  });
 
   // Auto-preenche Valor Vendido com o valor do contrato ao digitar/selecionar o cliente
   form.elements['nome'].addEventListener('change', ()=>{
-    autoFillContrato(form.elements['nome'].value);
+    applyAutoFill(contratosAssinados.find(c=>(c.nome||'').toLowerCase()===form.elements['nome'].value.trim().toLowerCase()));
   });
   form.elements['nome'].addEventListener('input', ()=>{
-    const nomeDigitado = form.elements['nome'].value.trim().toLowerCase();
-    const contrato = contratosAssinados.find(c=>(c.nome||'').toLowerCase()===nomeDigitado);
-    if(contrato?.valor){
-      form.elements['valor_contrato'].value = fmtInputNum(contrato.valor);
-      form.elements['valor_vendido'].value  = fmtInputNum(contrato.valor);
-      recalc();
-    }
+    const contrato = contratosAssinados.find(c=>(c.nome||'').toLowerCase()===form.elements['nome'].value.trim().toLowerCase());
+    applyAutoFill(contrato);
   });
 
   function recalc(){
