@@ -7146,8 +7146,8 @@ function openComissaoModal(item=null, nomePreenchido=null){
   const nomesPorPerfil = perfil => ['',  ...perfisAtivos.filter(p=>p.perfil===perfil).map(p=>p.nome)];
   const selectOpts    = perfil => nomesPorPerfil(perfil).map(n=>n?[n,n]:['','— selecione —']);
 
-  // Contratos assinados para busca de cliente e auto-preenchimento de valor
-  const contratosAssinados = (State.contratos||[]).filter(c=>c.status==='assinado');
+  // Todos os contratos válidos (exceto cancelado/perdido) para busca de cliente
+  const contratosAssinados = (State.contratos||[]).filter(c=>!['cancelado','perdido'].includes(c.status));
   const clientesDL = [...new Set(contratosAssinados.map(c=>c.nome).filter(Boolean))];
 
   openModal(`
