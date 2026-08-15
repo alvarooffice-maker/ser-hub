@@ -1254,7 +1254,7 @@ async function renderDashboard(){
     const hrEl = $('#kpiHomolRec');
     const haEl = $('#kpiHomolAvg');
     if(hrEl) hrEl.textContent = recHomol!=null ? '🏅 '+recHomol+'d' : '—';
-    if(haEl) haEl.textContent = avgHomol!=null ? 'ø '+avgHomol+'d' : '—';
+    if(haEl) haEl.textContent = avgHomol!=null ? 'Média: '+avgHomol+' dias' : '—';
 
     // ── Contratos filtrados por período ────────────────────────────────────
     const contFiltrados = byVend(contratos).filter(c=>c.status==='assinado' && c.data_assinatura >= startD && c.data_assinatura <= endD);
