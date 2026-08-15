@@ -680,7 +680,7 @@ function showApp(){
   $('#app').classList.add('active');
   renderUser();
   renderNav();
-  const roleRouteMap = { tec_vistoria:'vistoriador', tec_instalacao:'instalador', tec_homologacao:'homologador' };
+  const roleRouteMap = { tec_vistoria:'vistoriador', tec_instalacao:'instalador', tec_homologacao:'homologador', vendedor:'home_vendedor', supervisor:'home_vendedor', admin:'home_vendedor' };
   const startRoute = roleRouteMap[userRole()] || 'dashboard';
   navigate(startRoute);
 }
@@ -697,6 +697,7 @@ function renderUser(){
    NAVIGATION
    ============================================================ */
 const ROUTES = [
+  { id:'home_vendedor', label:'Home Vendedor', icon:'🌟' },
   { id:'dashboard', label:'Dashboard', icon:'📊' },
   { id:'calendario', label:'Calendário', icon:'📅' },
   { id:'clientes', label:'Clientes', icon:'👤' },
@@ -723,7 +724,7 @@ function visibleRoutes(){
     if(r.adminOnly && !['admin','supervisor'].includes(role)) return false;
     if(r.id==='gestao_custos') return isGestor();
     if(role==='financeiro') return ['dashboard','calendario','clientes','custo_projeto','financeiro'].includes(r.id);
-    if(role==='vendedor') return ['dashboard','calendario','clientes','pipeline','reservico','appmanutencao','remarketing','baterias','disparador','posvenda_rel'].includes(r.id);
+    if(role==='vendedor') return ['home_vendedor','dashboard','calendario','clientes','pipeline','reservico','appmanutencao','remarketing','baterias','disparador','posvenda_rel'].includes(r.id);
     if(role==='tec_vistoria') return ['dashboard','calendario','clientes','vistoriador','reservico','appmanutencao'].includes(r.id);
     if(role==='tec_instalacao') return ['dashboard','calendario','clientes','instalador','reservico','appmanutencao'].includes(r.id);
     if(role==='tec_homologacao') return ['dashboard','calendario','clientes','homologador'].includes(r.id);
@@ -767,6 +768,7 @@ function navigate(route){
   // Pipeline: bloqueia scroll do .content para que cada coluna role individualmente
   document.querySelector('.content').style.overflow = ['pipeline','vistoriador','instalador','homologador','reservico','appmanutencao'].includes(route) ? 'hidden' : '';
   switch(route){
+    case 'home_vendedor': renderHomeVendedor(); break;
     case 'dashboard': renderDashboard(); break;
     case 'calendario': renderCalendario(); break;
     case 'clientes': renderClientes(); break;
@@ -836,6 +838,64 @@ function getPeriodRange(period){
     case 'ano': return [toStr(new Date(now.getFullYear(),0,1)), end];
     default: return [null, null];
   }
+}
+
+async function renderHomeVendedor(){
+  await Promise.all([loadTable('instalacoes'), loadTable('homologacoes'), loadTable('contratos')]);
+
+  // Recorde instalação
+  const instalEntries = (State.instalacoes||[])
+    .filter(i=>i.status==='concluida'&&i.data_instalacao&&i.contrato_id)
+    .map(i=>{
+      const c=(State.contratos||[]).find(x=>String(x.id)===String(i.contrato_id));
+      if(!c?.data_assinatura) return null;
+      const d=Math.floor((new Date(i.data_instalacao)-new Date(c.data_assinatura))/86400000);
+      return d>=0?{d,nome:c.nome||'—'}:null;
+    }).filter(Boolean);
+  const recInstal = instalEntries.length ? instalEntries.reduce((a,b)=>a.d<=b.d?a:b) : null;
+
+  // Recorde homologação
+  const homolEntries = (State.homologacoes||[])
+    .filter(h=>h.etapa==='aprovada'&&h.data_aprovacao&&h.contrato_id)
+    .map(h=>{
+      const c=(State.contratos||[]).find(x=>String(x.id)===String(h.contrato_id));
+      if(!c?.data_assinatura) return null;
+      const d=Math.floor((new Date(h.data_aprovacao)-new Date(c.data_assinatura))/86400000);
+      return d>=0?{d,nome:c.nome||'—'}:null;
+    }).filter(Boolean);
+  const recHomol = homolEntries.length ? homolEntries.reduce((a,b)=>a.d<=b.d?a:b) : null;
+
+  $('#pageActions').innerHTML = '';
+  $('#content').innerHTML = `
+    <div style="min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:48px;padding:32px;text-align:center">
+      <div>
+        <div style="font-size:13px;font-weight:700;letter-spacing:2px;color:var(--text-light);text-transform:uppercase;margin-bottom:8px">SER Energia Renovável</div>
+        <div style="font-size:28px;font-weight:800;color:var(--primary)">Energia que transforma vidas</div>
+      </div>
+
+      <div style="display:flex;gap:32px;flex-wrap:wrap;justify-content:center">
+        <div style="background:var(--bg-alt);border:2px solid var(--border);border-radius:20px;padding:32px 40px;min-width:200px">
+          <div style="font-size:13px;font-weight:700;letter-spacing:1px;color:var(--text-light);text-transform:uppercase;margin-bottom:12px">⚡ Recorde de Instalação</div>
+          <div style="font-size:64px;font-weight:900;color:var(--primary);line-height:1">${recInstal ? recInstal.d : '—'}</div>
+          <div style="font-size:18px;font-weight:600;color:var(--text-light);margin-bottom:8px">dias</div>
+          ${recInstal ? `<div style="font-size:13px;color:var(--text-light);margin-top:4px">${esc(recInstal.nome)}</div>` : ''}
+        </div>
+        <div style="background:var(--bg-alt);border:2px solid var(--border);border-radius:20px;padding:32px 40px;min-width:200px">
+          <div style="font-size:13px;font-weight:700;letter-spacing:1px;color:var(--text-light);text-transform:uppercase;margin-bottom:12px">🏆 Recorde de Homologação</div>
+          <div style="font-size:64px;font-weight:900;color:var(--primary);line-height:1">${recHomol ? recHomol.d : '—'}</div>
+          <div style="font-size:18px;font-weight:600;color:var(--text-light);margin-bottom:8px">dias</div>
+          ${recHomol ? `<div style="font-size:13px;color:var(--text-light);margin-top:4px">${esc(recHomol.nome)}</div>` : ''}
+        </div>
+      </div>
+
+      <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
+        <button id="hvNovoLead" class="btn btn-primary" style="font-size:16px;padding:14px 36px;border-radius:12px;font-weight:700">➕ Novo Lead</button>
+        <button id="hvAppMan" class="btn btn-secondary" style="font-size:16px;padding:14px 36px;border-radius:12px;font-weight:700">📱 App / Manutenção</button>
+      </div>
+    </div>
+  `;
+  $('#hvNovoLead').addEventListener('click', ()=> openLeadModal());
+  $('#hvAppMan').addEventListener('click', ()=> navigate('appmanutencao'));
 }
 
 async function renderDashboard(){
