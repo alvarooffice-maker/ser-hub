@@ -6114,7 +6114,10 @@ function openLaudoCampoModal(item){
   Object.keys(fotos).forEach(k => {
     if(ignoredKeys.has(k)) return;
     const arr = Array.isArray(fotos[k]) ? fotos[k] : [];
-    arr.forEach(url => { if(url) poolFotos.push({url, fromKey:k}); });
+    arr.forEach(item => {
+      const obj = typeof item === 'string' ? {url:item, name:item.split('/').pop(), path:''} : item;
+      if(obj?.url) poolFotos.push({obj, fromKey:k});
+    });
   });
 
   let numAguas   = ds.num_aguas   || 1;
@@ -6190,8 +6193,9 @@ function openLaudoCampoModal(item){
         <div id="wzPool" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:10px">
           ${poolFotos.map((p,i)=>`
             <div class="wz-pool-item" data-idx="${i}" style="display:flex;flex-direction:column;gap:6px;width:140px">
-              <img src="${p.url}" style="width:140px;height:100px;object-fit:cover;border-radius:6px;border:2px solid var(--border-color,#ddd)" onerror="this.style.opacity=0.3">
-              <select class="form-control wz-pool-sel" data-idx="${i}" data-url="${p.url}" style="font-size:12px">
+              <img src="${p.obj.url}" style="width:140px;height:100px;object-fit:cover;border-radius:6px;border:2px solid var(--border-color,#ddd)" onerror="this.style.opacity=0.3">
+              <div style="font-size:11px;color:var(--text-muted,#888);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.obj.name||''}">${p.obj.name||'sem nome'}</div>
+              <select class="form-control wz-pool-sel" data-idx="${i}" style="font-size:12px">
                 <option value="">— sem categoria —</option>
                 ${Object.entries(PHOTO_LABELS).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}
               </select>
@@ -6360,21 +6364,20 @@ function openLaudoCampoModal(item){
   $('#wzPool')?.addEventListener('change', e => {
     const sel = e.target.closest('.wz-pool-sel');
     if(!sel) return;
-    const url = sel.dataset.url;
+    const idx = Number(sel.dataset.idx);
     const key = sel.value;
     if(!key) return;
+    const poolItem = poolFotos[idx];
+    if(!poolItem) return;
     if(!fs[key]) fs[key] = [];
-    if(!fs[key].includes(url)) fs[key].push(url);
-    // Remove o item do pool visualmente
-    sel.closest('.wz-pool-item').style.opacity = '0.4';
+    const alreadyIn = fs[key].some(f => (f.url||f) === poolItem.obj.url);
+    if(!alreadyIn) fs[key].push(poolItem.obj);
+    // Marca o item do pool como classificado
+    sel.closest('.wz-pool-item').style.opacity = '0.35';
     sel.disabled = true;
-    // Atualiza thumbs do bloco destino se visível
-    const destBlock = form.querySelector(`[data-key="${key}"] [data-thumbs]`);
-    if(destBlock) {
-      const img = document.createElement('img');
-      img.src = url; img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:4px';
-      destBlock.appendChild(img);
-    }
+    // Atualiza thumbs do bloco destino se visível no DOM
+    const destThumbs = form.querySelector(`[data-thumbs="${key}"]`);
+    if(destThumbs) destThumbs.innerHTML = fs[key].map((f,i)=>thumbHtml(f,key,i)).join('');
   });
 
   $('#wzSave')?.addEventListener('click', async ()=>{
