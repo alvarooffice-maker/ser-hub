@@ -6411,8 +6411,9 @@ function abrirInstalacaoLaudo(item, ld, fs){
   const pad2= n => String(n).padStart(2,'0');
 
   const fotoSection = (title, pairs) => {
+    const toUrl = u => typeof u === 'string' ? u : u?.url || '';
     const imgs = pairs.flatMap(([arr,lbl])=>(arr||[]).map(u=>
-      `<div class="fi"><img src="${u}" onerror="this.style.display='none'"><div class="fl">${lbl}</div></div>`
+      `<div class="fi"><img src="${toUrl(u)}" onerror="this.style.display='none'"><div class="fl">${lbl}</div></div>`
     )).join('');
     if(!imgs) return '';
     return `<div class="fsub">${title}</div><div class="fg">${imgs}</div>`;
@@ -6518,6 +6519,10 @@ ${(()=>{
   if(fs.geral_inst?.length) html += fotoSection('Foto Geral',[[fs.geral_inst,'']]);
   if(fs.video_inst?.length) html += fotoSection('Vídeo Geral',[[fs.video_inst,'']]);
   if(fs.acabamento?.length) html += fotoSection('Acabamento Tubular',[[fs.acabamento,'']]);
+  if(fs.placas_seg?.length) html += fotoSection('Placas de Segurança e Marketing',[[fs.placas_seg,'']]);
+  // Fotos antigas (fotos.geral) — inclui sempre, são as fotos da instalação
+  const geralAntigo = item.fotos?.geral||[];
+  if(geralAntigo.length) html += fotoSection('Fotos da Instalação', [[geralAntigo,'']]);
   return html ? `<h2>✅ Registros Finais</h2>${html}` : '';
 })()}
 
