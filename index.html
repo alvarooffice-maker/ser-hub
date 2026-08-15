@@ -7157,7 +7157,7 @@ function openComissaoModal(item=null, nomePreenchido=null){
         <div class="form-grid">
           ${formField({label:'Cliente',name:'nome',value:item.nome,required:true,datalist:clientesDL})}
           ${formField({label:'Valor Referência',name:'valor_contrato',type:'number',value:item.valor_contrato,required:true})}
-          ${formField({label:'Valor Vendido (R$)',name:'valor_vendido',type:'number',value:item.valor_vendido,readonly:true})}
+          ${formField({label:'Valor Vendido (R$)',name:'valor_vendido',type:'number',value:item.valor_vendido})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'pendente',options:statusOpts})}
         </div>
         <div class="section"><div class="section-header"><h4>Vendedor</h4><span class="section-toggle">▼</span></div>
@@ -7229,6 +7229,13 @@ function openComissaoModal(item=null, nomePreenchido=null){
       autoFillContrato(item.nome||'');
     }
   }
+
+  // Quando valor_contrato muda e valor_vendido está vazio, sincroniza
+  form.elements['valor_contrato'].addEventListener('input', ()=>{
+    const vv = form.elements['valor_vendido'];
+    if(!Number(parseBR(vv.value))) vv.value = form.elements['valor_contrato'].value;
+    recalc();
+  });
 
   // Auto-preenche Valor Vendido com o valor do contrato ao digitar/selecionar o cliente
   form.elements['nome'].addEventListener('change', ()=>{
