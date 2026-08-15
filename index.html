@@ -6955,9 +6955,71 @@ async function renderCustoPorProjeto(){
   const contratos = (State.contratos||[]).filter(c=>c.status==='assinado');
   const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-  $('#pageActions').innerHTML = `<button class="btn btn-secondary" id="relComissaoPDFBtn">📄 Relatório PDF</button>`;
-  $('#relComissaoPDFBtn').addEventListener('click', ()=> gerarRelatorioComissoesPDF());
-  $('#content').innerHTML = `
+  // Constrói resumo por pessoa para o painel de pagamento
+  const comissoes = State.comissoes || [];
+  const porPessoa = {};
+  comissoes.forEach(com=>{
+    const _vc   = Number(com.valor_contrato||0);
+    const _vv   = Number(com.valor_vendido||0) || _vc;
+    const _obra = com.obra_ativo ? Number(com.obra_val||0) : 0;
+    const _pres = com.pres_ativo ? Number(com.pres_val||0) : 0;
+    const _ind  = com.ind_ativo  ? Number(com.ind_val||0)  : 0;
+    const _vend_base = _vc * (Number(com.vend_pct)||0) / 100;
+    const _major_val = Math.max(0, _vv - _vc - _obra - _pres - _ind) * (Number(com.vend_major_pct)||0) / 100;
+    const linhas = [];
+    if(_vend_base) linhas.push({ tipo:'Comissão', val:_vend_base, nome:com.vend_nome||'—', cliente:com.nome, status:com.status, comId:com.id });
+    if(_major_val) linhas.push({ tipo:'Majorado',  val:_major_val, nome:com.vend_nome||'—', cliente:com.nome, status:com.status, comId:com.id });
+    if(Number(com.sup_val)) linhas.push({ tipo:'Supervisor', val:Number(com.sup_val), nome:com.sup_nome||'—', cliente:com.nome, status:com.status, comId:com.id });
+    if(com.sdr_ativo&&Number(com.sdr_val)) linhas.push({ tipo:'SDR', val:Number(com.sdr_val), nome:com.sdr_nome||'—', cliente:com.nome, status:com.status, comId:com.id });
+    if(com.cap_ativo&&Number(com.cap_val)) linhas.push({ tipo:'Captador', val:Number(com.cap_val), nome:com.cap_nome||'—', cliente:com.nome, status:com.status, comId:com.id });
+    linhas.forEach(l=>{
+      const key = (l.nome||'').trim().toLowerCase();
+      if(!porPessoa[key]) porPessoa[key] = { nome:l.nome, total:0, pendente:0, pago:0, itens:[] };
+      porPessoa[key].itens.push(l);
+      porPessoa[key].total += l.val;
+      if(l.status==='paga') porPessoa[key].pago += l.val;
+      else porPessoa[key].pendente += l.val;
+    });
+  });
+  const pessoas = Object.values(porPessoa).filter(p=>p.pendente>0).sort((a,b)=>b.pendente-a.pendente);
+  const totalPend = pessoas.reduce((s,p)=>s+p.pendente,0);
+
+  const pagarComissao = async (comId) => {
+    await supa.from('comissoes').update({status:'paga'}).eq('id', comId);
+    toast('Marcado como paga','success');
+    renderCustoPorProjeto();
+  };
+
+  const painelPagamento = pessoas.length ? `
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)">
+        <h3 style="margin:0">💰 Comissões a Pagar — <span style="color:#d97706">${fR(totalPend)}</span> pendente</h3>
+        <button class="btn btn-secondary btn-sm" id="relComissaoPDFBtn">📄 PDF</button>
+      </div>
+      ${pessoas.map(p=>`
+        <div style="border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--bg-alt)">
+            <span style="font-weight:700">👤 ${esc(p.nome)}</span>
+            <span style="color:#d97706;font-weight:700">${fR(p.pendente)} pendente</span>
+          </div>
+          <div class="table-wrap"><table style="font-size:13px">
+            <thead><tr><th>Cliente</th><th>Tipo</th><th style="text-align:right">Valor</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              ${p.itens.filter(it=>it.status!=='paga').map(it=>`
+                <tr>
+                  <td>${esc(it.cliente||'—')}</td>
+                  <td style="color:var(--text-light)">${it.tipo}</td>
+                  <td style="text-align:right;font-weight:600;color:#d97706">${fR(it.val)}</td>
+                  <td><span class="badge badge-warn">Pendente</span></td>
+                  <td><button class="btn btn-sm btn-success" data-pagar="${it.comId}">✓ Pagar</button></td>
+                </tr>`).join('')}
+            </tbody>
+          </table></div>
+        </div>`).join('')}
+    </div>` : `<div class="card" style="margin-bottom:16px;padding:16px;color:var(--text-light)">✅ Nenhuma comissão pendente de pagamento.</div>`;
+
+  $('#pageActions').innerHTML = ``;
+  $('#content').innerHTML = painelPagamento + `
     <div class="card"><div class="table-wrap"><table>
       <thead><tr><th>Cliente</th><th>Valor Contrato</th><th>Total Custos</th><th>Receita</th><th>Margem</th><th></th></tr></thead>
       <tbody>
@@ -6979,8 +7041,10 @@ async function renderCustoPorProjeto(){
           </tr>`;
         }).join('') : `<tr><td colspan="6" class="empty">Nenhum contrato assinado.</td></tr>`}
       </tbody>
-    </table></div></div>
-  `;
+    </table></div></div>`;
+
+  $('#relComissaoPDFBtn')?.addEventListener('click', ()=> gerarRelatorioComissoesPDF());
+  $$('[data-pagar]').forEach(b=> b.addEventListener('click', ()=> pagarComissao(b.dataset.pagar)));
   $$('[data-abrir]').forEach(b=>{
     const c = contratos.find(x=>String(x.id)===b.dataset.abrir);
     b.addEventListener('click', e=>{ e.stopPropagation(); openProjetoFinanceiroModal(c.id, c.nome||''); });
