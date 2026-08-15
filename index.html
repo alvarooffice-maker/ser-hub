@@ -6089,8 +6089,33 @@ function openLaudoCampoModal(item){
     'pad_inst','tp_f1','tp_f2','tp_f3','tp_tot','quadro_pad',
     'config_planta','geral_inst','video_inst','acabamento','placas_seg',
   ];
+  const PHOTO_LABELS = {
+    kit_placas:'Kit — Placas/Módulos', kit_inversores:'Kit — Inversores', kit_estrutura:'Kit — Estrutura',
+    kit_etiq_inv:'Kit — Etiquetas Inversores', kit_etiq_dl:'Kit — Etiquetas Dataloggers', kit_cabos:'Kit — Cabos',
+    agua_01:'Módulos — 1ª Água', agua_02:'Módulos — 2ª Água', agua_03:'Módulos — 3ª Água',
+    agua_04:'Módulos — 4ª Água', agua_05:'Módulos — 5ª Água', agua_06:'Módulos — 6ª Água',
+    ater_inv:'Aterramento do Inversor', inv_instalado:'Inversores Instalados',
+    str_01:'String 01', str_02:'String 02', str_03:'String 03', str_04:'String 04',
+    str_05:'String 05', str_06:'String 06', str_07:'String 07', str_08:'String 08',
+    str_09:'String 09', str_10:'String 10', str_11:'String 11', str_12:'String 12',
+    ti_f1:'Tensão Inv. — Fase 1', ti_f2:'Tensão Inv. — Fase 2', ti_f3:'Tensão Inv. — Fase 3', ti_tot:'Tensão Inv. — Total',
+    quadro_inv:'Quadro do Inversor', ater_pad:'Aterramento do Padrão',
+    pad_inst:'Instalação do Padrão', tp_f1:'Tensão Pad. — Fase 1', tp_f2:'Tensão Pad. — Fase 2',
+    tp_f3:'Tensão Pad. — Fase 3', tp_tot:'Tensão Pad. — Total', quadro_pad:'Quadro do Padrão',
+    config_planta:'Configuração da Planta', geral_inst:'Foto Geral', video_inst:'Vídeo Geral',
+    acabamento:'Acabamento Tubular', placas_seg:'Placas de Segurança e Marketing',
+  };
   const fs = {};
   photoKeys.forEach(k => fs[k] = (fotos[k]||[]).slice());
+
+  // Coleta fotos de keys antigos/desconhecidos para reclassificação
+  const ignoredKeys = new Set(['_dados', ...photoKeys]);
+  const poolFotos = []; // [{url, fromKey}]
+  Object.keys(fotos).forEach(k => {
+    if(ignoredKeys.has(k)) return;
+    const arr = Array.isArray(fotos[k]) ? fotos[k] : [];
+    arr.forEach(url => { if(url) poolFotos.push({url, fromKey:k}); });
+  });
 
   let numAguas   = ds.num_aguas   || 1;
   let numStrings = ds.num_strings || 1;
@@ -6158,6 +6183,22 @@ function openLaudoCampoModal(item){
             ${formField({label:'CPF do Responsável',name:'ld_acomp_cpf',value:ds.acomp_cpf||'',placeholder:'000.000.000-00'})}
           </div>
         </div>
+
+        ${poolFotos.length ? `
+        <div class="wz-sub" style="margin-top:20px">📂 Fotos a Classificar (${poolFotos.length})</div>
+        <div class="wz-hint">Clique na categoria de cada foto para organizá-la no laudo.</div>
+        <div id="wzPool" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:10px">
+          ${poolFotos.map((p,i)=>`
+            <div class="wz-pool-item" data-idx="${i}" style="display:flex;flex-direction:column;gap:6px;width:140px">
+              <img src="${p.url}" style="width:140px;height:100px;object-fit:cover;border-radius:6px;border:2px solid var(--border-color,#ddd)" onerror="this.style.opacity=0.3">
+              <select class="form-control wz-pool-sel" data-idx="${i}" data-url="${p.url}" style="font-size:12px">
+                <option value="">— sem categoria —</option>
+                ${Object.entries(PHOTO_LABELS).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}
+              </select>
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
       </div>
 
       <!-- Passo 1: Kit (Antes) -->
@@ -6315,9 +6356,30 @@ function openLaudoCampoModal(item){
     };
   };
 
+  // Reclassificação de fotos do pool
+  $('#wzPool')?.addEventListener('change', e => {
+    const sel = e.target.closest('.wz-pool-sel');
+    if(!sel) return;
+    const url = sel.dataset.url;
+    const key = sel.value;
+    if(!key) return;
+    if(!fs[key]) fs[key] = [];
+    if(!fs[key].includes(url)) fs[key].push(url);
+    // Remove o item do pool visualmente
+    sel.closest('.wz-pool-item').style.opacity = '0.4';
+    sel.disabled = true;
+    // Atualiza thumbs do bloco destino se visível
+    const destBlock = form.querySelector(`[data-key="${key}"] [data-thumbs]`);
+    if(destBlock) {
+      const img = document.createElement('img');
+      img.src = url; img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:4px';
+      destBlock.appendChild(img);
+    }
+  });
+
   $('#wzSave')?.addEventListener('click', async ()=>{
     const laudoDados = buildDados();
-    const fotosData = { ...fs, _dados: laudoDados };
+    const fotosData = { ...item.fotos, ...fs, _dados: laudoDados };
     const { error } = await supa.from('instalacoes').update({ fotos: fotosData }).eq('id', item.id);
     if(error) return toast('Erro ao salvar: '+error.message,'error');
     await registrarHistorico('instalacoes', item.id, 'atualizado', 'Laudo de campo atualizado');
