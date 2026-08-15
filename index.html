@@ -5960,6 +5960,12 @@ function openInstalacaoModal(item=null){
           </div></div>
         </div>
         ${formField({label:'Observações',name:'obs',type:'textarea',value:item.obs,full:true})}
+        <div class="section" style="margin-top:14px">
+          <div class="section-header"><h4>📷 Fotos da Instalação</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body">
+            ${fileUploadBlock('Fotos gerais da instalação','geral','instalacoes',fotos.geral||[],true)}
+          </div>
+        </div>
         ${(()=>{
           const docsMeta = [
             { key:'projeto_unifilar', label:'📐 Projeto Unifilar' },

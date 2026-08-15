@@ -1,7 +1,7 @@
 // Service Worker — SER Hub v5
 // Estratégia: cache-first para assets estáticos, network-first para dados
 
-const CACHE_NAME = 'ser-hub-v29';
+const CACHE_NAME = 'ser-hub-v30';
 const STATIC_ASSETS = ['/', '/index.html', '/logo.png', '/manifest.json'];
 
 self.addEventListener('install', e => {
