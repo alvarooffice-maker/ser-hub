@@ -1260,7 +1260,7 @@ async function renderDashboard(){
 
     // ── Recorde Instalação: dias contrato assinado → data instalação ──
     const instalEntries = (State.instalacoes||[])
-      .filter(i => i.data_instalacao && i.contrato_id)
+      .filter(i => i.status==='concluida' && i.data_instalacao && i.contrato_id)
       .map(i => {
         const cont = (State.contratos||[]).find(c=>String(c.id)===String(i.contrato_id));
         if(!cont?.data_assinatura) return null;
