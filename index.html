@@ -5972,7 +5972,7 @@ function openInstalacaoModal(item=null){
             { key:'memorial_tecnico', label:'📋 Memorial Técnico' },
           ];
           const itens = docsMeta.map(d => {
-            const url = (homDocs[d.key]||[])[0];
+            const _f = (homDocs[d.key]||[])[0]; const url = _f?.url || _f;
             return url
               ? `<a href="${url}" target="_blank" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f9f5ff;border:1px solid #e9d5ff;border-radius:8px;color:#4B0082;font-size:13px;font-weight:600;text-decoration:none">${d.label}<span style="margin-left:auto;font-size:11px;color:#6b7280">Abrir ↗</span></a>`
               : `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8f9fa;border:1px dashed #dee2e6;border-radius:8px;color:#adb5bd;font-size:13px">${d.label}<span style="margin-left:auto;font-size:11px">Não enviado ainda</span></div>`;
