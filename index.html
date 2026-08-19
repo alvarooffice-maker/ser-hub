@@ -6509,7 +6509,6 @@ ${ld.mudanca_padrao?(()=>{
   const tensPad = [[fs.tp_f1,'Fase 1'],[fs.tp_f2,'Fase 2'],[fs.tp_f3,'Fase 3'],[fs.tp_tot,'Total']].filter(([a])=>a?.length);
   if(tensPad.length) html += fotoSection('Tensão — Disjuntor Padrão',tensPad);
   if(fs.quadro_pad?.length) html += fotoSection('Quadro do Padrão',[[fs.quadro_pad,'']]);
-  if(fs.placas_seg?.length) html += fotoSection('Placas de Segurança e Marketing',[[fs.placas_seg,'']]);
   return html ? `<h2>🔌 Padrão de Entrada</h2>${html}` : '';
 })():''}
 
