@@ -715,7 +715,8 @@ const ROUTES = [
   { id:'financeiro', label:'Financeiro', icon:'📈', section:'GESTÃO' },
   { id:'cadastros', label:'Cadastros', icon:'👥', section:'GESTÃO' },
   { id:'usuarios', label:'Usuários', icon:'🔐', section:'GESTÃO', adminOnly:true },
-  { id:'gestao_custos', label:'Gestão de Custos', icon:'📊', section:'GESTÃO' }
+  { id:'gestao_custos', label:'Gestão de Custos', icon:'📊', section:'GESTÃO' },
+  { id:'monitoramento', label:'Monitoramento Solar', icon:'⚡', section:'GESTÃO', adminOnly:true }
 ];
 
 function visibleRoutes(){
@@ -787,6 +788,7 @@ function navigate(route){
     case 'usuarios': renderUsuarios(); break;
     case 'posvenda_rel': renderRelatorioPosvenda(); break;
     case 'gestao_custos': renderGestaoCustos(); break;
+    case 'monitoramento': renderMonitoramento(); break;
   }
 }
 
@@ -10209,6 +10211,159 @@ function attachCalEvents(){
     }
   });
 })();
+
+/* ============================================================
+   MONITORAMENTO SOLAR
+   ============================================================ */
+async function renderMonitoramento(){
+  if(!isAdmin()){ $('#content').innerHTML='<div class="empty">Acesso restrito.</div>'; return; }
+
+  const PROVIDERS = [
+    { id:'auxsol',  label:'Auxsol',  icon:'🟢' },
+    { id:'goodwe',  label:'GoodWe',  icon:'🔵' },
+    { id:'growatt', label:'Growatt', icon:'🟠' },
+    { id:'saj',     label:'SAJ',     icon:'🟣' },
+    { id:'huawei',  label:'Huawei',  icon:'🔴' },
+  ];
+
+  $('#content').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  // Buscar dados
+  const [{ data: usinas }, { data: leituras }, { data: syncLog }] = await Promise.all([
+    supa.from('monitoramento_usinas').select('*').order('plant_name'),
+    supa.from('monitoramento_leituras').select('*').order('captured_at', { ascending: false }),
+    supa.from('monitoramento_sync_log').select('*').order('executado_em', { ascending: false }).limit(50),
+  ]);
+
+  // Última leitura por usina
+  const ultimaLeitura = {};
+  (leituras||[]).forEach(l => { if(!ultimaLeitura[l.usina_id]) ultimaLeitura[l.usina_id] = l; });
+
+  // Último sync por provider
+  const ultimoSync = {};
+  (syncLog||[]).forEach(s => { if(!ultimoSync[s.provider]) ultimoSync[s.provider] = s; });
+
+  const kwpTotal = (usinas||[]).reduce((a,u) => a + Number(u.capacity_kwp||0), 0);
+  const potAtual = Object.values(ultimaLeitura).reduce((a,l) => a + Number(l.current_power_kw||0), 0);
+  const geracaoHoje = Object.values(ultimaLeitura).reduce((a,l) => a + Number(l.today_yield_kwh||0), 0);
+  const usinasAtivas = (usinas||[]).filter(u => ultimaLeitura[u.id]?.current_power_kw > 0).length;
+
+  const fmtDt = iso => iso ? new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+  const fmtN = (n,dec=1) => Number(n||0).toFixed(dec).replace('.',',');
+
+  const statusColor = s => s==='success'?'#16a34a':s==='error'?'#dc2626':'#d97706';
+
+  $('#content').innerHTML = `
+  <style>
+    .mon-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+    .mon-kpi{background:var(--card);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow)}
+    .mon-kpi .mk-val{font-size:26px;font-weight:700;color:var(--primary);line-height:1.1}
+    .mon-kpi .mk-lbl{font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px;margin-top:4px}
+    .mon-sync{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;align-items:center}
+    .mon-sync-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:12.5px;font-weight:600;transition:background .15s}
+    .mon-sync-btn:hover{background:var(--bg)}
+    .mon-sync-btn.loading{opacity:.6;pointer-events:none}
+    .mon-sync-status{font-size:11px;color:var(--text-light)}
+    .mon-table{width:100%;border-collapse:collapse;font-size:13px}
+    .mon-table th{font-size:11px;font-weight:600;letter-spacing:.3px;color:var(--text-light);text-align:left;padding:8px 12px;border-bottom:2px solid var(--border)}
+    .mon-table td{padding:10px 12px;border-bottom:1px solid rgba(0,0,0,.04)}
+    .mon-table tr:hover td{background:var(--bg)}
+    .mon-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10.5px;font-weight:600}
+    .mon-badge.on{background:#dcfce7;color:#166534}
+    .mon-badge.off{background:#fee2e2;color:#991b1b}
+    .mon-badge.unk{background:#f3f4f6;color:#6b7280}
+    .mon-section{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin:20px 0 10px}
+  </style>
+
+  <div class="mon-kpis">
+    <div class="mon-kpi"><div class="mk-val">${(usinas||[]).length}</div><div class="mk-lbl">Usinas cadastradas</div></div>
+    <div class="mon-kpi"><div class="mk-val">${fmtN(kwpTotal,2)} kWp</div><div class="mk-lbl">Capacidade total</div></div>
+    <div class="mon-kpi"><div class="mk-val">${fmtN(potAtual,1)} kW</div><div class="mk-lbl">Potência agora</div></div>
+    <div class="mon-kpi"><div class="mk-val">${fmtN(geracaoHoje,1)} kWh</div><div class="mk-lbl">Geração hoje · ${usinasAtivas} ativas</div></div>
+  </div>
+
+  <div class="mon-section">Sincronização manual</div>
+  <div class="mon-sync">
+    ${PROVIDERS.map(p => {
+      const s = ultimoSync[p.id];
+      const temDados = (usinas||[]).some(u=>u.provider===p.id);
+      return `<div style="display:flex;flex-direction:column;gap:3px">
+        <button class="mon-sync-btn" id="syncBtn_${p.id}" data-provider="${p.id}">
+          ${p.icon} ${p.label} <span id="syncSpinner_${p.id}" style="display:none">⏳</span>
+        </button>
+        <div class="mon-sync-status" id="syncStatus_${p.id}">
+          ${s ? `${s.status==='success'?'✅':'❌'} ${fmtDt(s.executado_em)} · ${s.plantas_sincronizadas||0} usinas` : temDados?'Aguardando sync':'Sem credenciais'}
+        </div>
+      </div>`;
+    }).join('')}
+    <button class="mon-sync-btn" id="syncAllBtn" style="background:var(--primary);color:#fff;border-color:var(--primary)">⚡ Sync Tudo</button>
+  </div>
+
+  <div class="mon-section">Usinas (${(usinas||[]).length})</div>
+  <div class="table-wrap">
+    <table class="mon-table">
+      <thead><tr>
+        <th>Usina</th><th>Provider</th><th>kWp</th><th>Status</th>
+        <th>Potência atual</th><th>Geração hoje</th><th>Total</th><th>Última leitura</th>
+      </tr></thead>
+      <tbody>
+        ${(usinas||[]).map(u => {
+          const l = ultimaLeitura[u.id];
+          const ativa = l && Number(l.current_power_kw) > 0;
+          const badge = l ? (ativa ? '<span class="mon-badge on">Gerando</span>' : '<span class="mon-badge off">Parada</span>') : '<span class="mon-badge unk">Sem dados</span>';
+          return `<tr>
+            <td style="font-weight:600">${esc(u.plant_name||'—')}</td>
+            <td>${u.provider}</td>
+            <td>${fmtN(u.capacity_kwp,2)}</td>
+            <td>${badge}</td>
+            <td>${l ? fmtN(l.current_power_kw,2)+' kW' : '—'}</td>
+            <td>${l ? fmtN(l.today_yield_kwh,1)+' kWh' : '—'}</td>
+            <td>${l ? fmtN(l.total_yield_kwh,0)+' kWh' : '—'}</td>
+            <td style="font-size:11px;color:var(--text-light)">${fmtDt(l?.captured_at)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+
+  // Listeners de sync
+  async function callSync(provider){
+    const btn = $(`#syncBtn_${provider}`);
+    const spinner = $(`#syncSpinner_${provider}`);
+    const statusEl = $(`#syncStatus_${provider}`);
+    if(btn) btn.classList.add('loading');
+    if(spinner) spinner.style.display='';
+    try{
+      const resp = await fetch(`${SURL}/functions/v1/monitoramento-${provider}-sync`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${SKEY}`}
+      });
+      const res = await resp.json().catch(()=>({}));
+      if(!resp.ok) throw new Error(res.error||res.message||`HTTP ${resp.status}`);
+      if(statusEl) statusEl.innerHTML = `✅ agora · ${res.plantas_sincronizadas||res.synced||'?'} usinas`;
+      toast(`${provider}: sync concluído!`,'success');
+      setTimeout(()=>renderMonitoramento(), 1500);
+    } catch(e){
+      if(statusEl) statusEl.innerHTML = `❌ ${e.message}`;
+      toast(`Erro sync ${provider}: ${e.message}`,'error',5000);
+    } finally {
+      if(btn) btn.classList.remove('loading');
+      if(spinner) spinner.style.display='none';
+    }
+  }
+
+  PROVIDERS.forEach(p => {
+    $(`#syncBtn_${p.id}`)?.addEventListener('click', ()=>callSync(p.id));
+  });
+
+  $('#syncAllBtn')?.addEventListener('click', async ()=>{
+    const btn = $('#syncAllBtn');
+    if(btn){ btn.textContent='⏳ Sincronizando…'; btn.disabled=true; }
+    const providers = PROVIDERS.map(p=>p.id).filter(id=>(usinas||[]).some(u=>u.provider===id));
+    for(const p of providers) await callSync(p).catch(()=>{});
+    if(btn){ btn.textContent='⚡ Sync Tudo'; btn.disabled=false; }
+  });
+}
 
 /* ============================================================
    RELATÓRIO PÓS-VENDA
