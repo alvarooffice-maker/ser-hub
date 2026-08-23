@@ -10334,13 +10334,10 @@ async function renderMonitoramento(){
     if(btn) btn.classList.add('loading');
     if(spinner) spinner.style.display='';
     try{
-      const resp = await fetch(`${SURL}/functions/v1/monitoramento-${provider}-sync`, {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${SKEY}`}
-      });
-      const res = await resp.json().catch(()=>({}));
-      if(!resp.ok) throw new Error(res.error||res.message||`HTTP ${resp.status}`);
-      if(statusEl) statusEl.innerHTML = `✅ agora · ${res.plantas_sincronizadas||res.synced||'?'} usinas`;
+      const { data, error } = await supa.functions.invoke(`monitoramento-${provider}-sync`, { method:'POST' });
+      if(error) throw new Error(error.message||String(error));
+      const sincronizadas = data?.plantas_sincronizadas ?? data?.synced ?? '?';
+      if(statusEl) statusEl.innerHTML = `✅ agora · ${sincronizadas} usinas`;
       toast(`${provider}: sync concluído!`,'success');
       setTimeout(()=>renderMonitoramento(), 1500);
     } catch(e){
