@@ -586,14 +586,14 @@ const fmtDateTime = d => d ? new Date(d).toLocaleString('pt-BR') : '';
 const today = ()=>{ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 
 /* ── Listas pré-estabelecidas para evitar erros de digitação ── */
-const DL_MARCA_MODULO  = ['Canadian Solar','JA Solar','LONGi','BYD','DAH Solar','Risen Energy','Jinko Solar','Trina Solar','Tsun','Astronergy','Tongwei Solar','Leapton','Pulling Energy','Osda','Ronma','Hanersun','Maxeon','Renepv','Aiko','Gokin','Dmegc','Era Solar','Haitai','Sine Energy','N Plus','S.SPACE'];
+const DL_MARCA_MODULO  = ['Canadian Solar','JA Solar','LONGi','BYD','DAH Solar','Risen Energy','Jinko Solar','Trina Solar','Tsun','Astronergy','Tongwei Solar','Leapton','Pulling Energy','Osda','Ronma','Hanersun','Maxeon','Renepv','Aiko','Gokin','Dmegc','Era Solar','Haitai','Sine Energy','N Plus','S.SPACE','Toptec'];
 const DL_MARCA_INVERSOR= ['Growatt','Solis','Deye','SAJ','Fronius','Huawei','GoodWe','SOFAR','Fox ESS','Chint Power','Solplanet','Sungrow','Auxsol'];
 const DL_MARCA_BATERIA = ['BYD','Pylontech','Dyness','Alpha-ESS','Fox ESS','Growatt','Deye','Solplanet','GoodWe','Huawei'];
 const DL_POT_MODULO    = ['400','410','420','430','440','450','460','470','480','490','500','510','520','530','540','550','560','570','580','585','590','600','610','620','630','640','650','660','670','680','690','700','710'];
 const DL_POT_INVERSOR  = ['1,5','2','3','3,3','3,5','3,6','4','5','6','7','8','10','12','15','17','20','25','30','33','36','40','50','60','75'];
 const DL_POT_BATERIA   = ['2,56','5','5,12','7,1','10','10,24','14,2','20'];
 const DL_BANCO         = ['BV Financeira','Santander Financiamentos','Sicoob','Sicredi','Portocred','PortoBank','Solfácil','Sol Agora','Creditas','BNB','Caixa Econômica','Bradesco','Banco do Brasil','77Sol','BTG','BanPará'];
-const DL_DISTRIBUIDORA = ['Aldo Solar','Greener','Canal Solar','Renovigi','WEG','Intelbras','EcoSolys','DFV Solar','BlueSol','Solar Premium','FortLev','SouEnergy','Fotus','Solfácil','77Sol','BelSol','Soollar'];
+const DL_DISTRIBUIDORA = ['Aldo Solar','Greener','Canal Solar','Renovigi','WEG','Intelbras','EcoSolys','DFV Solar','BlueSol','Solar Premium','FortLev','SouEnergy','Fotus','Solfácil','77Sol','BelSol','Soollar','JNG'];
 let DL_TECNICO         = ['CMD','3L Soluções','Paulo Adriano','Michel Darlan']; // atualizado dinamicamente em loadAll()
 const uid = ()=> 'id_'+Math.random().toString(36).slice(2,11);
 
@@ -3567,7 +3567,7 @@ function openPropostaModal(item=null){
 /* ============================================================
    FILE UPLOAD HELPER
    ============================================================ */
-async function compressImage(file, maxPx=1280, quality=0.72){
+async function compressImage(file, maxPx=800, quality=0.55){
   const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(file.name);
   if(!isImage) return file;
   return new Promise(resolve => {
@@ -7079,13 +7079,28 @@ async function renderRemarketing(){
     if(leadId){
       await supa.from('leads').update({ status:'em_contato', motivo_perda:null, remarketing:true }).eq('id',leadId);
     } else {
-      const { data: novoLead, error: eLead } = await supa.from('leads').insert({
-        nome: r.nome, telefone: r.telefone, vendedor: r.vendedor,
-        status: 'em_contato', remarketing: true,
-        criado_por: State.user?.id
-      }).select('id').single();
-      if(eLead) return toast(eLead.message,'error');
-      leadId = novoLead.id;
+      // Tenta encontrar lead existente pelo telefone ou nome antes de criar um novo
+      let leadExistente = null;
+      if(r.telefone){
+        const { data: found } = await supa.from('leads').select('id').eq('telefone', r.telefone).maybeSingle();
+        leadExistente = found;
+      }
+      if(!leadExistente && r.nome){
+        const { data: found } = await supa.from('leads').select('id').eq('nome', r.nome).maybeSingle();
+        leadExistente = found;
+      }
+      if(leadExistente){
+        leadId = leadExistente.id;
+        await supa.from('leads').update({ status:'em_contato', motivo_perda:null, remarketing:true }).eq('id',leadId);
+      } else {
+        const { data: novoLead, error: eLead } = await supa.from('leads').insert({
+          nome: r.nome, telefone: r.telefone, vendedor: r.vendedor,
+          status: 'em_contato', remarketing: true,
+          criado_por: State.user?.id
+        }).select('id').single();
+        if(eLead) return toast(eLead.message,'error');
+        leadId = novoLead.id;
+      }
     }
     await supa.from('remarketing').update({ status:'reativado', lead_id: leadId }).eq('id',r.id);
     await loadAll();
