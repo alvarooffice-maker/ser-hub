@@ -4781,8 +4781,9 @@ function openContratoModal(item=null){
   $('#clickSignBtn')?.addEventListener('click', async ()=>{
     try{
       toast('Enviando ao ClickSign…','info');
+      const { data:{ session:cs } } = await supa.auth.getSession();
       const resp = await fetch(`${SURL}/functions/v1/clicksign-proxy`,{
-        method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${SKEY}`},
+        method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${cs?.access_token}`},
         body: JSON.stringify({ contrato_id:item.id })
       });
       const result = await resp.json().catch(()=>({}));
