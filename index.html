@@ -858,11 +858,12 @@ async function renderHomeVendedor(){
 
   // Recorde homologação
   const homolEntries = (State.homologacoes||[])
-    .filter(h=>h.etapa==='aprovada'&&h.data_aprovacao&&h.contrato_id)
+    .filter(h=>h.etapa==='aprovada'&&(h.data_ativacao||h.data_aprovacao)&&h.contrato_id)
     .map(h=>{
       const c=(State.contratos||[]).find(x=>String(x.id)===String(h.contrato_id));
       if(!c?.data_assinatura) return null;
-      const d=Math.floor((new Date(h.data_aprovacao)-new Date(c.data_assinatura))/86400000);
+      const dataRef = h.data_ativacao || h.data_aprovacao;
+      const d=Math.floor((new Date(dataRef)-new Date(c.data_assinatura))/86400000);
       return d>0?{d,nome:c.nome||'—'}:null;
     }).filter(Boolean);
   const recHomol = homolEntries.length ? homolEntries.reduce((a,b)=>a.d<=b.d?a:b) : null;
@@ -1351,11 +1352,12 @@ async function renderDashboard(){
 
     // ── Recorde Homologação: dias contrato assinado → homologação aprovada ──
     const homolEntries = (State.homologacoes||[])
-      .filter(h => h.etapa==='aprovada' && h.contrato_id && h.data_aprovacao)
+      .filter(h => h.etapa==='aprovada' && h.contrato_id && (h.data_ativacao || h.data_aprovacao))
       .map(h => {
         const cont = (State.contratos||[]).find(c=>String(c.id)===String(h.contrato_id));
         if(!cont?.data_assinatura) return null;
-        const dias = Math.floor((new Date(h.data_aprovacao).getTime() - new Date(cont.data_assinatura).getTime()) / 86400000);
+        const dataRef = h.data_ativacao || h.data_aprovacao;
+        const dias = Math.floor((new Date(dataRef).getTime() - new Date(cont.data_assinatura).getTime()) / 86400000);
         return dias > 0 ? { dias, nome: cont.nome||'—' } : null;
       })
       .filter(d => d != null);
@@ -6664,6 +6666,7 @@ function openHomologacaoModal(item=null){
             ${formField({label:'Estimado',name:'estimado',type:'number',value:item.estimado})}
             ${formField({label:'Pago',name:'pago',type:'number',value:item.pago})}
             ${formField({label:'Data Assinatura',name:'data_assinatura',type:'date',value:item.data_assinatura})}
+            ${formField({label:'Data Ativação (homol.)',name:'data_ativacao',type:'date',value:item.data_ativacao,placeholder:'Data real da ativação'})}
           </div></div>
         </div>
 
