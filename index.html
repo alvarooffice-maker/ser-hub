@@ -2803,14 +2803,20 @@ function buildTransitionPayload(item, fromStage, toStage){
     qtd_baterias:item.qtd_baterias, marca_bateria:item.marca_bateria, pot_bateria:item.pot_bateria, kwp:item.kwp,
     status:'agendada'
   };
-  if(toStage==='contrato') return {
-    ...base, vistoria_id:item.id, proposta_id:item.proposta_id, email:item.email, cep:item.cep, rua:item.rua, numero:item.numero,
-    complemento:item.complemento, bairro:item.bairro, cidade:item.cidade, estado:item.estado, gmap:item.gmap,
-    qtd_modulos:item.qtd_modulos, marca_modulo:item.marca_modulo, pot_modulo:item.pot_modulo,
-    qtd_inversores:item.qtd_inversores, marca_inversor:item.marca_inversor, pot_inversor:item.pot_inversor,
-    qtd_baterias:item.qtd_baterias, marca_bateria:item.marca_bateria, pot_bateria:item.pot_bateria, kwp:item.kwp,
-    status:'pendente'
-  };
+  if(toStage==='contrato'){
+    const propContrato = (State.propostas||[]).find(p=>String(p.id)===String(item.proposta_id));
+    return {
+      ...base, vistoria_id:item.id, proposta_id:item.proposta_id, email:item.email, cep:item.cep, rua:item.rua, numero:item.numero,
+      complemento:item.complemento, bairro:item.bairro, cidade:item.cidade, estado:item.estado, gmap:item.gmap,
+      qtd_modulos:item.qtd_modulos, marca_modulo:item.marca_modulo, pot_modulo:item.pot_modulo,
+      qtd_inversores:item.qtd_inversores, marca_inversor:item.marca_inversor, pot_inversor:item.pot_inversor,
+      qtd_baterias:item.qtd_baterias, marca_bateria:item.marca_bateria, pot_bateria:item.pot_bateria, kwp:item.kwp,
+      valor: item.valor || propContrato?.valor || null,
+      vend_telefone: item.vend_telefone || propContrato?.vend_telefone || null,
+      vend_email:    item.vend_email    || propContrato?.vend_email    || null,
+      status:'pendente'
+    };
+  }
   if(toStage==='logistica') return {
     ...base, contrato_id:item.id, proposta_id:item.proposta_id||null, vistoria_id:item.vistoria_id||null,
     kwp:item.kwp, valor:item.valor, status:'aguardando'
@@ -3550,7 +3556,7 @@ function openPropostaModal(item=null){
             <div id="motivoPerdaPropWrap" style="display:${item.status==='recusada'?'':'none'}">
               ${formField({label:'Motivo da recusa',name:'motivo_perda',type:'select',value:item.motivo_perda||'',options:motivoPerdaOpts})}
             </div>
-            ${formField({label:'Vendedor',name:'vendedor',value:item.vendedor || (isVend()?State.profile.nome:'')})}
+            ${formField({label:'Vendedor',name:'vendedor',type:'select',value:item.vendedor||(isVend()?State.profile.nome:''),options:[['','— selecione —'],...(State.perfis||[]).filter(p=>p.ativo!==false&&['vendedor','supervisor','admin'].includes(p.perfil)&&p.nome).map(p=>[p.nome,p.nome])]})}
             ${formField({label:'Tel. Vendedor',name:'vend_telefone',value:item.vend_telefone})}
             ${formField({label:'Email Vendedor',name:'vend_email',value:item.vend_email})}
           </div></div>
@@ -3568,6 +3574,24 @@ function openPropostaModal(item=null){
 
   const form = $('#propForm');
   attachCEP(form);
+
+  // Auto-preenche telefone e email do vendedor ao selecionar
+  const perfisMapProp = (State.perfis||[]).reduce((m,p)=>{ if(p.nome) m[p.nome]=p; return m; }, {});
+  form.elements.vendedor?.addEventListener('change', e=>{
+    const p = perfisMapProp[e.target.value];
+    if(p){
+      if(p.telefone) form.elements.vend_telefone.value = p.telefone;
+      if(p.email)    form.elements.vend_email.value    = p.email;
+    }
+  });
+  // Preenche ao abrir se os campos estiverem vazios
+  if(item.vendedor){
+    const p = perfisMapProp[item.vendedor];
+    if(p){
+      if(!form.elements.vend_telefone.value && p.telefone) form.elements.vend_telefone.value = p.telefone;
+      if(!form.elements.vend_email.value    && p.email)    form.elements.vend_email.value    = p.email;
+    }
+  }
 
   // Exibe "Motivo da recusa" apenas quando status = recusada
   const statusPropSel = form.elements['status'];
@@ -4798,11 +4822,17 @@ function openContratoModal(item=null){
 
   // Auto-preenche CPF ao selecionar vendedor ou supervisor
   const perfisMap = (State.perfis||[]).reduce((m,p)=>{ if(p.nome) m[p.nome]=p; return m; }, {});
+  const fillVendedorContrato = (perfil) => {
+    if(!perfil) return;
+    if(perfil.cpf)      form.elements.vend_cpf.value      = perfil.cpf;
+    if(perfil.telefone && form.elements.vend_telefone) form.elements.vend_telefone.value = perfil.telefone;
+    if(perfil.email    && form.elements.vend_email)    form.elements.vend_email.value    = perfil.email;
+  };
   form.elements.vendedor?.addEventListener('change', e=>{
-    const p = perfisMap[e.target.value];
-    if(p?.cpf && !form.elements.vend_cpf.value) form.elements.vend_cpf.value = p.cpf;
-    else if(p?.cpf) form.elements.vend_cpf.value = p.cpf;
+    fillVendedorContrato(perfisMap[e.target.value]);
   });
+  // Preenche ao abrir se campos estiverem vazios
+  if(item.vendedor) fillVendedorContrato(perfisMap[item.vendedor]);
   form.elements.supervisor_nome?.addEventListener('change', e=>{
     const p = perfisMap[e.target.value];
     if(p?.cpf) form.elements.supervisor_cpf.value = p.cpf;
