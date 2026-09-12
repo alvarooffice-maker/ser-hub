@@ -600,7 +600,7 @@ const fmtDateTime = d => d ? new Date(d).toLocaleString('pt-BR') : '';
 const today = ()=>{ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 
 /* ── Listas pré-estabelecidas para evitar erros de digitação ── */
-const DL_MARCA_MODULO  = ['Canadian Solar','JA Solar','LONGi','BYD','DAH Solar','Risen Energy','Jinko Solar','Trina Solar','Tsun','Astronergy','Tongwei Solar','Leapton','Pulling Energy','Osda','Ronma','Hanersun','Maxeon','Renepv','Aiko','Gokin','Dmegc','Era Solar','Haitai','Sine Energy','N Plus','S.SPACE','Toptec'];
+const DL_MARCA_MODULO  = ['Canadian Solar','JA Solar','LONGi','BYD','DAH Solar','Risen Energy','Jinko Solar','Trina Solar','Tsun','Astronergy','Tongwei Solar','Leapton','Pulling Energy','Osda','Ronma','Hanersun','Maxeon','Renepv','Aiko','Gokin','Dmegc','Era Solar','Haitai','Sine Energy','N Plus','S.SPACE','Toptec','ZNSHINE'];
 const DL_MARCA_INVERSOR= ['Growatt','Solis','Deye','SAJ','Fronius','Huawei','GoodWe','SOFAR','Fox ESS','Chint Power','Solplanet','Sungrow','Auxsol'];
 const DL_MARCA_BATERIA = ['BYD','Pylontech','Dyness','Alpha-ESS','Fox ESS','Growatt','Deye','Solplanet','GoodWe','Huawei'];
 const DL_POT_MODULO    = ['400','410','420','430','440','450','460','470','480','490','500','510','520','530','540','550','560','570','580','585','590','600','610','620','630','640','650','660','670','680','690','700','710'];
@@ -696,7 +696,72 @@ function showApp(){
   renderNav();
   const roleRouteMap = { tec_vistoria:'vistoriador', tec_instalacao:'instalador', tec_homologacao:'homologador', vendedor:'home_vendedor', supervisor:'home_vendedor', admin:'home_vendedor' };
   const startRoute = roleRouteMap[userRole()] || 'dashboard';
-  navigate(startRoute);
+  // Verifica cadastro completo antes de liberar o app
+  if(perfilIncompleto(State.profile)){
+    showCompletarCadastroModal(() => navigate(startRoute));
+  } else {
+    navigate(startRoute);
+  }
+}
+
+function perfilIncompleto(p){
+  if(!p) return false;
+  return !p.telefone || !p.cpf || !p.endereco || !p.cep;
+}
+
+function showCompletarCadastroModal(onComplete){
+  const p = State.profile || {};
+  const root = $('#modalRoot');
+  root.innerHTML = `
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1A3A5C,#2E6B9E);color:#fff;border-radius:12px 12px 0 0">
+        <h2 style="color:#fff;margin:0">📋 Complete seu cadastro</h2>
+      </div>
+      <form id="completarForm">
+        <div class="modal-body">
+          <div style="background:#fff8e1;border:1.5px solid #ffc107;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#795548">
+            <strong>⚠️ Atenção:</strong> Para continuar usando o sistema, preencha todos os seus dados de cadastro abaixo.
+          </div>
+          <div class="form-grid">
+            ${formField({label:'Nome completo',name:'nome',value:p.nome,required:true,readonly:true})}
+            ${formField({label:'Email',name:'_email',value:p.email,readonly:true})}
+            ${formField({label:'Telefone',name:'telefone',value:p.telefone,required:true,placeholder:'(91) 98407-7376'})}
+            ${formField({label:'CPF',name:'cpf',value:p.cpf,required:true,placeholder:'000.000.000-00'})}
+            ${formField({label:'Endereço completo',name:'endereco',value:p.endereco,required:true,full:true,placeholder:'Rua, nº, Complemento, Bairro, Cidade'})}
+            ${formField({label:'CEP',name:'cep',value:p.cep,required:true,placeholder:'00000-000'})}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary" style="width:100%">Salvar e continuar →</button>
+        </div>
+      </form>
+    </div>`;
+  root.classList.add('active');
+  // Impede fechar clicando fora
+  root.addEventListener('click', e => { if(e.target === root) e.stopPropagation(); }, true);
+
+  root.querySelector('#completarForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = readForm(root.querySelector('#completarForm'));
+    if(!fd.telefone || !fd.cpf || !fd.endereco || !fd.cep){
+      toast('Preencha todos os campos obrigatórios.','error'); return;
+    }
+    const { error } = await supa.from('perfis').update({
+      telefone: fd.telefone,
+      cpf:      fd.cpf,
+      endereco: fd.endereco,
+      cep:      fd.cep,
+    }).eq('id', State.profile.id);
+    if(error){ toast('Erro ao salvar: '+error.message,'error'); return; }
+    State.profile.telefone = fd.telefone;
+    State.profile.cpf      = fd.cpf;
+    State.profile.endereco = fd.endereco;
+    State.profile.cep      = fd.cep;
+    root.classList.remove('active');
+    root.innerHTML = '';
+    toast('Cadastro completo! Bem-vindo(a) 🎉','success');
+    onComplete();
+  });
 }
 
 function renderUser(){
@@ -2798,6 +2863,44 @@ function getLinkedDocs(item){
   return { proposta, vistoria, contrato, logistica, instalacao };
 }
 
+/* Mescla o registro atual com dados das etapas anteriores da cadeia.
+   Campos já preenchidos no item têm prioridade; campos vazios são
+   preenchidos com o valor mais recente encontrado nas etapas anteriores.
+   Chamado no início de cada modal para evitar repreenchimento manual. */
+function mergeChain(item) {
+  if (!item || typeof item !== 'object') return item || {};
+  const linked = getLinkedDocs(item);
+  const lead_id = item.lead_id
+    || linked.proposta?.lead_id
+    || linked.vistoria?.lead_id
+    || linked.contrato?.lead_id;
+  const lead = (State.leads||[]).find(l => String(l.id) === String(lead_id));
+
+  // Cadeia do mais antigo para o mais recente; item (etapa atual) tem maior prioridade
+  const sources = [lead, linked.proposta, linked.vistoria, linked.contrato, linked.logistica, item].filter(Boolean);
+
+  const FIELDS = [
+    'nome','telefone','email','vendedor','cpf','nascimento','rg','rg_orgao',
+    'cep','rua','numero','complemento','bairro','cidade','estado','gmap','kwh','kwp',
+    'qtd_modulos','marca_modulo','pot_modulo',
+    'qtd_inversores','marca_inversor','pot_inversor',
+    'qtd_baterias','marca_bateria','pot_bateria',
+    'concessionaria','profissao','estado_civil','projeto',
+  ];
+
+  const result = { ...item };
+  for (const field of FIELDS) {
+    if (result[field] == null || result[field] === '') {
+      // Busca da etapa mais recente para a mais antiga (excluindo o próprio item)
+      for (let i = sources.length - 2; i >= 0; i--) {
+        const v = sources[i]?.[field];
+        if (v != null && v !== '') { result[field] = v; break; }
+      }
+    }
+  }
+  return result;
+}
+
 /* Igual a getLinkedDocs, mas com fallback por nome do cliente — usado no
    Pós Venda para clientes importados sem cadeia de FKs, evitando que o
    sistema deixe de detectar registros já existentes (e crie duplicados). */
@@ -3387,7 +3490,7 @@ async function attachContactLog(parentId, kind){
    ============================================================ */
 function openPropostaModal(item=null){
   const isNew = !item;
-  item = item || {};
+  item = mergeChain(item || {});
   const statusOpts = [['em_aberto','Em aberto'],['enviada','Enviada'],['aceita','Aceita'],['recusada','Recusada']];
   const motivoPerdaOpts = [['','— selecione —'],['sem_interesse','Sem interesse'],['sem_credito','Sem crédito'],['concorrente','Concorrente'],['sem_resposta','Sem resposta'],['vistoria_reprovada','Vistoria reprovada'],['oportunidade_futura','Oportunidade futura']];
 
@@ -3491,7 +3594,7 @@ function openPropostaModal(item=null){
   function recalcSemSolar(){
     const kwh = parseBR(form.kwh.value)||0;
     if(kwh){
-      const sem = parseFloat((kwh*1.29).toFixed(2));
+      const sem = parseFloat((kwh*1.32*1.13).toFixed(2)); // tarifa 1.32 + 13% CIP
       form.conta_sem_solar.value = fmtInputNum(sem);
       form.conta_com_solar.value = fmtInputNum(parseFloat((sem*0.15).toFixed(2)));
     }
@@ -3694,7 +3797,7 @@ function attachFileUploads(rootEl, fileStore){
    ============================================================ */
 function openVistoriaModal(item=null){
   const isNew = !item;
-  item = item || {};
+  item = mergeChain(item || {});
   const linked = getLinkedDocs(item);
 
   const statusOpts   = [['aguardando_agendamento','Aguardando Agendamento'],['agendada','Agendada'],['realizada','Realizada'],['cancelada','Cancelada']];
@@ -4603,7 +4706,7 @@ function imprimirTermoAditivo(contrato, termo){
 
 function openContratoModal(item=null){
   const isNew = !item;
-  item = item || {};
+  item = mergeChain(item || {});
   const linked = getLinkedDocs(item);
   const statusOpts = [['pendente','Pendente'],['enviado','Enviado'],['assinado','Assinado'],['cancelado','Cancelado'],['perdido','Perdido']];
   const faseOpts = [['','—'],['Monofásico','Monofásico'],['Bifásico','Bifásico'],['Trifásico','Trifásico']];
@@ -5806,7 +5909,7 @@ ${(c.pgto_desc||c.banco)?'<p><strong>3.1. O Pagamento ocorrerá: <span style="co
    LOGISTICA MODAL
    ============================================================ */
 function openLogisticaModal(item=null){
-  item = item || {};
+  item = mergeChain(item || {});
   const linked = getLinkedDocs(item);
   const statusOpts = [['aguardando','Aguardando'],['comprado','Comprado'],['enviado','Enviado'],['entregue','Entregue']];
 
@@ -5920,7 +6023,7 @@ function openLogisticaModal(item=null){
    INSTALACAO MODAL
    ============================================================ */
 function openInstalacaoModal(item=null){
-  item = item || {};
+  item = mergeChain(item || {});
   const linked = getLinkedDocs(item);
   const statusOpts = [['aguardando_agendamento','Aguardando Agendamento'],['agendada','Agendada'],['em_andamento','Em andamento'],['concluida','Concluída'],['cancelada','Cancelada']];
   const fotos = item.fotos || {};
@@ -6553,7 +6656,7 @@ ${item.obs?`<h2>📝 Observações</h2><div class="obs">${esc(item.obs)}</div>`:
    HOMOLOGACAO MODAL
    ============================================================ */
 function openHomologacaoModal(item=null){
-  item = item || {};
+  item = mergeChain(item || {});
   const linked = getLinkedDocs(item);
   const etapaOpts = [['aguardando_docs','Aguardando docs'],['projeto','Projeto'],['trt_art_pg','TRT/ART pago'],['parecer_acesso','Parecer de acesso'],['aumento_de_carga','Aumento de Carga'],['vistoria_final','Vistoria final'],['aprovada','Aprovada'],['reprovada','Reprovada']];
   const docs = item.docs || {};
