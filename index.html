@@ -5332,15 +5332,24 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
   /* ── PÁGINA 1 — CAPA: gradiente preenche 297mm completos ── */
   body>.page:nth-child(2){
     height:297mm;
+    min-height:297mm;
+    max-height:297mm;
     position:relative;
     overflow:hidden;
-    page-break-after:always
+    page-break-inside:avoid;
+    break-inside:avoid;
+    page-break-after:always;
+    break-after:page
   }
   body>.page:nth-child(2) .capa{
     position:absolute;
     top:0;left:0;right:0;bottom:0;
     height:297mm;
-    width:100%
+    min-height:297mm;
+    width:100%;
+    overflow:hidden;
+    page-break-inside:avoid;
+    break-inside:avoid
   }
 
   /* ── FUSÃO: Resumo + Projeção → 45%+52%=97% → 1 folha ── */
