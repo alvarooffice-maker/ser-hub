@@ -751,8 +751,11 @@ function showCompletarCadastroModal(onComplete){
       cpf:      fd.cpf,
       endereco: fd.endereco,
       cep:      fd.cep,
-    }).eq('id', State.profile.id);
-    if(error){ toast('Erro ao salvar: '+error.message,'error'); return; }
+    }).eq('email', State.user.email);
+    if(error){
+      alert('Erro ao salvar cadastro: ' + error.message + '\n\nContate o administrador.');
+      return;
+    }
     State.profile.telefone = fd.telefone;
     State.profile.cpf      = fd.cpf;
     State.profile.endereco = fd.endereco;
