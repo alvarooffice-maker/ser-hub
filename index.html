@@ -9085,6 +9085,9 @@ function openUserModal(item=null){
       ${isNew?`<div style="grid-column:1/-1;font-size:11px;color:#888;margin-top:-8px">💡 Ex: <strong>Senha2025</strong> — evite caracteres especiais como @#$%</div>`:''}
       ${formField({label:'Perfil',name:'perfil',type:'select',value:item.perfil||'vendedor',options:perfilOpts})}
       ${formField({label:'CPF',name:'cpf',value:item.cpf||'',placeholder:'000.000.000-00'})}
+      ${formField({label:'Telefone',name:'telefone',value:item.telefone||'',placeholder:'(91) 99999-9999'})}
+      ${formField({label:'Endereço',name:'endereco',value:item.endereco||'',placeholder:'Rua, nº, complemento, bairro'})}
+      ${formField({label:'CEP',name:'cep',value:item.cep||'',placeholder:'00000-000'})}
       ${formField({label:'Ativo',name:'ativo',type:'toggle',value:item.ativo!==false})}
     </div></div>
     <div class="modal-footer">
@@ -9100,13 +9103,15 @@ function openUserModal(item=null){
       try{
         await adminApi('create_user', {
           email: data.email, password: data.password, nome: data.nome,
-          perfilNovo: data.perfil, ativo: data.ativo !== false, cpf: data.cpf || null,
+          perfilNovo: data.perfil, ativo: data.ativo !== false,
+          cpf: data.cpf || null, telefone: data.telefone || null,
+          endereco: data.endereco || null, cep: data.cep || null,
         });
         toast('Usuário criado com sucesso!','success');
       }catch(err){ return toast(err.message,'error'); }
     } else {
       try{
-        await adminApi('update_perfil', { email: item.email, nome: data.nome, perfilNovo: data.perfil, ativo: data.ativo, cpf: data.cpf||null });
+        await adminApi('update_perfil', { email: item.email, nome: data.nome, perfilNovo: data.perfil, ativo: data.ativo, cpf: data.cpf||null, telefone: data.telefone||null, endereco: data.endereco||null, cep: data.cep||null });
         toast('Atualizado','success');
       }catch(err){ return toast(err.message,'error'); }
     }
