@@ -5736,23 +5736,42 @@ async function gerarPDF(){
   const btn = document.getElementById('btnGerarPDF');
   btn.disabled = true;
   btn.textContent = '⏳ Gerando PDF...';
+  const bar = document.querySelector('.print-bar');
+  if(bar) bar.style.display = 'none';
   try {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
     const pages = document.querySelectorAll('.page');
+    const A4_W_PX = 794;
     for(let i=0;i<pages.length;i++){
-      const canvas = await html2canvas(pages[i], {
-        scale:2, useCORS:true, backgroundColor:'#ffffff',
-        logging:false, allowTaint:true
+      const el = pages[i];
+      const origW = el.style.width;
+      const origMinH = el.style.minHeight;
+      const origMaxH = el.style.maxHeight;
+      el.style.width = A4_W_PX + 'px';
+      el.style.minHeight = '';
+      el.style.maxHeight = '';
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        width: A4_W_PX,
+        windowWidth: A4_W_PX,
       });
-      const imgData = canvas.toDataURL('image/jpeg',0.92);
-      if(i>0) pdf.addPage();
-      pdf.addImage(imgData,'JPEG',0,0,210,297);
+      el.style.width = origW;
+      el.style.minHeight = origMinH;
+      el.style.maxHeight = origMaxH;
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const canvasH_mm = (canvas.height / canvas.width) * 210;
+      if(i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, canvasH_mm);
     }
     pdf.save('Proposta_SER.pdf');
   } catch(e){
-    alert('Erro ao gerar PDF: '+e.message);
+    alert('Erro ao gerar PDF: ' + e.message);
   } finally {
+    if(bar) bar.style.display = '';
     btn.disabled = false;
     btn.textContent = '🖨️ Baixar PDF';
   }
