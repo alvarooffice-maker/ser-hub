@@ -5178,15 +5178,12 @@ function abrirPropostaJanela(p, imprimir=false){
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
 <title>Proposta SER — ${p.nome||''}</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0eaf8;color:#111}
 .print-bar{position:fixed;top:0;left:0;right:0;z-index:1000;background:#1a0a2e;padding:10px 24px;display:flex;justify-content:space-between;align-items:center}
 .print-bar span{font-size:13px;color:#c4b5fd;font-weight:600}
 .print-bar button{background:#6B21A8;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700}
-.print-bar button:disabled{opacity:.6;cursor:wait}
 
 /* ── PAGE BASE ── */
 .page{max-width:794px;margin:0 auto 24px;background:#fff;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.15)}
@@ -5429,7 +5426,7 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
 </style></head><body>
 <div class="print-bar">
   <span>SER Energia Renovável — Proposta Comercial</span>
-  <button id="btnGerarPDF" onclick="gerarPDF()">🖨️ Baixar PDF</button>
+  <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
 </div>
 
 <!-- ══════════════════ PÁGINA 1: CAPA ══════════════════ -->
@@ -5731,76 +5728,6 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
 </div>
 </div>
 
-<script>
-async function gerarPDF(){
-  const btn = document.getElementById('btnGerarPDF');
-  btn.disabled = true;
-  btn.textContent = '⏳ Gerando PDF...';
-  const bar = document.querySelector('.print-bar');
-  if(bar) bar.style.display = 'none';
-
-  const A4_W = 794;
-  const A4_H = 1123;
-
-  // Injetar estilo que força cada .page a dimensões exatas de A4
-  const pdfStyle = document.createElement('style');
-  pdfStyle.id = 'pdf-capture-style';
-  pdfStyle.textContent = `
-    body { width: ${A4_W}px !important; overflow: visible !important; }
-    .page {
-      width: ${A4_W}px !important;
-      min-width: ${A4_W}px !important;
-      max-width: ${A4_W}px !important;
-      height: ${A4_H}px !important;
-      min-height: ${A4_H}px !important;
-      max-height: ${A4_H}px !important;
-      overflow: hidden !important;
-      margin: 0 !important;
-      box-shadow: none !important;
-      position: relative !important;
-    }
-    .capa {
-      height: ${A4_H}px !important;
-      min-height: ${A4_H}px !important;
-    }
-    .capa-hero { flex: 1 !important; }
-  `;
-  document.head.appendChild(pdfStyle);
-  await new Promise(r => setTimeout(r, 400));
-
-  try {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-    const pages = document.querySelectorAll('.page');
-
-    for(let i = 0; i < pages.length; i++){
-      const el = pages[i];
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        width: A4_W,
-        height: A4_H,
-        windowWidth: A4_W,
-        windowHeight: A4_H,
-      });
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      if(i > 0) pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
-    }
-    pdf.save('Proposta_SER.pdf');
-  } catch(e){
-    alert('Erro ao gerar PDF: ' + e.message);
-  } finally {
-    const s = document.getElementById('pdf-capture-style');
-    if(s) s.remove();
-    if(bar) bar.style.display = '';
-    btn.disabled = false;
-    btn.textContent = '🖨️ Baixar PDF';
-  }
-}
-<\/script>
 </body></html>`);
   win.document.close();
 }
