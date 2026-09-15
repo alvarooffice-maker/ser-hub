@@ -5739,16 +5739,34 @@ async function gerarPDF(){
   const bar = document.querySelector('.print-bar');
   if(bar) bar.style.display = 'none';
 
-  // Forçar body a largura A4 para captura correta
   const A4_W = 794;
   const A4_H = 1123;
-  const origBodyW = document.body.style.width;
-  const origBodyOF = document.body.style.overflow;
-  document.body.style.width = A4_W + 'px';
-  document.body.style.overflow = 'visible';
 
-  // Aguardar reflow
-  await new Promise(r => setTimeout(r, 300));
+  // Injetar estilo que força cada .page a dimensões exatas de A4
+  const pdfStyle = document.createElement('style');
+  pdfStyle.id = 'pdf-capture-style';
+  pdfStyle.textContent = `
+    body { width: ${A4_W}px !important; overflow: visible !important; }
+    .page {
+      width: ${A4_W}px !important;
+      min-width: ${A4_W}px !important;
+      max-width: ${A4_W}px !important;
+      height: ${A4_H}px !important;
+      min-height: ${A4_H}px !important;
+      max-height: ${A4_H}px !important;
+      overflow: hidden !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      position: relative !important;
+    }
+    .capa {
+      height: ${A4_H}px !important;
+      min-height: ${A4_H}px !important;
+    }
+    .capa-hero { flex: 1 !important; }
+  `;
+  document.head.appendChild(pdfStyle);
+  await new Promise(r => setTimeout(r, 400));
 
   try {
     const { jsPDF } = window.jspdf;
@@ -5775,8 +5793,8 @@ async function gerarPDF(){
   } catch(e){
     alert('Erro ao gerar PDF: ' + e.message);
   } finally {
-    document.body.style.width = origBodyW;
-    document.body.style.overflow = origBodyOF;
+    const s = document.getElementById('pdf-capture-style');
+    if(s) s.remove();
     if(bar) bar.style.display = '';
     btn.disabled = false;
     btn.textContent = '🖨️ Baixar PDF';
