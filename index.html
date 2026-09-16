@@ -695,7 +695,7 @@ function showApp(){
   $('#app').classList.add('active');
   renderUser();
   renderNav();
-  const roleRouteMap = { tec_vistoria:'vistoriador', tec_instalacao:'instalador', tec_homologacao:'homologador', vendedor:'home_vendedor', supervisor:'home_vendedor', admin:'home_vendedor' };
+  const roleRouteMap = { tec_vistoria:'vistoriador', tec_instalacao:'instalador', tec_vistoria_instalacao:'vistoriador', tec_homologacao:'homologador', vendedor:'home_vendedor', supervisor:'home_vendedor', admin:'home_vendedor' };
   const startRoute = roleRouteMap[userRole()] || 'dashboard';
   // Verifica cadastro completo antes de liberar o app
   if(perfilIncompleto(State.profile)){
@@ -812,6 +812,7 @@ function visibleRoutes(){
     if(role==='tec_vistoria') return ['dashboard','calendario','clientes','vistoriador','reservico','appmanutencao'].includes(r.id);
     if(role==='tec_instalacao') return ['dashboard','calendario','clientes','instalador','reservico','appmanutencao'].includes(r.id);
     if(role==='tec_homologacao') return ['dashboard','calendario','clientes','homologador'].includes(r.id);
+    if(role==='tec_vistoria_instalacao') return ['dashboard','calendario','clientes','vistoriador','instalador','reservico','appmanutencao'].includes(r.id);
     if(['vistoriador','instalador','homologador'].includes(r.id)) return false; // oculto para outros perfis
     return true;
   });
@@ -3321,7 +3322,7 @@ function openLeadModal(item=null){
       ...(State.propostas||[]),
       ...(State.vistorias||[]),
       ...(State.contratos||[]),
-      ...(State.logisticas||[]),
+      ...(State.logistica||[]),
       ...(State.instalacoes||[]),
       ...(State.homologacoes||[]),
       ...(State.posvenda||[]),
