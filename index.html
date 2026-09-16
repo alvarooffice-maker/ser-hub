@@ -1776,7 +1776,7 @@ async function renderVistoriadorKanban(){
       const end = [v.rua, v.numero, v.bairro, v.cidade].filter(Boolean).join(', ');
       return `
         <div class="kanban-card" data-id="${v.id}" data-col="${col.id}"
-             data-search="${(v.nome||'').toLowerCase()}"
+             data-search="${esc(v.nome||'').toLowerCase()}"
              style="cursor:pointer">
           <div class="kanban-card-inner">
             <div class="name">🔍 ${esc(v.nome||'—')}</div>
@@ -1839,7 +1839,7 @@ async function renderInstaladorKanban(){
       const end = i.endereco || '';
       return `
         <div class="kanban-card" data-id="${i.id}" data-col="${col.id}"
-             data-search="${(i.nome||'').toLowerCase()}" style="cursor:pointer">
+             data-search="${esc(i.nome||'').toLowerCase()}" style="cursor:pointer">
           <div class="kanban-card-inner">
             <div class="name">🔧 ${esc(i.nome||'—')}</div>
             ${i.telefone ? `<div class="meta">📞 ${esc(i.telefone)}</div>` : ''}
@@ -1899,7 +1899,7 @@ async function renderHomologadorKanban(){
     const cards = items.map(h => {
       return `
         <div class="kanban-card" data-id="${h.id}" data-col="${col.id}"
-             data-search="${(h.nome||'').toLowerCase()}" style="cursor:pointer">
+             data-search="${esc(h.nome||'').toLowerCase()}" style="cursor:pointer">
           <div class="kanban-card-inner">
             <div class="name">📋 ${esc(h.nome||'—')}</div>
             ${h.telefone ? `<div class="meta">📞 ${esc(h.telefone)}</div>` : ''}
@@ -2400,7 +2400,7 @@ function renderCard(item,stage){
   const slaDaysLabel = showSla && _slaDias>=_slaWarn ? `<span class="sla-days">${_slaDias}d</span>` : '';
 
   return `
-    <div class="kanban-card ${_slaClass}" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${((item.nome||'')+' '+(item.responsavel||item.vendedor||'')+' '+(item.projeto||'')).toLowerCase()}">
+    <div class="kanban-card ${_slaClass}" draggable="${draggable}" data-id="${item.id}" data-stage="${stage.id}" data-search="${(esc(item.nome||'')+' '+esc(item.responsavel||item.vendedor||'')+' '+esc(item.projeto||'')).toLowerCase()}">
       <div class="kanban-card-inner" style="position:relative">
         ${slaDaysLabel}
         <div class="name">${stage.icon} ${esc(item.nome||'—')}${projetoBadge?'<br>'+projetoBadge:''}${remarketingBadge?'<br>'+remarketingBadge:''}</div>
@@ -4691,6 +4691,7 @@ function openTermoAditivoModal(contrato, termo=null){
 }
 
 function imprimirTermoAditivo(contrato, termo){
+  const _e = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const tipoLabel = TIPO_TERMO_LABEL[termo.tipo] || termo.tipo;
   const w = window.open('','_blank');
   if(!w){ alert('Popup bloqueado. Permita popups para este site.'); return; }
@@ -4735,8 +4736,8 @@ function imprimirTermoAditivo(contrato, termo){
   ${termo.laudo_url ? `
   <div style="page-break-before:always;margin-top:40px">
     <h3 style="text-align:center;font-size:14px;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Laudo de Sombreamento Anexo</h3>
-    <embed src="${termo.laudo_url}" type="application/pdf" width="100%" height="900px" style="border:1px solid #ddd;border-radius:4px">
-    <p style="font-size:11px;color:#888;margin-top:8px;text-align:center">Caso o laudo não apareça acima, <a href="${termo.laudo_url}" target="_blank">clique aqui para abrir</a>.</p>
+    <embed src="${_e(termo.laudo_url)}" type="application/pdf" width="100%" height="900px" style="border:1px solid #ddd;border-radius:4px">
+    <p style="font-size:11px;color:#888;margin-top:8px;text-align:center">Caso o laudo não apareça acima, <a href="${_e(termo.laudo_url)}" target="_blank">clique aqui para abrir</a>.</p>
   </div>` : ''}
   <script>
     const img = document.querySelector('.doc-header img');
@@ -4962,7 +4963,8 @@ function openContratoModal(item=null){
    LAUDO DE VISTORIA TÉCNICA HTML/PDF
    ============================================================ */
 function abrirVistoriaJanela(v, imprimir=false){
-  const txt = x => x||'—';
+  const _e = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const txt = x => _e(x)||'—';
   const num = (x,d=0) => x!=null?Number(x).toFixed(d):'—';
   const dt  = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '—';
   const bool= b => b?'Sim':'Não';
@@ -5154,7 +5156,8 @@ ${(()=>{
 function abrirPropostaJanela(p, imprimir=false){
   const fR  = v => 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
   const fRk = v => { const n=Number(v||0); return n>=1000?'R$ '+Math.round(n/1000)+'k':fR(n); };
-  const txt = v => v||'—';
+  const _e = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const txt = v => _e(v)||'—';
   const hoje    = new Date().toLocaleDateString('pt-BR');
   const valStr  = p.validade ? (() => {
     const d = new Date(p.validade+'T12:00:00');
@@ -5809,7 +5812,8 @@ async function gerarPDF(){
 
 function abrirContratoJanela(c, imprimir=false){
   const fR = v => 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const txt = v => v||'_______________';
+  const _e = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const txt = v => _e(v)||'_______________';
   const dt  = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
   const end = [c.rua, c.numero?'nº '+c.numero:'', c.complemento, c.bairro, c.cidade, c.estado||'', c.cep?'CEP '+c.cep:''].filter(Boolean).join(', ');
   function extenso(n){
@@ -6655,7 +6659,8 @@ function openLaudoCampoModal(item){
    LAUDO DE INSTALAÇÃO — PDF
    ============================================================ */
 function abrirInstalacaoLaudo(item, ld, fs){
-  const txt = x => x||'—';
+  const _e = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const txt = x => _e(x)||'—';
   const dt  = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '—';
   const bool= b => b ? 'Sim' : 'Não';
   const pad2= n => String(n).padStart(2,'0');
