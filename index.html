@@ -707,6 +707,7 @@ function showApp(){
 
 function perfilIncompleto(p){
   if(!p) return false;
+  if(p.perfil === 'admin') return false;
   return !p.telefone || !p.cpf || !p.endereco || !p.cep;
 }
 
@@ -2652,9 +2653,9 @@ function attachKanbanSearch(){
   });
 }
 
+let _dropLock = false;
 function attachKanbanDnD(){
   let dragging = null;
-  let _dropLock = false;
   $$('.kanban-card').forEach(card=>{
     card.addEventListener('dragstart', e=>{
       dragging = { id:card.dataset.id, stage:card.dataset.stage, el:card };
@@ -2809,7 +2810,7 @@ function buildTransitionPayload(item, fromStage, toStage){
     bairro:item.bairro, cidade:item.cidade, estado:item.estado, qtd_modulos:item.qtd_modulos, marca_modulo:item.marca_modulo,
     pot_modulo:item.pot_modulo, qtd_inversores:item.qtd_inversores, marca_inversor:item.marca_inversor, pot_inversor:item.pot_inversor,
     qtd_baterias:item.qtd_baterias, marca_bateria:item.marca_bateria, pot_bateria:item.pot_bateria, kwp:item.kwp,
-    status:'agendada'
+    status:'aguardando_agendamento'
   };
   if(toStage==='contrato'){
     const propContrato = (State.propostas||[]).find(p=>String(p.id)===String(item.proposta_id));
@@ -3053,12 +3054,17 @@ function openModal(html, size=''){
       form._submitting = true;
       const btn = form.querySelector('button[type="submit"]');
       if(btn) btn.disabled = true;
-      setTimeout(()=>{ form._submitting = false; if(btn) btn.disabled = false; }, 2000);
+      setTimeout(()=>{ form._submitting = false; if(btn) btn.disabled = false; }, 10000);
     });
   });
   return root;
 }
-function closeModal(){ $('#modalRoot').classList.remove('active'); $('#modalRoot').innerHTML=''; }
+function closeModal(){
+  const root = $('#modalRoot');
+  $$('form', root).forEach(form=>{ form._submitting = false; });
+  root.classList.remove('active');
+  root.innerHTML='';
+}
 $('#modalRoot').addEventListener('click', e=>{ if(e.target.id==='modalRoot') closeModal(); });
 
 /* ============================================================
@@ -3654,7 +3660,7 @@ function openPropostaModal(item=null){
 
   if(!isNew) carregarHistorico($('#histList'), 'propostas', item.id);
 
-  const statusPropMap = {em_aberto:'Em aberto', enviada:'Enviada', aceita:'Aceita', perdida:'Perdida'};
+  const statusPropMap = {em_aberto:'Em aberto', enviada:'Enviada', aceita:'Aceita', perdida:'Perdida', recusada:'Recusada'};
   form.addEventListener('submit', async e=>{
     e.preventDefault();
     const data = readForm(form);
@@ -4687,6 +4693,7 @@ function openTermoAditivoModal(contrato, termo=null){
 function imprimirTermoAditivo(contrato, termo){
   const tipoLabel = TIPO_TERMO_LABEL[termo.tipo] || termo.tipo;
   const w = window.open('','_blank');
+  if(!w){ alert('Popup bloqueado. Permita popups para este site.'); return; }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Termo Aditivo — ${tipoLabel}</title>
   <style>
     body{font-family:Arial,sans-serif;max-width:720px;margin:40px auto;color:#222;font-size:14px;line-height:1.7}
@@ -4964,6 +4971,7 @@ function abrirVistoriaJanela(v, imprimir=false){
   const di  = v.dados_inversor||{};
   const de  = v.dados_estrutura||{};
   const win = window.open('','_blank');
+  if(!win){ alert('Popup bloqueado. Permita popups para este site.'); return; }
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
@@ -5180,6 +5188,7 @@ function abrirPropostaJanela(p, imprimir=false){
   const inicial = (p.vendedor||'S').trim().charAt(0).toUpperCase();
 
   const win = window.open('','_blank');
+  if(!win){ alert('Popup bloqueado. Permita popups para este site.'); return; }
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
@@ -5707,7 +5716,7 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
     SOLUÇÕES EM ENERGIA RENOVÁVEL MATRIZ LTDA · CNPJ 58.656.750/0001-04<br>
     Travessa Antônio Baena, 300 · Bairro Marco · CEP 66.093-635 · Belém/PA
   </div>
-  <div class="contact-validity">Esta proposta é válida por \${valStr} a partir da data de emissão e está sujeita a visita técnica.</div>
+  <div class="contact-validity">Esta proposta é válida por ${valStr} a partir da data de emissão e está sujeita a visita técnica.</div>
   <div style="margin-top:28px;width:100%;max-width:520px">
     <div style="font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#6B21A8;margin-bottom:16px;text-align:center">PRÓXIMOS PASSOS</div>
     <div style="display:flex;gap:12px;justify-content:center">
@@ -5782,7 +5791,9 @@ async function gerarPDF(){
       if(i > 0) pdf.addPage();
       pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297);
     }
-    pdf.save('Proposta_SER.pdf');
+    const nomeCliente = (document.title.replace(/^Proposta SER\s*[—-]\s*/,'').trim()||'').replace(/[^a-zA-Z0-9À-ú ]/g,'').trim();
+    const filename = nomeCliente ? `Proposta SER — ${nomeCliente}.pdf` : 'Proposta_SER.pdf';
+    pdf.save(filename);
   } catch(e) {
     alert('Erro ao gerar PDF: ' + e.message);
   } finally {
@@ -5815,6 +5826,7 @@ function abrirContratoJanela(c, imprimir=false){
     return r+(n===1?' real':' reais');
   }
   const win = window.open('','_blank');
+  if(!win){ alert('Popup bloqueado. Permita popups para este site.'); return; }
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
@@ -6150,7 +6162,7 @@ function openInstalacaoModal(item=null){
   const contrato = (State.contratos||[]).find(c=>String(c.id)===String(item.contrato_id||logistica?.contrato_id));
   const endContrato = contrato ? [contrato.rua, contrato.numero?`nº ${contrato.numero}`:'', contrato.complemento, contrato.bairro, contrato.cidade, contrato.estado].filter(Boolean).join(', ') : '';
   const enderecoFinal = item.endereco || endContrato || '';
-  const vistoria = (State.vistorias||[]).find(v=>String(v.contrato_id)===String(item.contrato_id||logistica?.contrato_id));
+  const vistoria = (State.vistorias||[]).find(v=>String(v.id)===String(item.vistoria_id||logistica?.vistoria_id||contrato?.vistoria_id));
   const gmapFinal = item.gmap || vistoria?.gmap || contrato?.gmap || '';
   const homologacao = (State.homologacoes||[]).find(h=>String(h.contrato_id)===String(item.contrato_id||logistica?.contrato_id));
   const homDocs = homologacao?.docs || {};
@@ -6553,7 +6565,7 @@ function openLaudoCampoModal(item){
     $('#wzSave').style.display = n===STEPS.length-1?'':'none';
     $('#wzPDF').style.display  = n===STEPS.length-1?'':'none';
     renderBar();
-    document.querySelector('#modal .modal-body')?.scrollTo(0,0);
+    document.querySelector('#modalRoot .modal-body')?.scrollTo(0,0);
   };
 
   renderBar();
@@ -6658,6 +6670,7 @@ function abrirInstalacaoLaudo(item, ld, fs){
   };
 
   const win = window.open('','_blank');
+  if(!win){ alert('Popup bloqueado. Permita popups para este site.'); return; }
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8">
 <title>Laudo de Instalação — ${esc(item.nome||'')}</title>
@@ -7675,6 +7688,7 @@ function renderBaterias(){
 function abrirBateriaPDF(calc, cliente, cidade, imprimir=false){
   const hoje = new Date().toLocaleDateString('pt-BR');
   const win = window.open('','_blank');
+  if(!win){ alert('Popup bloqueado. Permita popups para este site.'); return; }
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
@@ -7981,6 +7995,7 @@ function gerarRelatorioComissoesPDF(){
     </div>`).join('');
 
   const w = window.open('','_blank');
+  if(!w){ alert('Popup bloqueado. Permita popups para este site.'); return; }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Relatório de Comissões — SER Energia</title>
   <style>
