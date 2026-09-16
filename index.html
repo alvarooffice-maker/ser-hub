@@ -320,6 +320,7 @@ tbody tr:hover{background:#fafaf6}
 .file-thumbs{display:flex;flex-wrap:wrap;gap:6px}
 .file-thumb{width:60px;height:60px;border-radius:6px;border:1px solid var(--border);position:relative;overflow:hidden;background:#fff}
 .file-thumb img{width:100%;height:100%;object-fit:cover}
+.file-thumb.contain img{object-fit:contain;background:#f8f8f8}
 .file-thumb .rm{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;width:18px;height:18px;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center}
 .file-thumb.doc{display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-light);padding:4px;text-align:center;word-break:break-all}
 
@@ -3752,22 +3753,24 @@ async function uploadFile(bucket, file, prefix=''){
   return { url:urlData.publicUrl, path, name:file.name };
 }
 
-function fileUploadBlock(label, name, bucket, currentList=[], multiple=true){
+function fileUploadBlock(label, name, bucket, currentList=[], multiple=true, contain=false){
   const list = Array.isArray(currentList)?currentList:[];
   const btnLabel = multiple ? '+ Adicionar fotos' : '+ Selecionar arquivo';
   return `
     <div class="file-upload" data-fu="${name}">
       <label>${esc(label)}</label>
-      <div class="file-thumbs" data-thumbs="${name}">
-        ${list.map((f,i)=>thumbHtml(f,name,i)).join('')}
+      <div class="file-thumbs" data-thumbs="${name}" ${contain?'data-contain="1"':''}>
+        ${list.map((f,i)=>thumbHtml(f,name,i,contain)).join('')}
       </div>
       <button type="button" class="btn-add-file" data-trigger="${name}">${btnLabel}</button>
       <input type="file" data-bucket="${bucket}" data-name="${name}" ${multiple?'multiple':''} accept="image/*,application/pdf" />
     </div>`;
 }
-function thumbHtml(f,name,i){
+function thumbHtml(f,name,i,contain=false){
   const isImg = (f.url||'').match(/\.(jpe?g|png|gif|webp|bmp)$/i);
-  return `<div class="file-thumb ${isImg?'':'doc'}" data-name="${name}" data-i="${i}">
+  const containClass = contain ? ' contain' : '';
+  const containStyle = contain ? ' style="width:120px;height:90px"' : '';
+  return `<div class="file-thumb ${isImg?'':'doc'}${containClass}" data-name="${name}" data-i="${i}"${containStyle}>
     ${isImg ? `<a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}" alt="${esc(f.name||'')}"/></a>` : `<a href="${esc(f.url)}" target="_blank">${esc(f.name||'arquivo')}</a>`}
     <button type="button" class="rm" data-rm="${name}" data-i="${i}">×</button>
   </div>`;
@@ -3782,7 +3785,8 @@ function attachFileUploads(rootEl, fileStore){
         if(!fileStore[name]) return;
         fileStore[name].splice(i,1);
         const wrap = rootEl.querySelector(`[data-thumbs="${name}"]`);
-        wrap.innerHTML = fileStore[name].map((f,i)=>thumbHtml(f,name,i)).join('');
+        const isContain = wrap?.dataset.contain === '1';
+        wrap.innerHTML = fileStore[name].map((f,i)=>thumbHtml(f,name,i,isContain)).join('');
         bindRemove();
       });
     });
@@ -3814,7 +3818,8 @@ function attachFileUploads(rootEl, fileStore){
         }catch(e){ toast('Erro upload: '+e.message,'error'); }
       }
       const wrap = rootEl.querySelector(`[data-thumbs="${name}"]`);
-      wrap.innerHTML = fileStore[name].map((f,i)=>thumbHtml(f,name,i)).join('');
+      const isContain = wrap?.dataset.contain === '1';
+      wrap.innerHTML = fileStore[name].map((f,i)=>thumbHtml(f,name,i,isContain)).join('');
       bindRemove();
       inp.value = '';
     });
@@ -4001,7 +4006,7 @@ function openVistoriaModal(item=null){
 
             ${fileUploadBlock('Foto das Telhas *','telhas','vistorias',fotos.telhas||[],true)}
             ${fileUploadBlock('Imagem Aérea *','telhado_aereo','vistorias',fotos.telhado_aereo||[],true)}
-            ${fileUploadBlock('Imagem do Croqui *','croqui','vistorias',fotos.croqui||[],true)}
+            ${fileUploadBlock('Imagem do Croqui *','croqui','vistorias',fotos.croqui||[],true,true)}
 
             ${formField({label:'Há risco de sombreamento? *',name:'de_risco_sombreamento',type:'select',value:de.risco_sombreamento,options:[['','— selecione —'],['sim','Sim'],['nao','Não']],required:true})}
 
