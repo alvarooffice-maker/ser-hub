@@ -881,7 +881,7 @@ function navigate(route){
    DATA LOADERS
    ============================================================ */
 async function loadAll(){
-  const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','atendimentos','app_manutencao','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis','tentativas_contato','metas','metas_vendedores','contratos_termos_aditivos','custos_fixos'];
+  const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','atendimentos','app_manutencao','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis','tentativas_contato','metas','metas_vendedores','contratos_termos_aditivos','custos_fixos','relacionamento_agenda'];
   const stateMap = { financeiro_receitas:'receitas', financeiro_despesas:'despesas', app_manutencao:'appman', contratos_termos_aditivos:'termos_aditivos' };
   await Promise.all(tables.map(async t => {
     try{
@@ -1072,6 +1072,26 @@ async function renderDashboard(){
   const vistHoje = (State.vistorias||[]).filter(v=>v.data_agendamento===td).length;
   const instHoje = instal.filter(i=>i.data_instalacao===td).length;
 
+  // Régua de relacionamento — disparos pendentes SOMENTE hoje (não envia atrasados)
+  const agendaHoje = (State.relacionamento_agenda||[]).filter(a=>a.status==='pendente' && a.data_disparo===td);
+  const tipoLabel = {
+    '5dias':'⚡ Acolhimento (5 dias)', '30dias':'🙏 Gratidão (30 dias)',
+    '90dias':'🚀 Embaixador (90 dias)', '300dias':'🛡️ Manutenção (300 dias)', 'aniversario':'🎂 Aniversário'
+  };
+  const tipoMsgMap = {
+    '5dias': 'Oi [Nome], tudo bem? 😊\nJá faz 5 dias que sua usina solar está instalada e gerando economia pra você — como está sendo essa experiência até aqui?\nQueremos garantir que você esteja aproveitando 100% do seu sistema! Por isso, vamos te apresentar o app de monitoramento da SER, onde você acompanha em tempo real:\n✅ Quanto sua usina está gerando\n✅ Sua economia acumulada\n✅ Performance do sistema, tudo pelo celular\nPosso te enviar o passo a passo pra você baixar agora?\nQualquer dúvida, estamos aqui. Você não comprou só um sistema, você entrou pra família SER! 🌞',
+    '30dias': '[Nome], hoje é um dia especial pra gente! 🙏\nFaz exatamente 1 mês que sua usina está instalada, e olha só o que isso significa: 1 mês de economia real na sua conta de luz, 1 mês de energia limpa gerada na sua casa, e 1 mês fazendo parte da nossa família SER.\nQueremos genuinamente agradecer pela confiança. Cada cliente como você é o motivo da SER existir. 💛\nE como forma de celebrar essa parceria, temos uma novidade:\n🌟 Programa Embaixador SER 🌟\nA partir de hoje, você pode ganhar até um salário mínimo por cada venda concretizada só indicando pessoas que também querem economizar com energia solar!\nSimples assim: você indica, a pessoa fecha, você recebe.\nQuer saber como funciona? Te explico tudo em 2 minutos aqui no WhatsApp.\nParabéns pelo seu primeiro mês com a SER! Que venham muitos outros 🚀',
+    '90dias': '[Nome], já são 3 meses de você com a SER Energia! 🎊\nNesse tempo você continua gerando energia limpa todos os dias direto do telhado da sua casa e economizando na conta de luz.\nEstamos muito felizes com essa parceria, e por isso batemos aqui hoje com carinho: você já conhece o Programa Embaixador SER?\nRelembrando: você indica, a pessoa fecha a instalação, e você ganha até um salário mínimo por cada venda concretizada. Sem limite de quantas indicações você pode fazer!\nMuita gente da sua rede também merece parar de pagar caro na conta de luz — e você pode ser a ponte pra isso, ganhando por cada indicação.\nTopa começar a indicar hoje mesmo? Me chama que te explico tudo certinho! 💪🌞',
+    '300dias': 'Oi [Nome], tudo bem? 😊\nAqui é da equipe SER Energia Renovável. Passamos para te dar um aviso importante!\n\nJá se aproxima 1 ano desde a instalação da sua usina solar — parabéns por gerar sua própria energia todo esse tempo! ☀️\n\nComo acontece com qualquer equipamento de qualidade, a manutenção preventiva é fundamental para garantir que o seu sistema continue operando com máxima eficiência e vida útil prolongada.\n\nPor isso, recomendamos agendar agora a sua:\n✅ Limpeza dos módulos fotovoltaicos\n✅ Inspeção das conexões elétricas\n✅ Verificação do desempenho do inversor\n✅ Check geral da estrutura de fixação\n\nEssa revisão preventiva evita perdas de geração e garante que sua garantia permaneça válida.\n\nQuer agendar? É só responder aqui que a gente cuida de tudo! 🔧🌞',
+    'aniversario': '🎉 Feliz Aniversário, [Nome]! 🎂\nHoje o dia é seu, e a família SER Energia não podia deixar passar em branco!\nQueremos desejar um ano repleto de conquistas, saúde e muita luz (literalmente ☀️) na sua vida.\nObrigado por confiar na SER e fazer parte da nossa história. Que seu novo ciclo venha ainda mais brilhante!\nUm abraço da equipe SER Energia Renovável 💛'
+  };
+  function agendaWaLink(a){
+    const tel = (a.cliente_telefone||'').replace(/\D/g,'');
+    const base = tel ? ('https://wa.me/'+(tel.length<=11?'55'+tel:tel)) : 'https://wa.me/';
+    const msg = (tipoMsgMap[a.tipo]||'').replace(/\[Nome\]/g, a.cliente_nome||'');
+    return base+'?text='+encodeURIComponent(msg);
+  }
+
   // Anos disponíveis para o seletor (a partir dos dados existentes + ano atual)
   const anoAtual = new Date().getFullYear();
   const anosSet = new Set([anoAtual]);
@@ -1187,6 +1207,29 @@ async function renderDashboard(){
         </div>
       </div>
     </div>
+
+    <!-- Régua de Relacionamento — disparos de hoje -->
+    ${agendaHoje.length > 0 ? `
+    <div class="card" data-agenda-card style="margin-bottom:16px">
+      <div class="card-header"><h3>💛 Régua de Relacionamento <span style="font-size:11px;font-weight:400;color:var(--text-light)">${agendaHoje.length} mensagem${agendaHoje.length!==1?'s':''} para hoje</span></h3></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${agendaHoje.map(a=>`
+        <div id="agenda-row-${esc(a.id)}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-secondary);border-radius:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:160px">
+            <div style="font-weight:600;font-size:13px">${esc(a.cliente_nome||'—')}</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:2px">${esc(tipoLabel[a.tipo]||a.tipo)}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <a href="${agendaWaLink(a)}" target="_blank" rel="noopener"
+               style="display:inline-flex;align-items:center;gap:4px;padding:6px 10px;background:#25d366;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none">
+              📲 Enviar WhatsApp
+            </a>
+            <button onclick="agendaMarcar('${esc(a.id)}','enviado')" style="padding:6px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer">✔ Enviado</button>
+            <button onclick="agendaMarcar('${esc(a.id)}','ignorado')" style="padding:6px 10px;background:#e5e7eb;color:#374151;border:none;border-radius:6px;font-size:12px;cursor:pointer">✗ Ignorar</button>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>` : ''}
 
     <!-- Gráfico de desempenho -->
     <div class="card" style="margin-bottom:16px">
@@ -1699,6 +1742,20 @@ const STAGES = [
   { id:'homologacao', label:'Homologação', icon:'📋', table:'homologacoes', dataKey:'homologacoes' },
   { id:'posvenda',     label:'Pós Venda',    icon:'⭐', table:'posvenda',     dataKey:'posvenda' }
 ];
+
+async function agendaMarcar(id, status){
+  const row = document.getElementById('agenda-row-'+id);
+  if(row) row.style.opacity='0.4';
+  const {error} = await supa.from('relacionamento_agenda').update({status}).eq('id', id);
+  if(error){ if(row) row.style.opacity='1'; alert('Erro: '+error.message); return; }
+  if(row) row.remove();
+  // Remove card se ficou vazio
+  const card = document.querySelector('[data-agenda-card]');
+  if(card && !card.querySelector('[id^="agenda-row-"]')) card.remove();
+  // Atualiza State
+  const item = (State.relacionamento_agenda||[]).find(a=>String(a.id)===String(id));
+  if(item) item.status = status;
+}
 
 async function renderPipeline(){
   await loadAll();
@@ -4829,6 +4886,7 @@ function openContratoModal(item=null){
         ${!isNew?`<button type="button" class="btn btn-secondary" id="vizContBtn">👁️ Ver Contrato</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-secondary" id="dlContBtn">🖨️ PDF</button>`:''}
         ${!isNew&&canVerFinanceiro()?`<button type="button" class="btn btn-secondary" id="projFinBtn">💰 Financeiro</button>`:''}
+        ${!isNew?`<button type="button" class="btn btn-secondary" id="portalLinkBtn">🔗 Portal do cliente</button>`:''}
         ${!isNew?`<button type="button" class="btn btn-danger" id="delContBtn">Excluir</button>`:''}
         <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
         <button type="submit" class="btn btn-primary">${isNew?'Criar':'Salvar'}</button>
@@ -4949,6 +5007,25 @@ function openContratoModal(item=null){
   $('#vizContBtn')?.addEventListener('click', ()=> abrirContratoJanela(item, false));
   $('#dlContBtn')?.addEventListener('click',  ()=> abrirContratoJanela(item, true));
   $('#projFinBtn')?.addEventListener('click', ()=> openProjetoFinanceiroModal(item.id, item.nome||item.cliente||''));
+
+  $('#portalLinkBtn')?.addEventListener('click', async ()=>{
+    const btn = $('#portalLinkBtn');
+    btn.disabled = true; btn.textContent = '⏳ Gerando…';
+    let {data: existing} = await supa.from('portal_tokens').select('token').eq('contrato_id', item.id).limit(1).single();
+    if(!existing){
+      const {data: created} = await supa.from('portal_tokens').insert({contrato_id: item.id}).select('token').single();
+      existing = created;
+    }
+    if(existing?.token){
+      const link = 'https://alvarooffice-maker.github.io/ser-portal/portal.html?token=' + existing.token;
+      await navigator.clipboard.writeText(link).catch(()=>{});
+      btn.textContent = '✅ Link copiado!';
+      setTimeout(()=>{ btn.textContent = '🔗 Copiar link do portal'; btn.disabled=false; }, 3000);
+    } else {
+      btn.textContent = '🔗 Copiar link do portal'; btn.disabled=false;
+      toast('Erro ao gerar link','error');
+    }
+  });
 
   if(!isNew) attachLinkedDocListeners(linked);
 
@@ -6314,6 +6391,23 @@ function openInstalacaoModal(item=null){
     data.fotos = { ...(item.fotos||{}), ...filesStore };
     const { error } = await supa.from('instalacoes').update(data).eq('id',item.id);
     if(error) return toast('Erro ao salvar: '+error.message,'error');
+
+    // Auto-agenda régua de relacionamento quando data_instalacao é preenchida
+    if(data.data_instalacao && !item.data_instalacao){
+      const contrato = (State.contratos||[]).find(c=>String(c.id)===String(item.contrato_id));
+      const nome = contrato?.nome || item.nome || '';
+      const tel  = contrato?.telefone || item.telefone || '';
+      const base = new Date(data.data_instalacao+'T12:00:00');
+      const addD = (d) => { const dt=new Date(base); dt.setDate(dt.getDate()+d); return dt.toISOString().slice(0,10); };
+      const tiposDias = [['5dias',5],['30dias',30],['90dias',90],['300dias',300]];
+      const agendaRows = tiposDias.map(([tipo,dias])=>({
+        contrato_id: item.contrato_id, instalacao_id: item.id,
+        cliente_nome: nome, cliente_telefone: tel,
+        tipo, data_disparo: addD(dias), status:'pendente'
+      }));
+      await supa.from('relacionamento_agenda').insert(agendaRows);
+    }
+
     const mud = detectMudancas(item, data, [
       ['status','Status', v=>statusInstMap[v]||v],
       ['tecnico','Técnico',null], ['data_instalacao','Data Instalação',null],
@@ -9550,6 +9644,9 @@ const DISPARADOR_DATA = [
   ]},
   {chip:"90 dias · Embaixador", sub:"", title:"🚀 90 Dias — 3 Meses com a SER", opts:[
     {tag:"🚀 90 dias · Programa Embaixador", m:"[Nome], já são 3 meses de você com a SER Energia! 🎊\nNesse tempo você continua gerando energia limpa todos os dias direto do telhado da sua casa e economizando na conta de luz.\nEstamos muito felizes com essa parceria, e por isso batemos aqui hoje com carinho: você já conhece o Programa Embaixador SER?\nRelembrando: você indica, a pessoa fecha a instalação, e você ganha até um salário mínimo por cada venda concretizada. Sem limite de quantas indicações você pode fazer!\nMuita gente da sua rede também merece parar de pagar caro na conta de luz — e você pode ser a ponte pra isso, ganhando por cada indicação.\nTopa começar a indicar hoje mesmo? Me chama que te explico tudo certinho! 💪🌞"}
+  ]},
+  {chip:"300 dias · Manutenção", sub:"", title:"🛡️ 300 Dias — Manutenção Preventiva", opts:[
+    {tag:"🛡️ 300 dias · Manutenção Preventiva", m:"Oi [Nome], tudo bem? 😊\nAqui é da equipe SER Energia Renovável. Passamos para te dar um aviso importante!\n\nJá se aproxima 1 ano desde a instalação da sua usina solar — parabéns por gerar sua própria energia todo esse tempo! ☀️\n\nComo acontece com qualquer equipamento de qualidade, a manutenção preventiva é fundamental para garantir que o seu sistema continue operando com máxima eficiência e vida útil prolongada.\n\nPor isso, recomendamos agendar agora a sua:\n✅ Limpeza dos módulos fotovoltaicos\n✅ Inspeção das conexões elétricas\n✅ Verificação do desempenho do inversor\n✅ Check geral da estrutura de fixação\n\nEssa revisão preventiva evita perdas de geração e garante que sua garantia permaneça válida.\n\nQuer agendar? É só responder aqui que a gente cuida de tudo! 🔧🌞"}
   ]}
 ]},
 
