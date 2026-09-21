@@ -5833,7 +5833,7 @@ async function gerarPDF(){
   /* ── 1. Injetar CSS de print como CSS normal (html2canvas não lê @media print) ── */
   const s = document.createElement('style');
   s.id = '__pdfcap';
-  s.textContent = `
+  s.textContent = \`
     .print-bar{display:none!important}
     body{width:794px!important;overflow:visible!important;background:#f0eaf8}
     .page{
@@ -5854,7 +5854,7 @@ async function gerarPDF(){
     .invest-wrap{position:static!important;height:auto!important;display:flex!important;
       flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;
       text-align:center!important;padding:32px 40px!important}
-  `;
+  \`;
   document.head.appendChild(s);
   await new Promise(r => setTimeout(r, 500));
 
@@ -5872,7 +5872,7 @@ async function gerarPDF(){
       pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297);
     }
     const nomeCliente = (document.title.replace(/^Proposta SER\s*[—-]\s*/,'').trim()||'').replace(/[^a-zA-Z0-9À-ú ]/g,'').trim();
-    const filename = nomeCliente ? `Proposta SER — ${nomeCliente}.pdf` : 'Proposta_SER.pdf';
+    const filename = nomeCliente ? \`Proposta SER — ${nomeCliente}.pdf\` : 'Proposta_SER.pdf';
     pdf.save(filename);
   } catch(e) {
     alert('Erro ao gerar PDF: ' + e.message);
@@ -11153,5 +11153,3 @@ checkSession();
 </script>
 </body>
 </html>
- 
-<!-- cache bust 1790024334 -->
