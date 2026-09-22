@@ -6142,7 +6142,7 @@ ${(c.pgto_desc||c.banco)?'<p><strong>3.1. O Pagamento ocorrerá: <span style="co
 <script>
 async function gerarPDFBase64() {
   const el = document.querySelector('.wrap');
-  const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false });
+  const canvas = await html2canvas(el, { scale: 1, useCORS: true, logging: false });
   const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
   const pageW = 210, pageH = 297;
   const ratio = pageW / canvas.width;
@@ -6156,7 +6156,7 @@ async function gerarPDFBase64() {
     const sl = document.createElement('canvas');
     sl.width = canvas.width; sl.height = srcH;
     sl.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
-    pdf.addImage(sl.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pageW, srcH * ratio);
+    pdf.addImage(sl.toDataURL('image/jpeg', 0.75), 'JPEG', 0, 0, pageW, srcH * ratio);
     y += pageH;
   }
   return pdf.output('datauristring');
