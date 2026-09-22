@@ -5012,13 +5012,18 @@ function openContratoModal(item=null){
 
       btn.textContent = '⏳ Enviando ao ClickSign...';
       const { data:{ session:cs } } = await supa.auth.getSession();
+      const bodyStr = JSON.stringify({ contrato_id: item.id, pdf_base64 });
+      console.log('[ClickSign] body size KB:', Math.round(bodyStr.length/1024));
       const resp = await fetch(`${SURL}/functions/v1/clicksign-proxy`,{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${cs?.access_token}`},
-        body: JSON.stringify({ contrato_id: item.id, pdf_base64 })
+        body: bodyStr
       });
-      const result = await resp.json().catch(()=>({}));
-      if(!resp.ok) throw new Error(result.erro || result.error || 'Falha ClickSign');
+      const rawText = await resp.text();
+      console.log('[ClickSign] status:', resp.status, 'response:', rawText.slice(0,300));
+      let result = {};
+      try { result = JSON.parse(rawText); } catch(_){}
+      if(!resp.ok) throw new Error(result.erro || result.error || `HTTP ${resp.status}: ${rawText.slice(0,120)}`);
       if(result.document_key){
         await supa.from('contratos').update({ clicksign_key: result.document_key, clicksign_url: result.document_url }).eq('id', item.id);
         item.clicksign_key = result.document_key;
