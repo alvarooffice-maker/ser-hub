@@ -4993,9 +4993,8 @@ function openContratoModal(item=null){
     const btn = $('#clickSignBtn');
     btn.disabled = true; btn.textContent = '⏳ Gerando PDF...';
     try{
-      // Abre o popup do contrato em modo captura
-      const win = window.open('', 'clicksign-capture', 'width=960,height=800,left=100,top=100');
-      abrirContratoJanela(item, false);
+      // Abre o popup do contrato em modo captura (passa o nome da janela)
+      abrirContratoJanela(item, false, 'clicksign-capture');
 
       // Aguarda o PDF gerado via postMessage
       const pdf_base64 = await new Promise((resolve, reject) => {
@@ -5916,7 +5915,7 @@ async function gerarPDF(){
 }
 
 
-function abrirContratoJanela(c, imprimir=false){
+function abrirContratoJanela(c, imprimir=false, winName='_blank'){
   const fR = v => 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const _e = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const txt = v => _e(v)||'_______________';
@@ -5935,7 +5934,7 @@ function abrirContratoJanela(c, imprimir=false){
     if(hum){if(r)r+=' e ';r+=g(hum);}
     return r+(n===1?' real':' reais');
   }
-  const win = window.open('','_blank');
+  const win = window.open('',winName);
   if(!win){ alert('Popup bloqueado. Permita popups para este site.'); return; }
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head>
