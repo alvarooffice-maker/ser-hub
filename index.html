@@ -4990,18 +4990,47 @@ function openContratoModal(item=null){
   });
 
   $('#clickSignBtn')?.addEventListener('click', async ()=>{
+    const btn = $('#clickSignBtn');
+    btn.disabled = true; btn.textContent = '⏳ Gerando PDF...';
     try{
-      toast('Enviando ao ClickSign…','info');
+      // Abre o popup do contrato em modo captura
+      const win = window.open('', 'clicksign-capture', 'width=960,height=800,left=100,top=100');
+      abrirContratoJanela(item, false);
+
+      // Aguarda o PDF gerado via postMessage
+      const pdf_base64 = await new Promise((resolve, reject) => {
+        const t = setTimeout(()=>reject(new Error('Timeout ao gerar PDF do contrato')), 90000);
+        window.addEventListener('message', function h(e){
+          if(e.data?.type === 'CONTRACT_PDF'){
+            clearTimeout(t); window.removeEventListener('message', h);
+            resolve(e.data.base64);
+          } else if(e.data?.type === 'CONTRACT_PDF_ERROR'){
+            clearTimeout(t); window.removeEventListener('message', h);
+            reject(new Error(e.data.error || 'Erro ao gerar PDF'));
+          }
+        });
+      });
+
+      btn.textContent = '⏳ Enviando ao ClickSign...';
       const { data:{ session:cs } } = await supa.auth.getSession();
       const resp = await fetch(`${SURL}/functions/v1/clicksign-proxy`,{
-        method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${cs?.access_token}`},
-        body: JSON.stringify({ contrato_id:item.id })
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${cs?.access_token}`},
+        body: JSON.stringify({ contrato_id: item.id, pdf_base64 })
       });
       const result = await resp.json().catch(()=>({}));
-      if(!resp.ok) throw new Error(result.error||'Falha ClickSign');
-      toast('Enviado ao ClickSign!','success');
+      if(!resp.ok) throw new Error(result.erro || result.error || 'Falha ClickSign');
+      if(result.document_key){
+        await supa.from('contratos').update({ clicksign_key: result.document_key, clicksign_url: result.document_url }).eq('id', item.id);
+        item.clicksign_key = result.document_key;
+        item.clicksign_url = result.document_url;
+      }
+      toast('✅ Enviado ao ClickSign! Todos os signatários foram notificados.','success');
       closeModal();
-    }catch(e){ toast('ClickSign: '+e.message,'error'); }
+    }catch(e){
+      toast('ClickSign: '+e.message,'error');
+      btn.disabled = false; btn.textContent = '📝 ClickSign';
+    }
   });
 
   $('#vizContBtn')?.addEventListener('click', ()=> abrirContratoJanela(item, false));
@@ -6109,6 +6138,43 @@ ${(c.pgto_desc||c.banco)?'<p><strong>3.1. O Pagamento ocorrerá: <span style="co
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
+<script>
+async function gerarPDFBase64() {
+  const el = document.querySelector('.wrap');
+  const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false });
+  const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+  const pageW = 210, pageH = 297;
+  const ratio = pageW / canvas.width;
+  const totalH = canvas.height * ratio;
+  let y = 0;
+  while (y < totalH) {
+    if (y > 0) pdf.addPage();
+    const srcY = Math.round(y / ratio);
+    const srcH = Math.min(Math.round(pageH / ratio), canvas.height - srcY);
+    if (srcH <= 0) break;
+    const sl = document.createElement('canvas');
+    sl.width = canvas.width; sl.height = srcH;
+    sl.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+    pdf.addImage(sl.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pageW, srcH * ratio);
+    y += pageH;
+  }
+  return pdf.output('datauristring');
+}
+if (window.name === 'clicksign-capture') {
+  window.addEventListener('load', async () => {
+    await new Promise(r => setTimeout(r, 1200));
+    try {
+      const base64 = await gerarPDFBase64();
+      window.opener?.postMessage({ type: 'CONTRACT_PDF', base64 }, '*');
+    } catch(e) {
+      window.opener?.postMessage({ type: 'CONTRACT_PDF_ERROR', error: e.message }, '*');
+    }
+    window.close();
+  });
+}
+<\/script>
 </div></body></html>`);
   win.document.close();
   if(imprimir) setTimeout(()=>{ win.focus(); win.print(); }, 600);
