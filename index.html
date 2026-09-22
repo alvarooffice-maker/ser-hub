@@ -5017,7 +5017,7 @@ function openContratoModal(item=null){
       existing = created;
     }
     if(existing?.token){
-      const link = 'https://alvarooffice-maker.github.io/ser-portal/portal.html?token=' + existing.token;
+      const link = 'https://alvarooffice-maker.github.io/ser-portal/portal-ser/portal.html?token=' + existing.token;
       await navigator.clipboard.writeText(link).catch(()=>{});
       btn.textContent = '✅ Link copiado!';
       setTimeout(()=>{ btn.textContent = '🔗 Copiar link do portal'; btn.disabled=false; }, 3000);
@@ -11153,4 +11153,3 @@ checkSession();
 </script>
 </body>
 </html>
-
