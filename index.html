@@ -5010,9 +5010,16 @@ function openContratoModal(item=null){
         });
       });
 
+      // Valida PDF gerado
+      const pdfStr = String(pdf_base64 || '');
+      const pdfB64 = pdfStr.includes(',') ? pdfStr.split(',')[1] : pdfStr;
+      console.log('[ClickSign] pdf_base64 prefix:', pdfStr.slice(0,40), '| b64 len:', pdfB64.length);
+      if(pdfB64.length < 500) throw new Error(`PDF gerado parece inválido (base64 length=${pdfB64.length}). Tente abrir o contrato manualmente antes.`);
+
       btn.textContent = '⏳ Enviando ao ClickSign...';
       const { data:{ session:cs } } = await supa.auth.getSession();
-      const bodyStr = JSON.stringify({ contrato_id: item.id, pdf_base64 });
+      // Envia base64 puro (sem prefixo data URI) — ClickSign espera base64 puro
+      const bodyStr = JSON.stringify({ contrato_id: item.id, pdf_base64: pdfB64 });
       console.log('[ClickSign] body size KB:', Math.round(bodyStr.length/1024));
       const resp = await fetch(`${SURL}/functions/v1/clicksign-proxy`,{
         method:'POST',
