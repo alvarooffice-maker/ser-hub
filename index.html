@@ -5027,7 +5027,7 @@ function openContratoModal(item=null){
         body: bodyStr
       });
       const rawText = await resp.text();
-      console.log('[ClickSign] status:', resp.status, 'response:', rawText.slice(0,300));
+      console.log('[ClickSign] status:', resp.status, 'response:', rawText.slice(0,2000));
       let result = {};
       try { result = JSON.parse(rawText); } catch(_){}
       if(!resp.ok) throw new Error(result.erro || result.error || `HTTP ${resp.status}: ${rawText.slice(0,120)}`);
