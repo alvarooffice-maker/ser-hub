@@ -493,6 +493,7 @@ tbody tr:hover{background:#fafaf6}
       <button class="sidebar-toggle" id="sidebarToggle" title="Recolher">☰</button>
     </div>
     <nav class="nav" id="nav"></nav>
+    <div id="offlineBadge" style="display:none;margin:0 12px 8px;padding:8px 12px;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;font-size:11.5px;color:#92400e;font-weight:600;text-align:center;cursor:pointer" title="Clique para tentar sincronizar agora"></div>
     <div class="sidebar-user">
       <div class="user-avatar" id="userAvatar">U</div>
       <div class="user-info">
@@ -620,6 +621,80 @@ function toast(msg,type='info',ms=3200){
   stack.appendChild(t);
   setTimeout(()=>{ t.style.transition='opacity .25s,transform .25s'; t.style.opacity='0'; t.style.transform='translateX(40px)'; setTimeout(()=>t.remove(),250); }, ms);
 }
+
+/* ============================================================
+   FILA OFFLINE — permite salvar formulários sem internet
+   (técnicos em campo) e sincronizar automaticamente ao reconectar
+   ============================================================ */
+const OFFLINE_QUEUE_KEY = 'ser_offline_queue';
+function getOfflineQueue(){ try{ return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY)||'[]'); }catch(e){ return []; } }
+function setOfflineQueue(q){
+  try{ localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q)); }catch(e){}
+  updateOfflineBadge();
+}
+function updateOfflineBadge(){
+  const n = getOfflineQueue().length;
+  const el = document.getElementById('offlineBadge');
+  if(!el) return;
+  if(n>0){ el.style.display=''; el.textContent = `📡 ${n} registro${n>1?'s':''} pendente${n>1?'s':''} de sincronização`; }
+  else el.style.display='none';
+}
+function isNetworkError(e){
+  const m = (e && e.message || '').toLowerCase();
+  return !navigator.onLine || m.includes('failed to fetch') || m.includes('networkerror') || m.includes('load failed');
+}
+// Salva um UPDATE com resiliência a offline: se não houver conexão, enfileira e sincroniza depois.
+async function salvarComOffline(table, recordId, data, label, onSyncedExtra){
+  if(!navigator.onLine){
+    const q = getOfflineQueue();
+    q.push({ id: uid(), table, recordId, data, label: label||table, ts: Date.now() });
+    setOfflineQueue(q);
+    return { queued:true, error:null };
+  }
+  try{
+    const { error } = await supa.from(table).update(data).eq('id', recordId);
+    if(error) throw error;
+    return { queued:false, error:null };
+  }catch(e){
+    if(isNetworkError(e)){
+      const q = getOfflineQueue();
+      q.push({ id: uid(), table, recordId, data, label: label||table, ts: Date.now() });
+      setOfflineQueue(q);
+      return { queued:true, error:null };
+    }
+    return { queued:false, error:e };
+  }
+}
+let _sincronizandoFila = false;
+async function sincronizarFilaOffline(){
+  if(_sincronizandoFila) return;
+  const q = getOfflineQueue();
+  if(!q.length || !navigator.onLine) return;
+  _sincronizandoFila = true;
+  let sincronizados = 0;
+  const restantes = [];
+  for(const it of q){
+    try{
+      const { error } = await supa.from(it.table).update(it.data).eq('id', it.recordId);
+      if(error) throw error;
+      sincronizados++;
+      // Pós-processamento específico de vistoria (cascata aprovado→contrato / reprovado→remarketing)
+      if(it.table==='vistorias'){ await posSyncVistoria(it.recordId, it.data).catch(()=>{}); }
+    }catch(e){
+      restantes.push(it);
+    }
+  }
+  setOfflineQueue(restantes);
+  _sincronizandoFila = false;
+  if(sincronizados>0){
+    toast(`✅ ${sincronizados} registro${sincronizados>1?'s':''} sincronizado${sincronizados>1?'s':''} (offline → online)`,'success',4000);
+    await loadAll();
+  }
+}
+window.addEventListener('online', sincronizarFilaOffline);
+window.addEventListener('load', ()=>{ updateOfflineBadge(); setTimeout(sincronizarFilaOffline, 2000); });
+setInterval(()=>{ if(navigator.onLine) sincronizarFilaOffline(); }, 30000);
+document.addEventListener('click', e=>{ if(e.target.closest('#offlineBadge')) sincronizarFilaOffline(); });
 
 function badge(value){
   if(value==null||value==='') return '';
@@ -2836,6 +2911,26 @@ function checkGuard(item, fromStage, toStage){
 
 // Envia um cliente para Remarketing quando proposta é recusada, contrato é
 // cancelado ou vistoria é reprovada. Evita duplicar registros pendentes.
+// Repete a cascata (aprovado→contrato / reprovado→remarketing) após sincronizar uma vistoria feita offline
+async function posSyncVistoria(recordId, data){
+  const parecerEhAprovado = v => ['aprovado','aprovado_com_obra','aprovado_com_sombreamento','aprovado_com_obra_e_sombreamento','aprovada','aprovada_com_obra','aprovada_com_sombreamento','aprovada_com_obra_e_sombreamento'].includes(v||'');
+  const parecerEhReprovado = v => ['reprovado','reprovada'].includes(v||'');
+  const itemAntigo = (State.vistorias||[]).find(v=>String(v.id)===String(recordId));
+  const prevResultado = itemAntigo?.resultado || '';
+  const { data: antes } = await supa.from('vistorias').select('*').eq('id', recordId).single();
+  if(!antes) return;
+  await registrarHistorico('vistorias', recordId, 'atualizado', 'Vistoria sincronizada (preenchida offline em campo)');
+  if(parecerEhAprovado(data.resultado) && !parecerEhAprovado(prevResultado)){
+    const jaExiste = (State.contratos||[]).find(c => c.vistoria_id === recordId);
+    if(!jaExiste){
+      const cPayload = buildTransitionPayload(antes, 'vistoria', 'contrato');
+      cPayload.criado_por = State.user?.id;
+      await supa.from('contratos').insert(cPayload);
+    }
+  } else if(parecerEhReprovado(data.resultado) && !parecerEhReprovado(prevResultado)){
+    await enviarParaRemarketing(antes, 'vistoria_reprovada', 'Vistoria reprovada');
+  }
+}
 async function enviarParaRemarketing(item, motivo, msg){
   const lead_id = item.lead_id || null;
   if(!lead_id){ toast(msg||'Status atualizado','success'); return; }
@@ -4226,8 +4321,14 @@ function openVistoriaModal(item=null){
       toast('Vistoria salva','success');
     } else {
       const prevResultado = item.resultado || '';
-      const { error } = await supa.from('vistorias').update(data).eq('id',item.id);
+      const { queued, error } = await salvarComOffline('vistorias', item.id, data, `Vistoria de ${item.nome||''}`);
       if(error) return toast(error.message,'error');
+      if(queued){
+        toast('📡 Sem internet — vistoria salva localmente. Será enviada automaticamente ao reconectar.','info',5000);
+        localStorage.removeItem(_draftKey);
+        closeModal();
+        return;
+      }
       const mud = detectMudancas(item, data, [
         ['resultado','Parecer', v=>parecerMap[v]||v],
         ['status','Status',null], ['tecnico','Técnico',null],
