@@ -1316,6 +1316,9 @@ async function renderDashboard(){
       </div>
     </div>
 
+    <!-- Dashboard Preditivo de Receita -->
+    <div id="preditivoSection" style="margin-bottom:16px"></div>
+
     <!-- Tempo médio por etapa -->
     <div id="tempoMedioSection" style="margin-bottom:0"></div>
 
@@ -1717,6 +1720,10 @@ async function renderDashboard(){
   renderRankings();
 
   $('#dashVendSel')?.addEventListener('change', e=>{ dashVendedor = e.target.value; renderRankings(); });
+
+  // Dashboard preditivo de receita
+  const pvEl = $('#preditivoSection');
+  if(pvEl) pvEl.innerHTML = buildPreditivoSection();
 
   // Tempo médio por etapa
   const tmEl = $('#tempoMedioSection');
@@ -11362,6 +11369,57 @@ async function renderRelatorioPosvenda(){
 /* ============================================================
    TEMPO MÉDIO POR ETAPA  (seção do dashboard)
    ============================================================ */
+/* ============================================================
+   DASHBOARD PREDITIVO DE RECEITA
+   Baseado no pipeline atual × taxa histórica de conversão × ticket médio
+   ============================================================ */
+function buildPreditivoSection(){
+  const contratos = State.contratos||[];
+  const props = State.propostas||[];
+  const contratosAssinados = contratos.filter(c=>c.status==='assinado');
+  const contratosAbertos = contratos.filter(c=>c.status && c.status!=='assinado' && c.status!=='cancelado');
+  const propsAbertas = props.filter(p=>!['aceita','recusada'].includes(p.status));
+
+  // Taxa histórica de conversão proposta → contrato assinado (mínimo 5%, máximo 95% para não distorcer com poucos dados)
+  const taxaConv = props.length>0 ? Math.min(0.95, Math.max(0.05, contratosAssinados.length/props.length)) : 0.25;
+
+  // Ticket médio dos contratos já assinados
+  const ticketMedio = contratosAssinados.length
+    ? contratosAssinados.reduce((s,c)=>s+(Number(c.valor)||0),0)/contratosAssinados.length
+    : 0;
+
+  // Receita ponderada: propostas abertas pesam pela taxa histórica; contratos já em negociação (não assinados ainda) pesam mais alto (85%), pois já passaram da fase de proposta
+  const receitaPropostas = propsAbertas.length * ticketMedio * taxaConv;
+  const receitaContratos = contratosAbertos.length * ticketMedio * 0.85;
+  const totalPrevisto = receitaPropostas + receitaContratos;
+
+  // Distribuição temporal heurística: contratos em negociação fecham mais rápido (pesam mais em 30d);
+  // propostas ainda abertas se distribuem mais no médio/longo prazo
+  const d30 = receitaContratos*0.65 + receitaPropostas*0.25;
+  const d60 = receitaContratos*0.25 + receitaPropostas*0.40;
+  const d90 = receitaContratos*0.10 + receitaPropostas*0.35;
+
+  const card = (label,val,sub,color) => `
+    <div style="flex:1;min-width:140px;background:var(--bg-alt);border-radius:10px;padding:14px 16px;border-left:4px solid ${color}">
+      <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px">${label}</div>
+      <div style="font-size:20px;font-weight:800;color:${color};margin-top:4px">${fmtBRL(val)}</div>
+      <div style="font-size:10.5px;color:var(--text-light);margin-top:2px">${sub}</div>
+    </div>`;
+
+  return `<div class="card" style="margin-bottom:16px">
+    <div class="card-header"><h3>📈 Dashboard Preditivo de Receita</h3></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      ${card('Próximos 30 dias', d30, 'previsão', '#16a34a')}
+      ${card('Próximos 60 dias', d60, 'previsão', '#2563eb')}
+      ${card('Próximos 90 dias', d90, 'previsão', '#7c3aed')}
+      ${card('Total no pipeline', totalPrevisto, `${propsAbertas.length} propostas + ${contratosAbertos.length} contratos em andamento`, '#ea580c')}
+    </div>
+    <div style="font-size:11px;color:var(--text-light);line-height:1.6">
+      Cálculo: ${propsAbertas.length} proposta${propsAbertas.length!==1?'s':''} aberta${propsAbertas.length!==1?'s':''} × ticket médio (${fmtBRL(ticketMedio)}) × taxa histórica de conversão (${Math.round(taxaConv*100)}%), somado a ${contratosAbertos.length} contrato${contratosAbertos.length!==1?'s':''} em negociação × probabilidade alta (85%). Distribuição 30/60/90 dias é uma estimativa heurística — não substitui o julgamento comercial.
+    </div>
+  </div>`;
+}
+
 function buildTempoMedioSection(){
   const stageInfo = [
     { id:'lead',        key:'leads',        label:'Lead',       icon:'👤' },
