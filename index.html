@@ -8784,6 +8784,85 @@ async function sincronizarDespesaComissao(comissaoId, com){
 /* ============================================================
    FINANCEIRO
    ============================================================ */
+/* ============================================================
+   CUSTO REAL / MARGEM POR PROJETO
+   ============================================================ */
+function calcComissaoTotal(com){
+  if(!com) return 0;
+  const vc  = Number(com.valor_contrato)||0;
+  const vv  = Number(com.valor_vendido)||vc;
+  const vp  = Number(com.vend_pct)||0;
+  const vmp = Number(com.vend_major_pct)||0;
+  const sup_val  = vc * ((Number(com.sup_pct)||0)/100);
+  const sdr_val  = com.sdr_ativo ? vc*((Number(com.sdr_pct)||0)/100) : 0;
+  const cap_val  = com.cap_ativo ? vc*((Number(com.cap_pct)||0)/100) : 0;
+  const ind_val  = com.ind_ativo ? (Number(com.ind_val)||0) : 0;
+  const obra_val = com.obra_ativo ? (Number(com.obra_val)||0) : 0;
+  const pres_val = com.pres_ativo ? (Number(com.pres_val)||0) : 0;
+  const base_major = vv - vc - obra_val - pres_val - ind_val;
+  const major_val  = Math.max(0, base_major) * (vmp/100);
+  const vend_val = vc*(vp/100) + major_val;
+  return vend_val + sup_val + sdr_val + cap_val + ind_val + obra_val + pres_val;
+}
+
+function buildMargemProjetoSection(despesas){
+  const contratos = (State.contratos||[]).filter(c=>c.status==='assinado');
+  const instalacoes = State.instalacoes||[];
+  const comissoes = State.comissoes||[];
+
+  const rows = contratos.map(c=>{
+    const receita = Number(c.valor)||0;
+    const despesasContrato = (despesas||[])
+      .filter(d=>String(d.contrato_id)===String(c.id) && d.status!=='cancelado')
+      .reduce((s,d)=>s+(Number(d.valor)||0),0);
+    const inst = instalacoes.find(i=>String(i.contrato_id)===String(c.id));
+    const extrasInstalacao = inst ? (Number(inst.val_poste)||0)+(Number(inst.val_troca_padrao)||0) : 0;
+    const com = comissoes.find(x=>normName(x.nome||'')===normName(c.nome||''));
+    const comissaoTotal = calcComissaoTotal(com);
+    const custoTotal = despesasContrato + extrasInstalacao + comissaoTotal;
+    const margem = receita - custoTotal;
+    const margemPct = receita>0 ? (margem/receita*100) : null;
+    return { c, receita, despesasContrato, extrasInstalacao, comissaoTotal, custoTotal, margem, margemPct };
+  }).filter(r=>r.receita>0)
+    .sort((a,b)=>(a.margemPct??999)-(b.margemPct??999));
+
+  if(!rows.length) return `<div class="empty" style="padding:24px">Nenhum contrato assinado com valor definido.</div>`;
+
+  const totalReceita = rows.reduce((s,r)=>s+r.receita,0);
+  const totalCusto   = rows.reduce((s,r)=>s+r.custoTotal,0);
+  const totalMargem  = totalReceita - totalCusto;
+  const margemMediaPct = totalReceita>0 ? (totalMargem/totalReceita*100) : 0;
+
+  const corMargem = pct => pct==null ? 'var(--text-light)' : pct>=30 ? '#16a34a' : pct>=15 ? '#ca8a04' : '#dc2626';
+
+  return `
+    <div class="metrics" style="margin-bottom:16px">
+      <div class="metric"><div class="metric-label">Receita Total</div><div class="metric-value" style="font-size:15px">${fmtBRL(totalReceita)}</div></div>
+      <div class="metric" style="border-color:var(--danger)"><div class="metric-label">Custo Total (kit+instalação+homolog+comissões)</div><div class="metric-value" style="font-size:15px">${fmtBRL(totalCusto)}</div></div>
+      <div class="metric" style="border-color:${corMargem(margemMediaPct)}"><div class="metric-label">Margem Total</div><div class="metric-value" style="font-size:15px;color:${corMargem(margemMediaPct)}">${fmtBRL(totalMargem)}</div></div>
+      <div class="metric"><div class="metric-label">Margem Média</div><div class="metric-value" style="color:${corMargem(margemMediaPct)}">${margemMediaPct.toFixed(1)}%</div></div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>Cliente</th><th>Vendedor</th><th>Receita</th><th>Custos</th><th>Comissões</th><th>Margem</th><th>Margem %</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r=>`<tr>
+          <td>${esc(r.c.nome||'')}</td>
+          <td>${esc(r.c.vendedor||'—')}</td>
+          <td>${fmtBRL(r.receita)}</td>
+          <td>${fmtBRL(r.despesasContrato+r.extrasInstalacao)}</td>
+          <td>${fmtBRL(r.comissaoTotal)}</td>
+          <td style="font-weight:700;color:${corMargem(r.margemPct)}">${fmtBRL(r.margem)}</td>
+          <td style="font-weight:700;color:${corMargem(r.margemPct)}">${r.margemPct!=null?r.margemPct.toFixed(1)+'%':'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>
+    <div style="font-size:11px;color:var(--text-light);margin-top:10px">
+      Custos = despesas lançadas no contrato (kit, vistoria, instalação, homologação) + extras de instalação (poste/troca de padrão) + comissões calculadas (vendedor+supervisor+SDR+captador+indicador+obra+presente). Ordenado da menor para a maior margem, para destacar projetos com risco de prejuízo.
+    </div>`;
+}
+
 async function renderFinanceiro(){
   await Promise.all([ loadTable('financeiro_receitas'), loadTable('financeiro_despesas'), loadTable('comissoes'), loadTable('contratos') ]);
   const receitas = State.receitas;
@@ -8842,7 +8921,7 @@ async function renderFinanceiro(){
         </table>
       </div>
     </div>
-    <div class="tabs"><div class="tab active" data-tab="r">Receitas</div><div class="tab" data-tab="d">Despesas</div></div>
+    <div class="tabs"><div class="tab active" data-tab="r">Receitas</div><div class="tab" data-tab="d">Despesas</div><div class="tab" data-tab="m">💰 Margem por Projeto</div></div>
     <div id="finTab">
       <div class="card" id="tabR">
         <div class="table-wrap"><table>
@@ -8870,6 +8949,9 @@ async function renderFinanceiro(){
           </tbody>
         </table></div>
       </div>
+      <div class="card" id="tabM" style="display:none">
+        ${buildMargemProjetoSection(despesas)}
+      </div>
     </div>
   `;
 
@@ -8878,6 +8960,7 @@ async function renderFinanceiro(){
     t.classList.add('active');
     $('#tabR').style.display = t.dataset.tab==='r' ? '' : 'none';
     $('#tabD').style.display = t.dataset.tab==='d' ? '' : 'none';
+    $('#tabM').style.display = t.dataset.tab==='m' ? '' : 'none';
   }));
 
   $$('[data-rec]').forEach(b=>b.addEventListener('click', ()=> openReceitaModal(receitas.find(r=>String(r.id)===b.dataset.rec))));
