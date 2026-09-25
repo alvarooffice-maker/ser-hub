@@ -5924,6 +5924,7 @@ async function gerarPDF(){
 <\/script>
 </body></html>`);
   win.document.close();
+  if(imprimir) setTimeout(()=>{ try{ win.gerarPDF && win.gerarPDF(); } catch(e){ console.error('gerarPDF erro:', e); } }, 2500);
 }
 
 
