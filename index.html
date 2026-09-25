@@ -5563,8 +5563,6 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
   <span>SER Energia Renovável — Proposta Comercial</span>
   <button id="btnPDF" onclick="gerarPDF()">🖨️ Baixar PDF</button>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
 
 <!-- ══════════════════ PÁGINA 1: CAPA ══════════════════ -->
 <div class="page">
@@ -5865,52 +5863,127 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
 </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
 <script>
 async function gerarPDF(){
   const btn = document.getElementById('btnPDF');
   btn.disabled = true; btn.textContent = '⏳ Aguarde...';
 
-  /* ── 1. Injetar CSS de print como CSS normal (html2canvas não lê @media print) ── */
+  /* ── 1. Injetar CSS (mesma lógica de fusão do @media print, mas ativa p/ html2canvas) ── */
   const s = document.createElement('style');
   s.id = '__pdfcap';
   s.textContent = \`
     .print-bar{display:none!important}
-    body{width:794px!important;overflow:visible!important;background:#f0eaf8}
+    body{width:794px!important;overflow:visible!important;background:#fff!important}
     .page{
       width:794px!important;max-width:794px!important;min-width:794px!important;
-      height:1123px!important;min-height:1123px!important;max-height:1123px!important;
-      margin:0!important;box-shadow:none!important;overflow:hidden!important;
-      position:relative!important;display:block!important;
+      height:auto!important;margin:0!important;box-shadow:none!important;
+      overflow:visible!important;position:static!important;display:block!important;
     }
-    .page .capa{
+    .__pdf-capa{height:1123px!important;min-height:1123px!important;max-height:1123px!important;overflow:hidden!important;position:relative!important}
+    .__pdf-capa .capa{
       position:absolute!important;top:0;left:0;right:0;bottom:0;
-      height:1123px!important;min-height:1123px!important;width:100%!important;
-      overflow:hidden!important;display:flex!important;flex-direction:column!important;
+      height:1123px!important;width:100%!important;overflow:hidden!important;
+      display:flex!important;flex-direction:column!important;
     }
-    .page .capa-hero{
+    .__pdf-capa .capa-hero{
       flex:1!important;min-height:0!important;display:flex!important;
       flex-direction:column!important;justify-content:center!important;padding:20px 44px!important;
     }
     .invest-wrap{position:static!important;height:auto!important;display:flex!important;
       flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;
       text-align:center!important;padding:32px 40px!important}
+    .__pdf-hide-header .pg-header{display:none!important}
+    .__pdf-compact-sobre .trajetoria-block{display:none!important}
+    .__pdf-compact-sobre .page-inner{padding:14px 44px 8px!important}
+    .__pdf-compact-sobre .sec-title{font-size:20px!important;margin-bottom:10px!important}
+    .__pdf-compact-sobre .missao-grid{gap:10px!important;margin-bottom:12px!important}
+    .__pdf-compact-sobre .missao-card{padding:12px 14px!important}
+    .__pdf-compact-sobre .missao-card p{font-size:11.5px!important;line-height:1.6!important}
+    .__pdf-compact-sobre .ser-title{margin-bottom:10px!important}
+    .__pdf-compact-sobre .ser-grid{gap:10px!important;margin-top:0!important}
+    .__pdf-compact-sobre .ser-card{padding:12px 10px!important;border-top-width:4px!important}
+    .__pdf-compact-sobre .ser-letter{font-size:52px!important;margin-bottom:4px!important}
+    .__pdf-compact-sobre .ser-word{font-size:13px!important;margin-bottom:4px!important}
+    .__pdf-compact-sobre .ser-text{font-size:10.5px!important;line-height:1.55!important}
+    .__pdf-compact-contato .contact-wrap{padding:10px 40px 14px!important}
+    .__pdf-compact-contato .contact-avatar{width:60px!important;height:60px!important;font-size:22px!important;margin-bottom:8px!important}
+    .__pdf-compact-contato .contact-name{font-size:18px!important;margin-bottom:3px!important}
+    .__pdf-compact-contato .contact-role{font-size:11px!important;margin-bottom:8px!important}
+    .__pdf-compact-contato .contact-site{font-size:12px!important;margin-bottom:12px!important}
+    .__pdf-compact-contato .contact-divider{margin:6px auto!important}
+    .__pdf-compact-contato .contact-company{font-size:10px!important;line-height:1.6!important}
+    .__pdf-compact-contato .contact-validity{margin-top:8px!important;padding:8px 16px!important;font-size:10px!important}
   \`;
   document.head.appendChild(s);
   await new Promise(r => setTimeout(r, 500));
 
-  /* ── 2. Capturar cada .page e montar PDF A4 ── */
+  /* ── 2. Capturar seções fundidas (mesmo agrupamento do @media print) e montar PDF A4 ── */
   try {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
     const pages = [...document.querySelectorAll('.page')];
-    for(let i = 0; i < pages.length; i++){
-      const canvas = await html2canvas(pages[i], {
-        scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff',
-        width: 794, height: 1123, windowWidth: 794,
-      });
-      if(i > 0) pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297);
+    const scale = 2, PAGE_W = 794, PAGE_H = 1123;
+
+    async function capturar(el, extra){
+      return html2canvas(el, Object.assign({
+        scale, useCORS: true, logging: false, backgroundColor: '#ffffff',
+        width: PAGE_W, windowWidth: PAGE_W,
+      }, extra||{}));
     }
+    function agrupar(lista){
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'width:794px;background:#fff';
+      lista[0].parentNode.insertBefore(wrapper, lista[0]);
+      lista.forEach(p => wrapper.appendChild(p));
+      return wrapper;
+    }
+    function desagrupar(wrapper){
+      const parent = wrapper.parentNode;
+      while(wrapper.firstChild) parent.insertBefore(wrapper.firstChild, wrapper);
+      wrapper.remove();
+    }
+    let primeira = true;
+    function adicionar(canvas, alturaMaxMM){
+      if(!primeira) pdf.addPage();
+      primeira = false;
+      const alturaMM = Math.min(alturaMaxMM, (canvas.height/scale)/PAGE_W*210);
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, alturaMM);
+    }
+
+    // 1. Capa — página cheia
+    pages[0].classList.add('__pdf-capa');
+    const capaCanvas = await capturar(pages[0], { height: PAGE_H });
+    pages[0].classList.remove('__pdf-capa');
+    adicionar(capaCanvas, 297);
+
+    // 2. Resumo + Projeção — fundidas em 1 folha
+    pages[2].classList.add('__pdf-hide-header');
+    const g1 = agrupar([pages[1], pages[2]]);
+    const g1Canvas = await capturar(g1);
+    desagrupar(g1);
+    pages[2].classList.remove('__pdf-hide-header');
+    adicionar(g1Canvas, 297);
+
+    // 3. Equipamentos + Investimento — fundidas em 1 folha
+    pages[4].classList.add('__pdf-hide-header');
+    const g2 = agrupar([pages[3], pages[4]]);
+    const g2Canvas = await capturar(g2);
+    desagrupar(g2);
+    pages[4].classList.remove('__pdf-hide-header');
+    adicionar(g2Canvas, 297);
+
+    // 4. Sobre + Contato — fundidas em 1 folha (compactadas)
+    pages[5].classList.add('__pdf-compact-sobre');
+    pages[6].classList.add('__pdf-hide-header', '__pdf-compact-contato');
+    const g3 = agrupar([pages[5], pages[6]]);
+    const g3Canvas = await capturar(g3);
+    desagrupar(g3);
+    pages[5].classList.remove('__pdf-compact-sobre');
+    pages[6].classList.remove('__pdf-hide-header', '__pdf-compact-contato');
+    adicionar(g3Canvas, 297);
+
     const nomeCliente = (document.title.replace(/^Proposta SER\s*[—-]\s*/,'').trim()||'').replace(/[^a-zA-Z0-9À-ú ]/g,'').trim();
     const filename = nomeCliente ? \`Proposta SER — \${nomeCliente}.pdf\` : 'Proposta_SER.pdf';
     pdf.save(filename);
