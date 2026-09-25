@@ -5924,7 +5924,21 @@ async function gerarPDF(){
 <\/script>
 </body></html>`);
   win.document.close();
-  if(imprimir) setTimeout(()=>{ try{ win.gerarPDF && win.gerarPDF(); } catch(e){ console.error('gerarPDF erro:', e); } }, 2500);
+  if(imprimir){
+    // Espera jsPDF e html2canvas carregarem, com fallback de timeout
+    const t0 = Date.now();
+    const tryRun = () => {
+      if(win.closed) return;
+      if(win.jspdf && win.html2canvas && win.gerarPDF){
+        try{ win.gerarPDF(); } catch(e){ console.error('gerarPDF erro:', e); }
+      } else if(Date.now()-t0 < 15000){
+        setTimeout(tryRun, 300);
+      } else {
+        console.error('gerarPDF timeout: bibliotecas nao carregaram');
+      }
+    };
+    setTimeout(tryRun, 800);
+  }
 }
 
 
