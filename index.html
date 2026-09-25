@@ -1151,19 +1151,37 @@ async function renderDashboard(){
   const agendaHoje = (State.relacionamento_agenda||[]).filter(a=>a.status==='pendente' && a.data_disparo===td);
   const tipoLabel = {
     '5dias':'⚡ Acolhimento (5 dias)', '30dias':'🙏 Gratidão (30 dias)',
-    '90dias':'🚀 Embaixador (90 dias)', '300dias':'🛡️ Manutenção (300 dias)', 'aniversario':'🎂 Aniversário'
+    '90dias':'🚀 Embaixador (90 dias)', '180dias':'📊 Relatório de Economia (6 meses)',
+    '300dias':'🛡️ Manutenção (300 dias)', 'aniversario':'🎂 Aniversário'
   };
   const tipoMsgMap = {
     '5dias': 'Oi [Nome], tudo bem? 😊\nJá faz 5 dias que sua usina solar está instalada e gerando economia pra você — como está sendo essa experiência até aqui?\nQueremos garantir que você esteja aproveitando 100% do seu sistema! Por isso, vamos te apresentar o app de monitoramento da SER, onde você acompanha em tempo real:\n✅ Quanto sua usina está gerando\n✅ Sua economia acumulada\n✅ Performance do sistema, tudo pelo celular\nPosso te enviar o passo a passo pra você baixar agora?\nQualquer dúvida, estamos aqui. Você não comprou só um sistema, você entrou pra família SER! 🌞',
-    '30dias': '[Nome], hoje é um dia especial pra gente! 🙏\nFaz exatamente 1 mês que sua usina está instalada, e olha só o que isso significa: 1 mês de economia real na sua conta de luz, 1 mês de energia limpa gerada na sua casa, e 1 mês fazendo parte da nossa família SER.\nQueremos genuinamente agradecer pela confiança. Cada cliente como você é o motivo da SER existir. 💛\nE como forma de celebrar essa parceria, temos uma novidade:\n🌟 Programa Embaixador SER 🌟\nA partir de hoje, você pode ganhar até um salário mínimo por cada venda concretizada só indicando pessoas que também querem economizar com energia solar!\nSimples assim: você indica, a pessoa fecha, você recebe.\nQuer saber como funciona? Te explico tudo em 2 minutos aqui no WhatsApp.\nParabéns pelo seu primeiro mês com a SER! Que venham muitos outros 🚀',
-    '90dias': '[Nome], já são 3 meses de você com a SER Energia! 🎊\nNesse tempo você continua gerando energia limpa todos os dias direto do telhado da sua casa e economizando na conta de luz.\nEstamos muito felizes com essa parceria, e por isso batemos aqui hoje com carinho: você já conhece o Programa Embaixador SER?\nRelembrando: você indica, a pessoa fecha a instalação, e você ganha até um salário mínimo por cada venda concretizada. Sem limite de quantas indicações você pode fazer!\nMuita gente da sua rede também merece parar de pagar caro na conta de luz — e você pode ser a ponte pra isso, ganhando por cada indicação.\nTopa começar a indicar hoje mesmo? Me chama que te explico tudo certinho! 💪🌞',
+    '30dias': '[Nome], hoje é um dia especial pra gente! 🙏\nFaz exatamente 1 mês que sua usina está instalada, e olha só o que isso significa: 1 mês de economia real na sua conta de luz, 1 mês de energia limpa gerada na sua casa, e 1 mês fazendo parte da nossa família SER.\nQueremos genuinamente agradecer pela confiança. Cada cliente como você é o motivo da SER existir. 💛\nE como forma de celebrar essa parceria, temos uma novidade:\n🌟 Programa Embaixador SER 🌟\nA partir de hoje, você pode ganhar até um salário mínimo por cada venda concretizada só indicando pessoas que também querem economizar com energia solar!\nSimples assim: você indica, a pessoa fecha, você recebe.\nBasta encaminhar este link pra quem você indicar, que a conversa já cai direto comigo:\n[LinkIndicacao]\nParabéns pelo seu primeiro mês com a SER! Que venham muitos outros 🚀',
+    '90dias': '[Nome], já são 3 meses de você com a SER Energia! 🎊\nNesse tempo você continua gerando energia limpa todos os dias direto do telhado da sua casa e economizando na conta de luz.\nEstamos muito felizes com essa parceria, e por isso batemos aqui hoje com carinho: você já conhece o Programa Embaixador SER?\nRelembrando: você indica, a pessoa fecha a instalação, e você ganha até um salário mínimo por cada venda concretizada. Sem limite de quantas indicações você pode fazer!\nÉ só encaminhar este link pra pessoa indicada — a conversa cai direto comigo:\n[LinkIndicacao]\nTopa começar a indicar hoje mesmo? 💪🌞',
+    '180dias': '[Nome], seu sistema solar já completou 6 meses de vida! 📊☀️\nOlha só o que você já conquistou nesse período:\n💰 Economia acumulada estimada: [Economia6m]\n📉 Economia mensal média: [EconomiaMes]\nEsses são valores reais saindo direto do seu bolso de volta pro seu bolso — dinheiro que ficou com você em vez de ir pra conta de luz.\nSe quiser ver a geração em tempo real da sua usina, é só acessar o app de monitoramento. Qualquer dúvida sobre o desempenho do sistema, estamos aqui! 💛\nObrigado por fazer parte da família SER 🌞',
     '300dias': 'Oi [Nome], tudo bem? 😊\nAqui é da equipe SER Energia Renovável. Passamos para te dar um aviso importante!\n\nJá se aproxima 1 ano desde a instalação da sua usina solar — parabéns por gerar sua própria energia todo esse tempo! ☀️\n\nComo acontece com qualquer equipamento de qualidade, a manutenção preventiva é fundamental para garantir que o seu sistema continue operando com máxima eficiência e vida útil prolongada.\n\nPor isso, recomendamos agendar agora a sua:\n✅ Limpeza dos módulos fotovoltaicos\n✅ Inspeção das conexões elétricas\n✅ Verificação do desempenho do inversor\n✅ Check geral da estrutura de fixação\n\nEssa revisão preventiva evita perdas de geração e garante que sua garantia permaneça válida.\n\nQuer agendar? É só responder aqui que a gente cuida de tudo! 🔧🌞',
     'aniversario': '🎉 Feliz Aniversário, [Nome]! 🎂\nHoje o dia é seu, e a família SER Energia não podia deixar passar em branco!\nQueremos desejar um ano repleto de conquistas, saúde e muita luz (literalmente ☀️) na sua vida.\nObrigado por confiar na SER e fazer parte da nossa história. Que seu novo ciclo venha ainda mais brilhante!\nUm abraço da equipe SER Energia Renovável 💛'
   };
+  // Resolve dados de contexto do contrato/proposta/vendedor para preencher placeholders dinâmicos da mensagem
+  function agendaContexto(a){
+    const cont = (State.contratos||[]).find(c=>String(c.id)===String(a.contrato_id));
+    const prop = cont?.proposta_id ? (State.propostas||[]).find(p=>String(p.id)===String(cont.proposta_id)) : null;
+    const economiaMes = Number(prop?.economia_mensal)||0;
+    const vendTel = (cont?.vend_telefone || (State.perfis||[]).find(p=>normName(p.nome||'')===normName(cont?.vendedor||''))?.telefone || '').replace(/\D/g,'');
+    const linkIndicacao = vendTel
+      ? 'https://wa.me/'+(vendTel.length<=11?'55'+vendTel:vendTel)+'?text='+encodeURIComponent('Oi! Um cliente da SER Energia me indicou e quero saber mais sobre energia solar 🌞')
+      : 'https://www.serenergiarenovavel.com.br';
+    return { economiaMes, linkIndicacao };
+  }
   function agendaWaLink(a){
     const tel = (a.cliente_telefone||'').replace(/\D/g,'');
     const base = tel ? ('https://wa.me/'+(tel.length<=11?'55'+tel:tel)) : 'https://wa.me/';
-    const msg = (tipoMsgMap[a.tipo]||'').replace(/\[Nome\]/g, a.cliente_nome||'');
+    const { economiaMes, linkIndicacao } = agendaContexto(a);
+    const msg = (tipoMsgMap[a.tipo]||'')
+      .replace(/\[Nome\]/g, a.cliente_nome||'')
+      .replace(/\[LinkIndicacao\]/g, linkIndicacao)
+      .replace(/\[Economia6m\]/g, economiaMes ? fmtBRL(economiaMes*6) : 'consulte seu consultor')
+      .replace(/\[EconomiaMes\]/g, economiaMes ? fmtBRL(economiaMes) : 'consulte seu consultor');
     return base+'?text='+encodeURIComponent(msg);
   }
 
@@ -6727,7 +6745,7 @@ function openInstalacaoModal(item=null){
       const tel  = contrato?.telefone || item.telefone || '';
       const base = new Date(data.data_instalacao+'T12:00:00');
       const addD = (d) => { const dt=new Date(base); dt.setDate(dt.getDate()+d); return dt.toISOString().slice(0,10); };
-      const tiposDias = [['5dias',5],['30dias',30],['90dias',90],['300dias',300]];
+      const tiposDias = [['5dias',5],['30dias',30],['90dias',90],['180dias',180],['300dias',300]];
       const agendaRows = tiposDias.map(([tipo,dias])=>({
         contrato_id: item.contrato_id, instalacao_id: item.id,
         cliente_nome: nome, cliente_telefone: tel,

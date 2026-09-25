@@ -180,7 +180,7 @@ function buildSteps(data){
 }
 
 function render(data){
-  const {contrato, vistoria, logistica, instalacao, homologacao, proposta} = data;
+  const {contrato, vistoria, logistica, instalacao, homologacao, proposta, monitoramento} = data;
   const steps = buildSteps(data);
 
   const nome = contrato?.nome || '—';
@@ -218,6 +218,19 @@ function render(data){
     instalacao?.laudo_url ? `<a href="${esc(instalacao.laudo_url)}" target="_blank" class="doc-btn"><div class="doc-icon">🔧</div><span class="doc-label">Laudo de instalação</span><span class="doc-arrow">↓</span></a>` : '',
   ].filter(Boolean).join('') || '<p style="font-size:13px;color:#c4b5fd;margin-top:4px">Documentos serão disponibilizados em breve.</p>';
 
+  const leitura = monitoramento?.leitura;
+  const monitoramentoHTML = leitura ? `
+      <div class="card">
+        <div class="card-title">⚡ Monitoramento em Tempo Real</div>
+        <div class="sys-grid">
+          <div class="sys-item"><div class="sys-val">${Number(leitura.current_power_kw||0).toFixed(2)} kW</div><div class="sys-label">Gerando agora</div></div>
+          <div class="sys-item"><div class="sys-val">${Number(leitura.today_yield_kwh||0).toFixed(1)} kWh</div><div class="sys-label">Geração hoje</div></div>
+          <div class="sys-item"><div class="sys-val">${Number(leitura.month_yield_kwh||0).toFixed(0)} kWh</div><div class="sys-label">Geração no mês</div></div>
+          <div class="sys-item"><div class="sys-val">${Number(leitura.total_yield_kwh||0).toFixed(0)} kWh</div><div class="sys-label">Total gerado</div></div>
+        </div>
+        <div style="font-size:10px;color:#9ca3af;margin-top:10px;text-align:center">Atualizado em ${leitura.captured_at ? new Date(leitura.captured_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</div>
+      </div>` : '';
+
   document.getElementById('app').innerHTML = `
     <div class="header">
       <img src="ser_logo.jpg" class="logo" alt="SER Energia Renovável">
@@ -244,7 +257,7 @@ function render(data){
           <div class="sys-item" style="grid-column:1/-1"><div class="sys-val" style="font-size:14px">${esc(inversorVal)}${inversorSub?` <span style="font-size:12px;font-weight:400;color:#9ca3af">· ${esc(inversorSub)}</span>`:''}</div><div class="sys-label">Inversor</div></div>
         </div>
       </div>
-
+${monitoramentoHTML}
       <div class="card">
         <div class="card-title">Seus documentos</div>
         ${docsHTML}
