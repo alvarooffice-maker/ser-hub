@@ -6680,6 +6680,8 @@ function openLaudoCampoModal(item){
     .wz-add{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:2px dashed #c4b5fd;background:transparent;color:#6B21A8;margin-bottom:10px}
     .wz-add:disabled{opacity:.4;cursor:default}
     .wz-g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .sig-wrap{margin-bottom:18px}
+    .sig-canvas{border:2px solid #c4b5fd;border-radius:8px;background:#fff;touch-action:none;cursor:crosshair;width:100%;max-width:700px;height:180px;display:block}
     </style>
     <div class="modal-header">
       <h2>📋 Laudo de Campo — ${esc(item.nome||'')}</h2>
@@ -6795,6 +6797,18 @@ function openLaudoCampoModal(item){
         ${up('Vídeo Geral da Instalação','video_inst',fs.video_inst)}
         ${up('Acabamento Tubular','acabamento',fs.acabamento)}
         ${up('Placas de Segurança e Marketing','placas_seg',fs.placas_seg)}
+
+        <div class="wz-sub">✍️ Assinatura do Técnico Responsável <span style="color:#dc2626">*obrigatória</span></div>
+        <div class="sig-wrap">
+          <canvas id="sigTecnico" width="700" height="180" class="sig-canvas"></canvas>
+          <button type="button" class="btn btn-sm btn-secondary" id="sigTecnicoClear" style="margin-top:6px">🧹 Limpar assinatura</button>
+        </div>
+
+        <div class="wz-sub">✍️ Assinatura do Cliente/Responsável <span style="color:#6b7280">(quando presente)</span></div>
+        <div class="sig-wrap">
+          <canvas id="sigCliente" width="700" height="180" class="sig-canvas"></canvas>
+          <button type="button" class="btn btn-sm btn-secondary" id="sigClienteClear" style="margin-top:6px">🧹 Limpar assinatura</button>
+        </div>
       </div>
 
     </div>
@@ -6811,6 +6825,41 @@ function openLaudoCampoModal(item){
 
   const form = $('#laudoFrm');
   attachFileUploads(form, fs);
+
+  // ── Assinatura digital (canvas touch/mouse) ──────────────
+  function setupSignaturePad(canvasId, existingDataUrl){
+    const canvas = document.getElementById(canvasId);
+    if(!canvas) return null;
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#1a0a2e'; ctx.lineWidth = 2.4; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    let drawing = false, hasDrawn = false;
+    const pos = e => {
+      const r = canvas.getBoundingClientRect();
+      const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+      const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+      return { x: cx * canvas.width / r.width, y: cy * canvas.height / r.height };
+    };
+    const start = e => { drawing = true; hasDrawn = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+    const move  = e => { if(!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+    const end   = () => { drawing = false; };
+    canvas.addEventListener('pointerdown', start);
+    canvas.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', end);
+    if(existingDataUrl){
+      const img = new Image();
+      img.onload = () => { ctx.drawImage(img, 0, 0, canvas.width, canvas.height); hasDrawn = true; };
+      img.src = existingDataUrl;
+    }
+    return {
+      clear(){ ctx.clearRect(0, 0, canvas.width, canvas.height); hasDrawn = false; },
+      isEmpty(){ return !hasDrawn; },
+      toDataURL(){ return hasDrawn ? canvas.toDataURL('image/png') : null; },
+    };
+  }
+  const sigTecnico = setupSignaturePad('sigTecnico', ds.assinatura_tecnico);
+  const sigCliente = setupSignaturePad('sigCliente', ds.assinatura_cliente);
+  $('#sigTecnicoClear')?.addEventListener('click', ()=> sigTecnico?.clear());
+  $('#sigClienteClear')?.addEventListener('click', ()=> sigCliente?.clear());
 
   const renderBar = () => {
     $('#wzBar').innerHTML = STEPS.map((s,i)=>
@@ -6866,7 +6915,35 @@ function openLaudoCampoModal(item){
     $('#wzCfgArea').style.display = e.target.checked ? '' : 'none';
   });
 
-  $('#wzNext')?.addEventListener('click', ()=>{ if(step<STEPS.length-1) showStep(step+1); });
+  // ── Fotos obrigatórias por etapa (itens críticos) ──────────
+  const faltantesFoto = n => {
+    const falt = [];
+    if(n===1){
+      if(!fs.kit_placas?.length) falt.push('Kit — Placas/Módulos');
+      if(!fs.kit_inversores?.length) falt.push('Kit — Inversores');
+    }
+    if(n===2){
+      for(let i=1;i<=numAguas;i++){ const k=`agua_0${i}`; if(!fs[k]?.length) falt.push(PHOTO_LABELS[k]); }
+    }
+    if(n===3){
+      if(!fs.ater_inv?.length) falt.push('Aterramento do Inversor');
+      if(!fs.inv_instalado?.length) falt.push('Inversores Instalados');
+      for(let i=1;i<=numStrings;i++){ const k=`str_${pad2(i)}`; if(!fs[k]?.length) falt.push(PHOTO_LABELS[k]); }
+    }
+    if(n===4){
+      if(form.querySelector('[name="ld_mud_pad"]')?.checked && !fs.pad_inst?.length) falt.push('Instalação do Padrão');
+    }
+    if(n===5){
+      if(!fs.geral_inst?.length) falt.push('Foto Geral da Instalação');
+    }
+    return falt;
+  };
+
+  $('#wzNext')?.addEventListener('click', ()=>{
+    const falt = faltantesFoto(step);
+    if(falt.length){ toast('📷 Foto obrigatória faltando: '+falt.join(', '),'error',5000); return; }
+    if(step<STEPS.length-1) showStep(step+1);
+  });
   $('#wzPrev')?.addEventListener('click', ()=>{ if(step>0) showStep(step-1); });
 
   const buildDados = () => {
@@ -6876,7 +6953,16 @@ function openLaudoCampoModal(item){
       titular_presente: d.ld_titular ?? true, acomp_nome: d.ld_acomp_nome||null, acomp_cpf: d.ld_acomp_cpf||null,
       num_aguas: numAguas, num_strings: numStrings,
       mudanca_padrao: d.ld_mud_pad||false, inv_configurado: d.ld_inv_cfg||false,
+      assinatura_tecnico: sigTecnico?.toDataURL() || ds.assinatura_tecnico || null,
+      assinatura_cliente: sigCliente?.toDataURL() || ds.assinatura_cliente || null,
     };
+  };
+
+  const validarFinalizacao = () => {
+    const falt = faltantesFoto(5);
+    if(falt.length){ toast('📷 Foto obrigatória faltando: '+falt.join(', '),'error',5000); return false; }
+    if(sigTecnico?.isEmpty() && !ds.assinatura_tecnico){ toast('✍️ Assinatura do técnico é obrigatória para concluir o laudo.','error',5000); return false; }
+    return true;
   };
 
   // Reclassificação de fotos do pool
@@ -6900,6 +6986,7 @@ function openLaudoCampoModal(item){
   });
 
   $('#wzSave')?.addEventListener('click', async ()=>{
+    if(!validarFinalizacao()) return;
     const laudoDados = buildDados();
     const fotosData = { ...item.fotos, ...fs, _dados: laudoDados };
     const { error } = await supa.from('instalacoes').update({ fotos: fotosData }).eq('id', item.id);
@@ -6910,6 +6997,7 @@ function openLaudoCampoModal(item){
   });
 
   $('#wzPDF')?.addEventListener('click', ()=>{
+    if(!validarFinalizacao()) return;
     abrirInstalacaoLaudo({ ...item }, buildDados(), fs);
   });
 }
@@ -7041,6 +7129,12 @@ ${(()=>{
 })()}
 
 ${item.obs?`<h2>📝 Observações</h2><div class="obs">${esc(item.obs)}</div>`:''}
+
+${(ld.assinatura_tecnico||ld.assinatura_cliente)?`<h2>✍️ Assinaturas</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:6px">
+  ${ld.assinatura_tecnico?`<div><img src="${ld.assinatura_tecnico}" style="width:100%;max-width:320px;border-bottom:2px solid #4B0082;padding-bottom:4px"><div style="font-size:10px;text-align:center;color:#6b5f7a;margin-top:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:600">Técnico Responsável — ${txt(ld.instalador)}</div></div>`:''}
+  ${ld.assinatura_cliente?`<div><img src="${ld.assinatura_cliente}" style="width:100%;max-width:320px;border-bottom:2px solid #4B0082;padding-bottom:4px"><div style="font-size:10px;text-align:center;color:#6b5f7a;margin-top:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:600">Cliente/Responsável no Local</div></div>`:''}
+</div>`:''}
 
 </div></body></html>`);
   win.document.close();
