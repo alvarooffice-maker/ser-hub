@@ -1,0 +1,27 @@
+name: Sincronização Automática de Monitoramento Solar
+
+on:
+  schedule:
+    # 12h UTC = 9h Belém (UTC-3), todo dia
+    - cron: '0 12 * * *'
+  workflow_dispatch: # permite rodar manualmente pelo GitHub
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sincronizar provedores de monitoramento (Auxsol, GoodWe, Growatt, SAJ, Huawei)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          set +e
+          for provider in auxsol goodwe growatt saj huawei; do
+            echo "=== Sincronizando $provider ==="
+            curl -sS -X POST "$SUPABASE_URL/functions/v1/monitoramento-$provider-sync" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              -H "Content-Type: application/json" \
+              --max-time 60
+            echo ""
+          done
+          exit 0
