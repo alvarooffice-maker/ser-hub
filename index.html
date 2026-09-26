@@ -11096,6 +11096,60 @@ function attachCalEvents(){
 /* ============================================================
    MONITORAMENTO SOLAR
    ============================================================ */
+// Agrupa leituras por usina e por dia, mantendo o maior valor do dia (caso haja mais de uma sincronização)
+function monSeriesPorDia(leituras){
+  const porUsinaDia = new Map();
+  (leituras||[]).forEach(l=>{
+    if(!l.captured_at) return;
+    const dia = l.captured_at.slice(0,10);
+    if(!porUsinaDia.has(l.usina_id)) porUsinaDia.set(l.usina_id, new Map());
+    const m = porUsinaDia.get(l.usina_id);
+    const val = Number(l.today_yield_kwh||0);
+    if(val > (m.get(dia)||0)) m.set(dia, val);
+  });
+  return porUsinaDia;
+}
+
+function monPeriodDias(period){
+  const hojeD = new Date(); hojeD.setHours(0,0,0,0);
+  let start = new Date(hojeD);
+  if(period==='semana') start.setDate(start.getDate()-6);
+  else if(period==='mes') start.setDate(1);
+  else if(period==='ano'){ start.setMonth(0); start.setDate(1); }
+  const dias = [];
+  const d = new Date(start);
+  while(d<=hojeD){
+    dias.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+    d.setDate(d.getDate()+1);
+  }
+  return dias;
+}
+
+// Alertas: desligamento (gerou 0 hoje) e baixa produção (<80% da média histórica)
+function monComputeAlertas(usinas, leituras){
+  const porUsinaDia = monSeriesPorDia(leituras);
+  const hojeStr = today();
+  const alertas = [];
+  (usinas||[]).forEach(u=>{
+    const serieMap = porUsinaDia.get(u.id);
+    if(!serieMap || serieMap.size===0) return;
+    const dias = [...serieMap.keys()].sort();
+    const diasAnteriores = dias.filter(d=>d!==hojeStr);
+    if(diasAnteriores.length < 5) return; // dados insuficientes pra ter uma média confiável
+    const historico = diasAnteriores.slice(-30).map(d=>serieMap.get(d));
+    const media = historico.reduce((a,b)=>a+b,0) / historico.length;
+    if(media <= 0) return;
+    const valorHoje = serieMap.get(hojeStr);
+    if(valorHoje == null) return; // ainda sem leitura de hoje
+    if(valorHoje === 0){
+      alertas.push({ usina:u, tipo:'desligamento', valorHoje, media });
+    } else if(valorHoje < media*0.8){
+      alertas.push({ usina:u, tipo:'baixa_producao', valorHoje, media, pct: Math.round(valorHoje/media*100) });
+    }
+  });
+  return alertas.sort((a,b)=> (a.tipo==='desligamento'?0:1) - (b.tipo==='desligamento'?0:1));
+}
+
 async function renderMonitoramento(){
   if(!isAdmin()){ $('#content').innerHTML='<div class="empty">Acesso restrito.</div>'; return; }
 
@@ -11134,6 +11188,29 @@ async function renderMonitoramento(){
 
   const statusColor = s => s==='success'?'#16a34a':s==='error'?'#dc2626':'#d97706';
 
+  // Alertas
+  const alertas = monComputeAlertas(usinas, leituras);
+  const nDeslig = alertas.filter(a=>a.tipo==='desligamento').length;
+  const nBaixa  = alertas.filter(a=>a.tipo==='baixa_producao').length;
+
+  // Período do gráfico (persiste entre re-renders)
+  const monPeriod = State._monPeriod || 'semana';
+  const porUsinaDiaChart = monSeriesPorDia(leituras);
+  let diasChart;
+  if(monPeriod==='total'){
+    const todasDatas = new Set();
+    porUsinaDiaChart.forEach(m=>m.forEach((_,d)=>todasDatas.add(d)));
+    diasChart = [...todasDatas].sort();
+  } else {
+    diasChart = monPeriodDias(monPeriod);
+  }
+  const chartLabels = diasChart.map(d=>{ const [y,mo,da]=d.split('-'); return `${da}/${mo}`; });
+  const chartData = diasChart.map(d=>{
+    let total = 0;
+    porUsinaDiaChart.forEach(m=>{ total += m.get(d)||0; });
+    return Math.round(total*10)/10;
+  });
+
   $('#content').innerHTML = `
   <style>
     .mon-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
@@ -11154,6 +11231,12 @@ async function renderMonitoramento(){
     .mon-badge.off{background:#fee2e2;color:#991b1b}
     .mon-badge.unk{background:#f3f4f6;color:#6b7280}
     .mon-section{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin:20px 0 10px}
+    .mon-alert{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:8px}
+    .mon-alert.desligamento{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b}
+    .mon-alert.baixa_producao{background:#fef3c7;border:1px solid #fcd34d;color:#92400e}
+    .mon-period{display:flex;gap:2px;background:var(--bg);border-radius:8px;padding:3px}
+    .mon-period-btn{padding:6px 14px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--text-light)}
+    .mon-period-btn.active{background:var(--card);color:var(--primary);box-shadow:var(--shadow)}
   </style>
 
   <div class="mon-kpis">
@@ -11161,6 +11244,35 @@ async function renderMonitoramento(){
     <div class="mon-kpi"><div class="mk-val">${fmtN(kwpTotal,2)} kWp</div><div class="mk-lbl">Capacidade total</div></div>
     <div class="mon-kpi"><div class="mk-val">${fmtN(potAtual,1)} kW</div><div class="mk-lbl">Potência agora</div></div>
     <div class="mon-kpi"><div class="mk-val">${fmtN(geracaoHoje,1)} kWh</div><div class="mk-lbl">Geração hoje · ${usinasAtivas} ativas</div></div>
+  </div>
+
+  ${alertas.length ? `
+  <div class="mon-section">⚠️ Alertas (${alertas.length})</div>
+  <div style="margin-bottom:12px">
+    ${nDeslig ? `<div class="mon-alert desligamento"><strong>🔴 ${nDeslig} usina${nDeslig!==1?'s':''} desligada${nDeslig!==1?'s':''}</strong> — gerou 0 kWh hoje, apesar do histórico normal</div>` : ''}
+    ${nBaixa ? `<div class="mon-alert baixa_producao"><strong>🟠 ${nBaixa} usina${nBaixa!==1?'s':''} com baixa produção</strong> — abaixo de 80% da média histórica</div>` : ''}
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+      ${alertas.map(a=>`
+        <div class="mon-alert ${a.tipo}" style="justify-content:space-between">
+          <span>${a.tipo==='desligamento'?'🔴':'🟠'} <strong>${esc(a.usina.plant_name||'—')}</strong> (${a.usina.provider})</span>
+          <span>${a.tipo==='desligamento' ? 'gerou 0 kWh hoje (média: '+fmtN(a.media,1)+' kWh)' : fmtN(a.valorHoje,1)+' kWh hoje · '+a.pct+'% da média ('+fmtN(a.media,1)+' kWh)'}</span>
+        </div>`).join('')}
+    </div>
+  </div>` : ''}
+
+  <div class="mon-section" style="display:flex;align-items:center;justify-content:space-between">
+    <span>📈 Geração diária (kWh)</span>
+    <div class="mon-period" id="monPeriodFilter">
+      <div class="mon-period-btn ${monPeriod==='semana'?'active':''}" data-p="semana">Semana</div>
+      <div class="mon-period-btn ${monPeriod==='mes'?'active':''}" data-p="mes">Mês</div>
+      <div class="mon-period-btn ${monPeriod==='ano'?'active':''}" data-p="ano">Ano</div>
+      <div class="mon-period-btn ${monPeriod==='total'?'active':''}" data-p="total">Total</div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:20px">
+    <div style="position:relative;height:220px;padding:12px 4px 4px">
+      <canvas id="monChart"></canvas>
+    </div>
   </div>
 
   <div class="mon-section">Sincronização manual</div>
@@ -11241,6 +11353,37 @@ async function renderMonitoramento(){
     for(const p of providers) await callSync(p).catch(()=>{});
     if(btn){ btn.textContent='⚡ Sync Tudo'; btn.disabled=false; }
   });
+
+  // Filtro de período do gráfico
+  $$('#monPeriodFilter .mon-period-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      State._monPeriod = btn.dataset.p;
+      renderMonitoramento();
+    });
+  });
+
+  // Gráfico de geração diária
+  if(State.charts.mon){ try{ State.charts.mon.destroy(); }catch(_){} }
+  const monCtx = $('#monChart')?.getContext('2d');
+  if(monCtx){
+    State.charts.mon = new Chart(monCtx, {
+      type: 'bar',
+      data: {
+        labels: chartLabels,
+        datasets: [{
+          label: 'Geração (kWh)',
+          data: chartData,
+          backgroundColor: 'rgba(107,33,168,.65)',
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  }
 }
 
 /* ============================================================
