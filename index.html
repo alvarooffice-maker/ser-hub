@@ -680,6 +680,7 @@ async function sincronizarFilaOffline(){
       sincronizados++;
       // Pós-processamento específico de vistoria (cascata aprovado→contrato / reprovado→remarketing)
       if(it.table==='vistorias'){ await posSyncVistoria(it.recordId, it.data).catch(()=>{}); }
+      if(it.table==='instalacoes'){ await posSyncInstalacao(it.recordId, it.data).catch(()=>{}); }
     }catch(e){
       restantes.push(it);
     }
@@ -3009,6 +3010,25 @@ async function posSyncVistoria(recordId, data){
     }
   } else if(parecerEhReprovado(data.resultado) && !parecerEhReprovado(prevResultado)){
     await enviarParaRemarketing(antes, 'vistoria_reprovada', 'Vistoria reprovada');
+  }
+}
+// Repete o pós-processamento (histórico + agenda da régua de relacionamento) após sincronizar uma instalação feita offline
+async function posSyncInstalacao(recordId, data){
+  const itemAntigo = (State.instalacoes||[]).find(i=>String(i.id)===String(recordId));
+  await registrarHistorico('instalacoes', recordId, 'atualizado', 'Instalação sincronizada (preenchida offline em campo)');
+  if(data.data_instalacao && !itemAntigo?.data_instalacao){
+    const contrato = (State.contratos||[]).find(c=>String(c.id)===String(itemAntigo?.contrato_id));
+    const nome = contrato?.nome || itemAntigo?.nome || '';
+    const tel  = contrato?.telefone || itemAntigo?.telefone || '';
+    const base = new Date(data.data_instalacao+'T12:00:00');
+    const addD = (d) => { const dt=new Date(base); dt.setDate(dt.getDate()+d); return dt.toISOString().slice(0,10); };
+    const tiposDias = [['5dias',5],['30dias',30],['90dias',90],['180dias',180],['300dias',300]];
+    const agendaRows = tiposDias.map(([tipo,dias])=>({
+      contrato_id: itemAntigo?.contrato_id, instalacao_id: recordId,
+      cliente_nome: nome, cliente_telefone: tel,
+      tipo, data_disparo: addD(dias), status:'pendente'
+    }));
+    await supa.from('relacionamento_agenda').insert(agendaRows);
   }
 }
 async function enviarParaRemarketing(item, motivo, msg){
@@ -6735,8 +6755,14 @@ function openInstalacaoModal(item=null){
     ['val_poste','val_troca_padrao','estimado','pago'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     Object.keys(data).filter(k=>k.startsWith('_')).forEach(k=>delete data[k]);
     data.fotos = { ...(item.fotos||{}), ...filesStore };
-    const { error } = await supa.from('instalacoes').update(data).eq('id',item.id);
+    const { queued, error } = await salvarComOffline('instalacoes', item.id, data, `Instalação de ${item.nome||''}`);
     if(error) return toast('Erro ao salvar: '+error.message,'error');
+    if(queued){
+      toast('📡 Sem internet — instalação salva localmente. Será enviada automaticamente ao reconectar.','info',5000);
+      localStorage.removeItem(_draftKeyInst);
+      closeModal();
+      return;
+    }
 
     // Auto-agenda régua de relacionamento quando data_instalacao é preenchida
     if(data.data_instalacao && !item.data_instalacao){
@@ -7170,8 +7196,13 @@ function openLaudoCampoModal(item){
     if(!validarFinalizacao()) return;
     const laudoDados = buildDados();
     const fotosData = { ...item.fotos, ...fs, _dados: laudoDados };
-    const { error } = await supa.from('instalacoes').update({ fotos: fotosData }).eq('id', item.id);
+    const { queued, error } = await salvarComOffline('instalacoes', item.id, { fotos: fotosData }, `Laudo de ${item.nome||''}`);
     if(error) return toast('Erro ao salvar: '+error.message,'error');
+    if(queued){
+      toast('📡 Sem internet — laudo salvo localmente. Será enviado automaticamente ao reconectar.','info',5000);
+      closeModal();
+      return;
+    }
     await registrarHistorico('instalacoes', item.id, 'atualizado', 'Laudo de campo atualizado');
     toast('Laudo salvo!','success');
     await loadAll(); closeModal();
