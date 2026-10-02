@@ -7193,7 +7193,7 @@ function openLaudoCampoModal(item){
         fs: JSON.parse(JSON.stringify(fs)),
         ld: buildDados(),
       }));
-    }catch(e){}
+    }catch(e){ console.error('[_saveDraftLaudo erro]', e); }
   };
   let _draftTimerLaudo = null;
   const _agendaSaveDraftLaudo = () => { clearTimeout(_draftTimerLaudo); _draftTimerLaudo = setTimeout(_saveDraftLaudo, 1500); };
