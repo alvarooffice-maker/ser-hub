@@ -3819,6 +3819,7 @@ function openPropostaModal(item=null){
             ${formField({label:'Economia mensal (R$)',name:'economia_mensal',type:'number',value:item.economia_mensal,readonly:true})}
             ${formField({label:'Economia em 5 anos (R$)',name:'economia_5anos',type:'number',value:item.economia_5anos,readonly:true})}
             ${formField({label:'Área mínima (m²)',name:'area_minima',type:'number',value:item.area_minima,readonly:true})}
+            <div id="irradInfo" style="grid-column:1/-1;font-size:12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 12px;color:#075985;display:none"></div>
           </div></div>
         </div>
         <div class="section"><div class="section-header"><h4>Comercial</h4><span class="section-toggle">▼</span></div>
@@ -3888,6 +3889,20 @@ function openPropostaModal(item=null){
     // Área mínima: qtd_módulos × 3,5 m²
     form.area_minima.value = qm ? fmtInputNum(parseFloat((qm*3.5).toFixed(1))) : '';
   }
+  // Irradiação média diária no plano inclinado (kWh/m²/dia, ordem de grandeza CRESESB/INMET) por UF; PR (performance ratio) 0,80
+  const HSP_UF = {AC:4.6,AL:5.5,AP:4.8,AM:4.4,BA:5.6,CE:5.8,DF:5.5,ES:5.1,GO:5.5,MA:5.2,MT:5.3,MS:5.3,MG:5.4,PA:4.7,PB:5.7,PR:4.6,PE:5.6,PI:5.8,RJ:5.1,RN:5.8,RS:4.6,RO:4.7,RR:5.0,SC:4.5,SP:5.0,SE:5.5,TO:5.5};
+  function recalcIrrad(){
+    const box = $('#irradInfo'); if(!box) return;
+    const kwp = parseBR(form.kwp.value)||0; const kwh = parseBR(form.kwh.value)||0;
+    const uf = String(form.estado.value||'').trim().toUpperCase().slice(0,2);
+    const hsp = HSP_UF[uf] || 4.8;
+    if(!kwp){ box.style.display='none'; return; }
+    const ger = kwp*hsp*30*0.80;
+    const cob = kwh>0 ? Math.round(ger/kwh*100) : null;
+    box.style.display='';
+    box.innerHTML = `☀️ Geração estimada: <b>${Math.round(ger)} kWh/mês</b> (irradiação ${hsp.toFixed(1)} kWh/m²/dia${HSP_UF[uf]?' — '+uf:' — média; informe o Estado'}, PR 80%)` +
+      (cob!=null ? ` · cobre <b>${cob}%</b> do consumo${cob<90?' ⚠️ kit abaixo do consumo':cob>115?' (sobra de crédito)':''}` : '');
+  }
   function recalcSemSolar(){
     const kwh = parseBR(form.kwh.value)||0;
     if(kwh){
@@ -3909,8 +3924,10 @@ function openPropostaModal(item=null){
     form.economia_mensal.value = eco ? fmtInputNum(parseFloat(eco.toFixed(2))) : '';
     form.economia_5anos.value  = eco ? fmtInputNum(parseFloat((eco*60).toFixed(2))) : '';
   }
-  ['qtd_modulos','pot_modulo'].forEach(n=> form[n].addEventListener('input',recalc));
-  form.kwh.addEventListener('input', recalcSemSolar);
+  ['qtd_modulos','pot_modulo'].forEach(n=> form[n].addEventListener('input',()=>{ recalc(); recalcIrrad(); }));
+  form.kwh.addEventListener('input', ()=>{ recalcSemSolar(); recalcIrrad(); });
+  form.estado.addEventListener('input', recalcIrrad);
+  recalcIrrad();
   form.conta_sem_solar.addEventListener('input', recalcComSolar);
   form.conta_com_solar.addEventListener('input', recalcEco);
 
@@ -9030,7 +9047,14 @@ function buildMargemProjetoSection(despesas){
 
   const corMargem = pct => pct==null ? 'var(--text-light)' : pct>=30 ? '#16a34a' : pct>=15 ? '#ca8a04' : '#dc2626';
 
-  return `
+  const margemMin = Number(localStorage.getItem('ser_margem_min')) || 15;
+  const abaixo = rows.filter(r=>r.margemPct!=null && r.margemPct<margemMin);
+  const alertaMargem = abaixo.length ? `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#991b1b">
+      ⚠️ <b>${abaixo.length} projeto(s) abaixo da margem mínima de ${margemMin}%:</b> ${abaixo.slice(0,8).map(r=>esc(r.c.nome||'')+' ('+r.margemPct.toFixed(1)+'%)').join(', ')}${abaixo.length>8?'…':''}
+      <button type="button" class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="(function(){const v=prompt('Margem mínima (%)',${margemMin});if(v&&!isNaN(+v)){localStorage.setItem('ser_margem_min',+v);if(window.renderFinanceiro)renderFinanceiro();else location.reload();}})()">Alterar mínimo</button>
+    </div>` : '';
+
+  return alertaMargem + `
     <div class="metrics" style="margin-bottom:16px">
       <div class="metric"><div class="metric-label">Receita Total</div><div class="metric-value" style="font-size:15px">${fmtBRL(totalReceita)}</div></div>
       <div class="metric" style="border-color:var(--danger)"><div class="metric-label">Custo Total (kit+instalação+homolog+comissões)</div><div class="metric-value" style="font-size:15px">${fmtBRL(totalCusto)}</div></div>
@@ -9933,6 +9957,7 @@ function openUserModal(item=null){
       ${isNew?`<div style="grid-column:1/-1;font-size:11px;color:#888;margin-top:-8px">💡 Ex: <strong>Senha2025</strong> — evite caracteres especiais como @#$%</div>`:''}
       ${formField({label:'Perfil',name:'perfil',type:'select',value:item.perfil||'vendedor',options:perfilOpts})}
       ${formField({label:'CPF',name:'cpf',value:item.cpf||'',placeholder:'000.000.000-00'})}
+      ${formField({label:'Data de nascimento',name:'nascimento',type:'date',value:item.nascimento||''})}
       ${formField({label:'Telefone',name:'telefone',value:item.telefone||'',placeholder:'(91) 99999-9999'})}
       ${formField({label:'Endereço',name:'endereco',value:item.endereco||'',placeholder:'Rua, nº, complemento, bairro'})}
       ${formField({label:'CEP',name:'cep',value:item.cep||'',placeholder:'00000-000'})}
@@ -9963,6 +9988,7 @@ function openUserModal(item=null){
         toast('Atualizado','success');
       }catch(err){ return toast(err.message,'error'); }
     }
+    try{ await supa.from('perfis').update({ nascimento: data.nascimento||null }).eq('email', (isNew?data.email:item.email).toLowerCase()); }catch(_){}
     closeModal(); renderUsuarios();
   });
 }
