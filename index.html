@@ -652,8 +652,11 @@ async function salvarComOffline(table, recordId, data, label, onSyncedExtra){
     return { queued:true, error:null };
   }
   try{
-    const { error } = await supa.from(table).update(data).eq('id', recordId);
+    const usados = [];
+    const dadosFinais = await resolverArquivosPendentes(data, usados);
+    const { error } = await supa.from(table).update(dadosFinais).eq('id', recordId);
     if(error) throw error;
+    for(const id of usados) await _idbOp('readwrite', s=>s.delete(id)).catch(()=>{});
     return { queued:false, error:null };
   }catch(e){
     if(isNetworkError(e)){
@@ -675,8 +678,12 @@ async function sincronizarFilaOffline(){
   const restantes = [];
   for(const it of q){
     try{
-      const { error } = await supa.from(it.table).update(it.data).eq('id', it.recordId);
+      const usados = [];
+      const dadosFinais = await resolverArquivosPendentes(it.data, usados);
+      it.data = dadosFinais; // se o update falhar, a fila já guarda as URLs definitivas
+      const { error } = await supa.from(it.table).update(dadosFinais).eq('id', it.recordId);
       if(error) throw error;
+      for(const id of usados) await _idbOp('readwrite', s=>s.delete(id)).catch(()=>{});
       sincronizados++;
       // Pós-processamento específico de vistoria (cascata aprovado→contrato / reprovado→remarketing)
       if(it.table==='vistorias'){ await posSyncVistoria(it.recordId, it.data).catch(()=>{}); }
@@ -693,7 +700,7 @@ async function sincronizarFilaOffline(){
   }
 }
 window.addEventListener('online', sincronizarFilaOffline);
-window.addEventListener('load', ()=>{ updateOfflineBadge(); setTimeout(sincronizarFilaOffline, 2000); });
+window.addEventListener('load', ()=>{ updateOfflineBadge(); carregarPreviewsPendentes().catch(()=>{}); setTimeout(sincronizarFilaOffline, 2000); });
 setInterval(()=>{ if(navigator.onLine) sincronizarFilaOffline(); }, 30000);
 document.addEventListener('click', e=>{ if(e.target.closest('#offlineBadge')) sincronizarFilaOffline(); });
 
@@ -4012,6 +4019,73 @@ async function uploadFile(bucket, file, prefix=''){
   return { url:urlData.publicUrl, path, name:file.name };
 }
 
+/* ============================================================
+   FOTOS OFFLINE — guarda a imagem no aparelho (IndexedDB) quando não há
+   internet e envia ao Storage automaticamente ao sincronizar
+   ============================================================ */
+const _OFFLINE_DB = 'ser_offline_files', _OFFLINE_STORE = 'files';
+const _pendingUrls = {};
+function _idb(){
+  return new Promise((res,rej)=>{
+    const r = indexedDB.open(_OFFLINE_DB, 1);
+    r.onupgradeneeded = ()=> r.result.createObjectStore(_OFFLINE_STORE, { keyPath:'id' });
+    r.onsuccess = ()=> res(r.result);
+    r.onerror = ()=> rej(r.error);
+  });
+}
+async function _idbOp(mode, fn){
+  const db = await _idb();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction(_OFFLINE_STORE, mode);
+    const req = fn(tx.objectStore(_OFFLINE_STORE));
+    tx.oncomplete = ()=> res(req?.result);
+    tx.onerror = ()=> rej(tx.error);
+  });
+}
+async function guardarArquivoOffline(bucket, file, prefix){
+  const processed = await compressImage(file);
+  const id = uid();
+  await _idbOp('readwrite', s=>s.put({ id, bucket, prefix, blob:processed, fileName:file.name, ts:Date.now() }));
+  _pendingUrls[id] = URL.createObjectURL(processed);
+  return { url:_pendingUrls[id], name:file.name, path:'', _pending:id, _img:(processed.type||'').startsWith('image/') };
+}
+// Recria as miniaturas das fotos pendentes após recarregar a página e limpa registros com mais de 7 dias
+async function carregarPreviewsPendentes(){
+  try{
+    const all = await _idbOp('readonly', s=>s.getAll());
+    for(const rec of (all||[])){
+      if(Date.now()-rec.ts > 7*86400000){ await _idbOp('readwrite', s=>s.delete(rec.id)); continue; }
+      if(!_pendingUrls[rec.id]) _pendingUrls[rec.id] = URL.createObjectURL(rec.blob);
+    }
+  }catch(e){}
+}
+// Envia ao Storage as fotos pendentes citadas em `v` e devolve a estrutura já com as URLs definitivas
+async function resolverArquivosPendentes(v, usados){
+  if(!JSON.stringify(v||null).includes('"_pending"')) return v;
+  if(Array.isArray(v)){
+    const out = [];
+    for(const it of v){ const r = await resolverArquivosPendentes(it, usados); if(r!==undefined) out.push(r); }
+    return out;
+  }
+  if(v && typeof v === 'object'){
+    if(v._pending){
+      const rec = await _idbOp('readonly', s=>s.get(v._pending));
+      if(!rec) return undefined; // arquivo local sumiu: descarta a referência
+      const ext = (rec.fileName.split('.').pop()||'jpg').toLowerCase();
+      const path = `${rec.prefix?rec.prefix+'/':''}${Date.now()}_${uid()}.${ext}`;
+      const { error } = await supa.storage.from(rec.bucket).upload(path, rec.blob, { upsert:false, contentType:rec.blob.type||'application/octet-stream' });
+      if(error) throw error;
+      const { data:urlData } = supa.storage.from(rec.bucket).getPublicUrl(path);
+      if(usados) usados.push(rec.id); else await _idbOp('readwrite', s=>s.delete(rec.id));
+      return { url:urlData.publicUrl, path, name:rec.fileName };
+    }
+    const out = {};
+    for(const k of Object.keys(v)){ const r = await resolverArquivosPendentes(v[k], usados); if(r!==undefined) out[k] = r; }
+    return out;
+  }
+  return v;
+}
+
 function fileUploadBlock(label, name, bucket, currentList=[], multiple=true, contain=false){
   const list = Array.isArray(currentList)?currentList:[];
   const btnLabel = multiple ? '+ Adicionar fotos' : '+ Selecionar arquivo';
@@ -4026,16 +4100,26 @@ function fileUploadBlock(label, name, bucket, currentList=[], multiple=true, con
     </div>`;
 }
 function thumbHtml(f,name,i,contain=false){
-  const isImg = (f.url||'').match(/\.(jpe?g|png|gif|webp|bmp)$/i);
   const containClass = contain ? ' contain' : '';
   const containStyle = contain ? ' style="width:120px;height:90px"' : '';
+  if(f._pending){
+    const pu = _pendingUrls[f._pending];
+    const body = (pu && f._img)
+      ? `<a href="${esc(pu)}" target="_blank"><img src="${esc(pu)}" alt="${esc(f.name||'')}"/></a>`
+      : `<span style="font-size:11px">${esc(f.name||'arquivo')}</span>`;
+    return `<div class="file-thumb ${(pu&&f._img)?'':'doc'}${containClass}" data-name="${name}" data-i="${i}"${containStyle} title="Salva no aparelho — será enviada ao reconectar">
+      ${body}<span style="position:absolute;left:4px;bottom:4px;background:#f59e0b;color:#fff;border-radius:6px;font-size:10px;padding:1px 4px">📡</span>
+      <button type="button" class="rm" data-rm="${name}" data-i="${i}">×</button>
+    </div>`;
+  }
+  const isImg = (f.url||'').match(/\.(jpe?g|png|gif|webp|bmp)$/i);
   return `<div class="file-thumb ${isImg?'':'doc'}${containClass}" data-name="${name}" data-i="${i}"${containStyle}>
     ${isImg ? `<a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}" alt="${esc(f.name||'')}"/></a>` : `<a href="${esc(f.url)}" target="_blank">${esc(f.name||'arquivo')}</a>`}
     <button type="button" class="rm" data-rm="${name}" data-i="${i}">×</button>
   </div>`;
 }
 
-function attachFileUploads(rootEl, fileStore){
+function attachFileUploads(rootEl, fileStore, opts={}){
   function bindRemove(){
     $$('[data-rm]',rootEl).forEach(b=>{
       if(b._bound) return; b._bound = true;
@@ -4070,11 +4154,21 @@ function attachFileUploads(rootEl, fileStore){
           toast(`❌ Arquivo muito grande (${MB.toFixed(0)} MB). Limite: 48 MB. Comprima o PDF antes de enviar.`,'error',6000);
           continue;
         }
+        const guardarLocal = async ()=>{
+          const f = await guardarArquivoOffline(bucket, file, name);
+          fileStore[name].push(f);
+          toast('📡 Sem internet — foto salva no aparelho, será enviada ao reconectar.','info',3500);
+        };
         try{
+          if(opts.offline && !navigator.onLine){ await guardarLocal(); continue; }
           toast('Enviando '+file.name+'…','info',1500);
           const f = await uploadFile(bucket, file, name);
           fileStore[name].push(f);
-        }catch(e){ toast('Erro upload: '+e.message,'error'); }
+        }catch(e){
+          if(opts.offline && isNetworkError(e)){
+            try{ await guardarLocal(); }catch(e2){ toast('Erro ao guardar foto: '+e2.message,'error'); }
+          } else toast('Erro upload: '+e.message,'error');
+        }
       }
       const wrap = rootEl.querySelector(`[data-thumbs="${name}"]`);
       const isContain = wrap?.dataset.contain === '1';
@@ -4311,7 +4405,7 @@ function openVistoriaModal(item=null){
   [...fotoKeys, ...docKeys].forEach(k=>{
     allFiles[k] = (fotos[k] || docs[k] || []).slice();
   });
-  attachFileUploads(form, allFiles);
+  attachFileUploads(form, allFiles, {offline: !!item});
 
   // ── Auto-save: persiste o rascunho no localStorage ───────
   const _draftKey = `vistoria_rascunho_${item.id||'nova'}`;
@@ -6691,7 +6785,7 @@ function openInstalacaoModal(item=null){
   attachLinkedDocListeners(linked);
   carregarHistorico($('#histList'), 'instalacoes', item.id);
   const filesStore = { geral: (fotos.geral||[]).slice() };
-  attachFileUploads(form, filesStore);
+  attachFileUploads(form, filesStore, {offline:true});
 
   // ── Auto-save: persiste o rascunho no localStorage ───────
   const _draftKeyInst = `instalacao_rascunho_${item.id||'nova'}`;
@@ -7051,7 +7145,7 @@ function openLaudoCampoModal(item){
   `,'lg');
 
   const form = $('#laudoFrm');
-  attachFileUploads(form, fs);
+  attachFileUploads(form, fs, {offline:true});
 
   // ── Assinatura digital (canvas touch/mouse) ──────────────
   function setupSignaturePad(canvasId, existingDataUrl){
