@@ -45,7 +45,7 @@ self.addEventListener('fetch', e => {
     || url.pathname === '/' || url.pathname.endsWith('/index.html');
   if (isNavigation) {
     e.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'reload' }) // ignora o cache HTTP do navegador (GitHub Pages manda max-age=600)
         .then(res => {
           const clone = res.clone();
           caches.open(CACHE_NAME).then(c => c.put(request, clone));
