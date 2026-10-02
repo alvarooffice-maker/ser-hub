@@ -6851,6 +6851,19 @@ function openLaudoCampoModal(item){
   let step = 0;
   const STEPS = ['Identificação','Kit — Antes','Módulos','Elétrica','Padrão','Finalização'];
 
+  // ── Rascunho do wizard (fotos, contadores, respostas, assinatura) ──
+  const _draftKeyLaudo = `laudo_rascunho_${item.id}`;
+  let _draftLaudoPendente = null;
+  try{
+    const saved = localStorage.getItem(_draftKeyLaudo);
+    if(saved){
+      const draft = JSON.parse(saved);
+      const mins = Math.round((Date.now()-draft.ts)/60000);
+      if(mins < 1440) _draftLaudoPendente = draft;
+      else localStorage.removeItem(_draftKeyLaudo);
+    }
+  }catch(e){}
+
   const up = (label, key, arr) => fileUploadBlock(label, key, 'instalacoes', arr, true);
   const pad2 = n => String(n).padStart(2,'0');
 
@@ -6896,6 +6909,13 @@ function openLaudoCampoModal(item){
     </div>
     <form id="laudoFrm">
     <div class="wz-bar" id="wzBar"></div>
+    <div id="draftBannerLaudo" style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin:10px 16px 0;display:${_draftLaudoPendente?'flex':'none'};align-items:center;justify-content:space-between;gap:12px;font-size:12px">
+      <span>💾 <strong>Rascunho do laudo encontrado</strong>${_draftLaudoPendente?` — salvo há ${Math.max(1,Math.round((Date.now()-_draftLaudoPendente.ts)/60000))} min`:''}. Deseja continuar de onde parou?</span>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button type="button" id="draftRestoreBtnLaudo" class="btn btn-sm btn-primary">Continuar</button>
+        <button type="button" id="draftDiscardBtnLaudo" class="btn btn-sm btn-secondary">Descartar</button>
+      </div>
+    </div>
     <div class="modal-body">
 
       <!-- Passo 0: Identificação -->
@@ -7165,6 +7185,36 @@ function openLaudoCampoModal(item){
     };
   };
 
+  // ── Autosave do wizard: fotos, contadores de água/string, respostas e assinatura ──
+  const _saveDraftLaudo = () => {
+    try{
+      localStorage.setItem(_draftKeyLaudo, JSON.stringify({
+        ts: Date.now(),
+        fs: JSON.parse(JSON.stringify(fs)),
+        ld: buildDados(),
+      }));
+    }catch(e){}
+  };
+  let _draftTimerLaudo = null;
+  const _agendaSaveDraftLaudo = () => { clearTimeout(_draftTimerLaudo); _draftTimerLaudo = setTimeout(_saveDraftLaudo, 1500); };
+  form.addEventListener('input', _agendaSaveDraftLaudo);
+  form.addEventListener('change', _agendaSaveDraftLaudo);
+  const _draftIntervalLaudo = setInterval(_saveDraftLaudo, 8000); // cobre fotos/assinatura, que não disparam input/change do form
+  document.querySelectorAll('#modalRoot .modal-close').forEach(btn=>btn.addEventListener('click', ()=>clearInterval(_draftIntervalLaudo)));
+
+  document.getElementById('draftRestoreBtnLaudo')?.addEventListener('click', ()=>{
+    if(!_draftLaudoPendente) return;
+    clearInterval(_draftIntervalLaudo);
+    const fotosMerged = { ...(item.fotos||{}), ...(_draftLaudoPendente.fs||{}), _dados: { ...ds, ...(_draftLaudoPendente.ld||{}) } };
+    closeModal();
+    openLaudoCampoModal({ ...item, fotos: fotosMerged });
+  });
+  document.getElementById('draftDiscardBtnLaudo')?.addEventListener('click', ()=>{
+    localStorage.removeItem(_draftKeyLaudo);
+    _draftLaudoPendente = null;
+    const b = document.getElementById('draftBannerLaudo'); if(b) b.style.display='none';
+  });
+
   const validarFinalizacao = () => {
     const falt = faltantesFoto(5);
     if(falt.length){ toast('📷 Foto obrigatória faltando: '+falt.join(', '),'error',5000); return false; }
@@ -7198,6 +7248,8 @@ function openLaudoCampoModal(item){
     const fotosData = { ...item.fotos, ...fs, _dados: laudoDados };
     const { queued, error } = await salvarComOffline('instalacoes', item.id, { fotos: fotosData }, `Laudo de ${item.nome||''}`);
     if(error) return toast('Erro ao salvar: '+error.message,'error');
+    clearInterval(_draftIntervalLaudo);
+    localStorage.removeItem(_draftKeyLaudo);
     if(queued){
       toast('📡 Sem internet — laudo salvo localmente. Será enviado automaticamente ao reconectar.','info',5000);
       closeModal();
