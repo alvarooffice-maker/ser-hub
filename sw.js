@@ -1,8 +1,9 @@
-// Service Worker — SER Hub v5
-// Estratégia: cache-first para assets estáticos, network-first para dados
+// Service Worker — SER Hub v6
+// Estratégia: network-first para index.html/navegação (sempre pega versão nova),
+// cache-first só para assets realmente estáticos (logo, manifest), network-first para dados
 
-const CACHE_NAME = 'ser-hub-v34';
-const STATIC_ASSETS = ['/', '/index.html', '/logo.png', '/manifest.json'];
+const CACHE_NAME = 'ser-hub-v35';
+const STATIC_ASSETS = ['/logo.png', '/manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -34,6 +35,23 @@ self.addEventListener('fetch', e => {
           return res;
         })
         .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Navegação / index.html: network-first — sempre tenta pegar a versão mais nova do app;
+  // só usa o cache se estiver offline. Evita ficar preso numa versão antiga depois de um deploy.
+  const isNavigation = request.mode === 'navigate' || request.destination === 'document'
+    || url.pathname === '/' || url.pathname.endsWith('/index.html');
+  if (isNavigation) {
+    e.respondWith(
+      fetch(request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(request, clone));
+          return res;
+        })
+        .catch(() => caches.match(request).then(cached => cached || caches.match('/index.html')))
     );
     return;
   }
