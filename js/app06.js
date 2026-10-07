@@ -582,11 +582,13 @@ async function renderUsuarios(){
   await loadTable('perfis');
   const items = State.perfis;
   $('#pageActions').innerHTML = isAdmin()
-    ? `<button class="btn btn-secondary" id="backupBtn">⬇️ Backup Manual</button>
+    ? `<button class="btn btn-secondary" id="acessosBtn">🔎 Acessos a documentos</button>
+       <button class="btn btn-secondary" id="backupBtn">⬇️ Backup Manual</button>
        <button class="btn btn-primary" id="newUserBtn">+ Novo Usuário</button>`
     : '';
   $('#newUserBtn')?.addEventListener('click', ()=> openUserModal());
   $('#backupBtn')?.addEventListener('click', downloadBackup);
+  $('#acessosBtn')?.addEventListener('click', abrirRegistroAcessos);
   const tbody = items.length ? items.map((u,i)=>`
     <tr>
       <td>${esc(u.nome||'')}</td>
@@ -1573,3 +1575,15 @@ function openClientModalByNome(nome){
   const lea = find(State.leads,       n); if(lea) return openLeadModal(lea);
 }
 
+async function abrirRegistroAcessos(){
+  const { data, error } = await supa.from('acessos_arquivos').select('*').order('criado_em',{ascending:false}).limit(200);
+  if(error) return toast(error.message,'error');
+  openModal(`
+    <div class="modal-header"><h2>🔎 Acessos a documentos (últimos 200)</h2><button class="modal-close">×</button></div>
+    <div class="modal-body">${(data||[]).length ? `<div class="table-wrap"><table>
+      <thead><tr><th>Quando</th><th>Quem</th><th>Pasta</th><th>Arquivo</th></tr></thead>
+      <tbody>${data.map(a=>`<tr><td>${new Date(a.criado_em).toLocaleString('pt-BR')}</td><td>${esc(a.usuario_nome||a.usuario_id)}</td><td>${esc(a.bucket)}</td><td style="word-break:break-all;font-size:11px">${esc(a.caminho)}</td></tr>`).join('')}</tbody>
+    </table></div>` : '<div class="empty">Nenhum acesso registrado ainda.</div>'}
+    <div style="font-size:11px;color:var(--text-light);margin-top:8px">Registra quando alguém abre um documento ou foto em nova aba.</div></div>
+  `,'lg');
+}

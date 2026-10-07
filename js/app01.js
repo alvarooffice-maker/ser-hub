@@ -497,6 +497,17 @@ new MutationObserver(muts=>{
   };
 })();
 
+
+// Registro de acessos: quem abriu (clique) um documento de pasta privada
+document.addEventListener('click', e=>{
+  try{
+    const a = e.target.closest && e.target.closest('a[href*="/object/sign/"]');
+    if(!a) return;
+    const pt = _partesUrlPrivada(a.getAttribute('href')); if(!pt) return;
+    supa.from('acessos_arquivos').insert({ usuario_id: State.user?.id, usuario_nome: State.profile?.nome || State.user?.email || null, bucket: pt.bucket, caminho: pt.path }).then(()=>{}, ()=>{});
+  }catch(_){}
+}, true);
+
 // Perfis: gestão lê tudo; demais perfis recebem só dados básicos (sem CPF/endereço/CEP/nascimento de terceiros)
 async function selectPerfis(){
   if(['admin','supervisor','financeiro'].includes(State.profile?.perfil)) return supa.from('perfis').select('*').order('criado_em',{ascending:false});
