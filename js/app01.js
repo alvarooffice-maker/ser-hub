@@ -627,7 +627,7 @@ function buildParados(){
     { etapa:'Instalação',  icon:'🔧', dados:State.instalacoes,  abre:r=>['aguardando_agendamento','agendada'].includes(r.status), limite:10 },
     { etapa:'Homologação', icon:'📋', dados:State.homologacoes, abre:r=>!r.data_ativacao, limite:20 },
   ];
-  const lista = [];
+  const lista = [], antigos = [];
   regras.forEach(g=>{
     const dados = isVend() ? filterByVendor(g.dados||[]) : (g.dados||[]);
     dados.forEach(r=>{
@@ -635,10 +635,10 @@ function buildParados(){
       const t = new Date(r.atualizado_em || r.criado_em).getTime();
       if(!t) return;
       const dias = Math.floor((agora-t)/86400000);
-      if(dias>=g.limite) lista.push({ etapa:g.etapa, icon:g.icon, nome:r.nome||r.cliente||'—', vendedor:r.vendedor||'', dias, limite:g.limite });
+      if(dias>=g.limite) (dias>90 ? antigos : lista).push({ etapa:g.etapa, icon:g.icon, nome:r.nome||r.cliente||'—', vendedor:r.vendedor||'', dias, limite:g.limite });
     });
   });
-  if(!lista.length) return '';
+  if(!lista.length && !antigos.length) return '';
   lista.sort((a,b)=>(b.dias-b.limite)-(a.dias-a.limite));
   return `<div class="card" style="margin-bottom:16px">
     <div class="card-header"><h3>⏳ Projetos parados <span style="font-size:11px;font-weight:400;color:var(--text-light)">(${lista.length} acima do prazo da etapa)</span></h3></div>
@@ -648,6 +648,7 @@ function buildParados(){
         <span style="color:${a.dias>=a.limite*2?'#dc2626':'#ca8a04'};font-weight:600;white-space:nowrap">${a.dias} dias</span>
       </div>`).join('')}
     </div>
+    ${antigos.length?`<div style="font-size:12px;color:var(--text-light);margin-top:6px">+ ${antigos.length} registro(s) abertos há mais de 90 dias (provavelmente abandonados ou sem baixa) — vale revisar e encerrar.</div>`:''}
     <div style="font-size:11px;color:var(--text-light)">Prazos: proposta 7d · vistoria 7d · contrato 5d · logística 15d · instalação 10d · homologação 20d. Vermelho = o dobro do prazo.</div>
   </div>`;
 }
