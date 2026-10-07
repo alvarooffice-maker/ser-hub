@@ -1,8 +1,11 @@
 // Smoke tests gratuitos: node tests/smoke.js
 // Verifica sintaxe do JS inline e a presença dos fluxos críticos (offline, fotos, transições, assinatura).
 const fs = require('fs'), vm = require('vm');
-const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
-const js = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).join('\n');
+const root = __dirname + '/../';
+const html = fs.readFileSync(root + 'index.html', 'utf8');
+const srcs = [...html.matchAll(/<script src="(js\/[^"]+)"><\/script>/g)].map(m => m[1]);
+const js = (srcs.length ? srcs.map(f => fs.readFileSync(root + f, 'utf8')) : [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1])).join('\n');
+console.log('arquivos JS:', srcs.length || 'inline');
 let fail = 0;
 const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) fail++; };
 
