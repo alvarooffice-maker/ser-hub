@@ -434,7 +434,7 @@ function navigate(route){
 /* ============================================================
    BUCKETS PRIVADOS — troca links públicos por links assinados (1h) ao exibir
    ============================================================ */
-const BUCKETS_PRIVADOS = ['homologacoes'];
+const BUCKETS_PRIVADOS = ['homologacoes','vistorias','instalacoes','atendimentos','app_manutencao'];
 const _assinados = new Map(); // "bucket/path" -> { url, exp }
 function _partesUrlPrivada(u){
   const m = String(u||'').match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/([^?]+)/);
@@ -449,12 +449,14 @@ async function urlAssinada(u){
   _assinados.set(k, { url:data.signedUrl, exp:Date.now()+3600000 });
   return data.signedUrl;
 }
+let _assinPend = 0;
 async function _assinarEl(el){
   for(const attr of ['src','href']){
     const v = el.getAttribute && el.getAttribute(attr);
     if(v && v.includes('/object/public/') && _partesUrlPrivada(v)){
-      const novo = await urlAssinada(v);
-      if(novo !== v) el.setAttribute(attr, novo);
+      _assinPend++;
+      try{ const novo = await urlAssinada(v); if(novo !== v) el.setAttribute(attr, novo); }
+      finally{ _assinPend--; }
     }
   }
 }
@@ -469,6 +471,31 @@ new MutationObserver(muts=>{
     else m.addedNodes.forEach(_varrerAssinaturas);
   }
 }).observe(document.documentElement, { childList:true, subtree:true, attributes:true, attributeFilter:['src','href'] });
+
+
+// Janelas abertas em branco (laudos/relatórios impressos): assina os links dentro delas e só imprime depois
+(function(){
+  const abrirOrig = window.open.bind(window);
+  window.open = function(url, ...resto){
+    const w = abrirOrig(url, ...resto);
+    try{
+      if(w && (!url || url==='')){
+        new w.MutationObserver(muts=>{
+          for(const m of muts){
+            if(m.type==='attributes') _assinarEl(m.target);
+            else m.addedNodes.forEach(_varrerAssinaturas);
+          }
+        }).observe(w.document, { childList:true, subtree:true, attributes:true, attributeFilter:['src','href'] });
+        const imprimirOrig = w.print.bind(w);
+        w.print = ()=>{
+          const t0 = Date.now();
+          (function esperar(){ if((_assinPend>0 || Date.now()-t0<1200) && Date.now()-t0<8000) setTimeout(esperar,250); else imprimirOrig(); })();
+        };
+      }
+    }catch(_){}
+    return w;
+  };
+})();
 
 // Perfis: gestão lê tudo; demais perfis recebem só dados básicos (sem CPF/endereço/CEP/nascimento de terceiros)
 async function selectPerfis(){
