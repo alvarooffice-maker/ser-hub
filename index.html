@@ -963,12 +963,17 @@ function navigate(route){
 /* ============================================================
    DATA LOADERS
    ============================================================ */
+// Perfis: gestão lê tudo; demais perfis recebem só dados básicos (sem CPF/endereço/CEP/nascimento de terceiros)
+async function selectPerfis(){
+  if(['admin','supervisor','financeiro'].includes(State.profile?.perfil)) return supa.from('perfis').select('*').order('criado_em',{ascending:false});
+  return supa.rpc('perfis_basico');
+}
 async function loadAll(){
   const tables = ['leads','propostas','vistorias','contratos','logistica','instalacoes','homologacoes','posvenda','atendimentos','app_manutencao','remarketing','comissoes','financeiro_receitas','financeiro_despesas','cadastros','perfis','tentativas_contato','metas','metas_vendedores','contratos_termos_aditivos','custos_fixos','relacionamento_agenda'];
   const stateMap = { financeiro_receitas:'receitas', financeiro_despesas:'despesas', app_manutencao:'appman', contratos_termos_aditivos:'termos_aditivos' };
   await Promise.all(tables.map(async t => {
     try{
-      const { data, error } = await supa.from(t).select('*').order('criado_em',{ascending:false});
+      const { data, error } = t==='perfis' ? await selectPerfis() : await supa.from(t).select('*').order('criado_em',{ascending:false});
       if(error){ console.warn(t,error.message); return; }
       State[stateMap[t] || t] = data || [];
     }catch(e){ console.warn(t,e); }
@@ -986,7 +991,7 @@ async function loadAll(){
 
 async function loadTable(table){
   const stateMap = { financeiro_receitas:'receitas', financeiro_despesas:'despesas' };
-  const { data, error } = await supa.from(table).select('*').order('criado_em',{ascending:false});
+  const { data, error } = table==='perfis' ? await selectPerfis() : await supa.from(table).select('*').order('criado_em',{ascending:false});
   if(error){ toast(error.message,'error'); return []; }
   State[stateMap[table] || table] = data || [];
   return State[stateMap[table] || table];
