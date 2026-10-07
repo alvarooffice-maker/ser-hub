@@ -430,6 +430,46 @@ function navigate(route){
 /* ============================================================
    DATA LOADERS
    ============================================================ */
+
+/* ============================================================
+   BUCKETS PRIVADOS — troca links públicos por links assinados (1h) ao exibir
+   ============================================================ */
+const BUCKETS_PRIVADOS = ['homologacoes'];
+const _assinados = new Map(); // "bucket/path" -> { url, exp }
+function _partesUrlPrivada(u){
+  const m = String(u||'').match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/([^?]+)/);
+  return m && BUCKETS_PRIVADOS.includes(m[1]) ? { bucket:m[1], path:decodeURIComponent(m[2]) } : null;
+}
+async function urlAssinada(u){
+  const pt = _partesUrlPrivada(u); if(!pt) return u;
+  const k = pt.bucket+'/'+pt.path, c = _assinados.get(k);
+  if(c && c.exp > Date.now()+60000) return c.url;
+  const { data, error } = await supa.storage.from(pt.bucket).createSignedUrl(pt.path, 3600);
+  if(error || !data?.signedUrl) return u;
+  _assinados.set(k, { url:data.signedUrl, exp:Date.now()+3600000 });
+  return data.signedUrl;
+}
+async function _assinarEl(el){
+  for(const attr of ['src','href']){
+    const v = el.getAttribute && el.getAttribute(attr);
+    if(v && v.includes('/object/public/') && _partesUrlPrivada(v)){
+      const novo = await urlAssinada(v);
+      if(novo !== v) el.setAttribute(attr, novo);
+    }
+  }
+}
+function _varrerAssinaturas(root){
+  if(!root || root.nodeType!==1) return;
+  _assinarEl(root);
+  root.querySelectorAll && root.querySelectorAll('[src*="/object/public/"],[href*="/object/public/"]').forEach(_assinarEl);
+}
+new MutationObserver(muts=>{
+  for(const m of muts){
+    if(m.type==='attributes') _assinarEl(m.target);
+    else m.addedNodes.forEach(_varrerAssinaturas);
+  }
+}).observe(document.documentElement, { childList:true, subtree:true, attributes:true, attributeFilter:['src','href'] });
+
 // Perfis: gestão lê tudo; demais perfis recebem só dados básicos (sem CPF/endereço/CEP/nascimento de terceiros)
 async function selectPerfis(){
   if(['admin','supervisor','financeiro'].includes(State.profile?.perfil)) return supa.from('perfis').select('*').order('criado_em',{ascending:false});
