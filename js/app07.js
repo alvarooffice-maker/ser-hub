@@ -1102,7 +1102,9 @@ async function renderMetasVendedor(){
     const meta = Number(metaRec?.valor||0);
     const realizado = contratosDoMes.filter(c=>normName(c.vendedor)===normName(p.nome)).reduce((s,c)=>s+(Number(c.valor)||0),0);
     const pct = meta>0 ? Math.min(1, realizado/meta) : 0;
-    return { nome:p.nome, meta, realizado, pct, metaRec };
+    const diaMes = Number(td.slice(8,10))||1, diasNoMes = new Date(Number(td.slice(0,4)), Number(td.slice(5,7)), 0).getDate();
+    const proj = realizado/diaMes*diasNoMes;
+    return { nome:p.nome, meta, realizado, pct, metaRec, proj };
   }).filter(r=>r.meta>0 || r.realizado>0).sort((a,b)=>b.realizado-a.realizado);
 
   const gaugeSVG = (r) => {
@@ -1133,6 +1135,7 @@ async function renderMetasVendedor(){
       +'</svg>'
       +'<div style="font-weight:700;font-size:13px;margin-top:-2px">'+esc(firstName)+'</div>'
       +'<div style="font-size:10px;color:var(--text-light);margin-top:2px">'+fmtBRL(r.realizado)+' / '+(r.meta?fmtBRL(r.meta):'sem meta')+'</div>'
+      +(r.meta>0?'<div style="font-size:10px;margin-top:1px;color:'+(r.proj>=r.meta?'#16a34a':'#ca8a04')+'">Projeção: '+fmtBRL(r.proj)+(r.proj>=r.meta?' ✔':'')+'</div>':'')
       +'</div>';
   };
 

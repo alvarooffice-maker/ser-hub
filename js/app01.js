@@ -589,6 +589,33 @@ async function renderHomeVendedor(){
   $('#hvAppMan').addEventListener('click', ()=> navigate('appmanutencao'));
 }
 
+// Aniversariantes dos próximos 7 dias: equipe (só quem lê perfis completos) e clientes (leads com nascimento)
+function buildAniversariantes(){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const prox = (iso)=>{
+    if(!iso) return null;
+    const [y,m,d] = String(iso).slice(0,10).split('-').map(Number); if(!m||!d) return null;
+    let dt = new Date(hoje.getFullYear(), m-1, d);
+    if(dt < hoje) dt = new Date(hoje.getFullYear()+1, m-1, d);
+    const dias = Math.round((dt-hoje)/86400000);
+    return dias<=7 ? { dias, idade: dt.getFullYear()-y, label: String(d).padStart(2,'0')+'/'+String(m).padStart(2,'0') } : null;
+  };
+  const lista = [];
+  (State.perfis||[]).filter(p=>p.ativo!==false && p.nascimento).forEach(p=>{ const a=prox(p.nascimento); if(a) lista.push({ nome:p.nome, tipo:'Equipe', tel:p.telefone, ...a }); });
+  const vistos = new Set();
+  (State.leads||[]).filter(l=>l.nascimento).forEach(l=>{ const a=prox(l.nascimento); const k=(l.nome||'')+l.nascimento; if(a && !vistos.has(k)){ vistos.add(k); lista.push({ nome:l.nome, tipo:'Cliente', tel:l.telefone, ...a }); } });
+  if(!lista.length) return '';
+  lista.sort((a,b)=>a.dias-b.dias);
+  return `<div class="card" style="margin-bottom:16px">
+    <div class="card-header"><h3>🎂 Aniversariantes da semana</h3></div>
+    <div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">
+      ${lista.slice(0,12).map(a=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px">
+        <span><b>${esc(a.nome||'')}</b> <span style="color:var(--text-light)">· ${a.tipo}${a.idade>0&&a.idade<110?' · '+a.idade+' anos':''}</span></span>
+        <span>${a.dias===0?'🎉 hoje':a.dias===1?'amanhã':a.label}${a.tel?` · <a href="https://wa.me/55${String(a.tel).replace(/\D/g,'')}" target="_blank" rel="noopener">WhatsApp</a>`:''}</span>
+      </div>`).join('')}
+    </div></div>`;
+}
+
 async function renderDashboard(){
   await loadAll();
   // Dashboard sempre mostra dados completos da empresa (visão geral para todos)
@@ -780,6 +807,8 @@ async function renderDashboard(){
         </div>
       </div>
     </div>
+
+    ${buildAniversariantes()}
 
     <!-- Régua de Relacionamento — disparos de hoje -->
     ${agendaHoje.length > 0 ? `

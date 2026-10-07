@@ -1513,6 +1513,7 @@ function openLeadModal(item=null){
         <div class="form-grid">
           ${formField({label:'Nome',name:'nome',value:item.nome,required:true})}
           ${formField({label:'Telefone',name:'telefone',value:item.telefone})}
+          ${formField({label:'Data de nascimento',name:'nascimento',type:'date',value:item.nascimento||''})}
           ${formField({label:'Projeto',name:'projeto',value:item.projeto,placeholder:'ex: Residencial, Expansão, Comercial...'})}
           ${formField({label:'kWh',name:'kwh',type:'number',value:item.kwh})}
           ${formField({label:'Canal',name:'canal',type:'select',value:item.canal,options:canalOpts})}
