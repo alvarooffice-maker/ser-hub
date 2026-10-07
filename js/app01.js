@@ -860,6 +860,7 @@ async function renderDashboard(){
         <div class="rank-tab" data-rank="contexto">🎯 Contexto</div>
         <div class="rank-tab" data-rank="bancos">🏦 Bancos</div>
         <div class="rank-tab" data-rank="forma_pgto">💳 Forma Pgto</div>
+        <div class="rank-tab" data-rank="canais">📣 Canais</div>
         <div class="rank-tab" data-rank="distribuidores">📦 Distribuidores</div>
       </div>
       <div id="rankBody"></div>
@@ -1178,7 +1179,7 @@ async function renderDashboard(){
         ${rows.map(({display,val,count},i)=>{
           const pct = Math.max(4, Math.round((val/maxVal)*100));
           const medal = i<3 ? medals[i] : `<span style="font-size:11px;color:var(--text-light);font-weight:700;min-width:18px;text-align:center">${i+1}</span>`;
-          const sub = subFmt ? subFmt({val,count}) : '';
+          const sub = subFmt ? subFmt({val,count,display}) : '';
           return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--border);transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
             <span style="font-size:${i<3?'20px':'13px'};line-height:1;width:24px;text-align:center;flex-shrink:0">${medal}</span>
             <div style="flex:1;min-width:0">
@@ -1281,6 +1282,25 @@ async function renderDashboard(){
         valFmt:({val})=>`${Math.round(val/Math.max(1,total)*100)}%`,
         subFmt:({val})=>`${val} contrato${val!==1?'s':''}`,
         emptyMsg:'Nenhum dado no período.'
+      });
+    }
+    else if(dashRankTab === 'canais'){
+      // Leads do período por canal de aquisição + contratos assinados no período atribuídos ao canal do lead (casamento por nome)
+      const leadsPeriodo = byVend(leads).filter(l=>inPeriod(l.criado_em));
+      const canalPorNome = new Map();
+      leads.forEach(l=>{ if(l.nome && l.canal) canalPorNome.set(normNameRank(l.nome), l.canal); });
+      const mapa = new Map();
+      const get = (canal)=>{ const k=normNameRank(canal); if(!mapa.has(k)) mapa.set(k,{display:canal,val:0,count:0,volume:0}); return mapa.get(k); };
+      leadsPeriodo.forEach(l=>{ get(l.canal||'Sem canal').val++; });
+      contFiltrados.forEach(c=>{ const e=get(canalPorNome.get(normNameRank(c.nome||''))||'Sem canal'); e.count++; e.volume += Number(c.valor)||0; });
+      const rows = [...mapa.values()].filter(e=>e.val>0||e.count>0).sort((a,b)=>(b.volume-a.volume)||(b.val-a.val));
+      const porNome = new Map(rows.map(e=>[e.display,e]));
+      $('#rankBody').innerHTML = rankCards(rows,{
+        label:'Canal',
+        accent:'#7c3aed',
+        valFmt:({val})=>`${val} lead${val!==1?'s':''}`,
+        subFmt:({val,count,display})=>{ const e=porNome.get(display); const conv=val>0?Math.round(count/val*100):null; return `${count} contrato${count!==1?'s':''} · ${fmtBRL(e?e.volume:0)}${conv!=null?' · conv. '+conv+'%':''}`; },
+        emptyMsg:'Nenhum lead no período.'
       });
     }
     else if(dashRankTab === 'distribuidores'){
