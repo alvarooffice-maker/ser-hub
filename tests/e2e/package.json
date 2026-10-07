@@ -1,0 +1,6 @@
+{
+  "name": "ser-hub-e2e",
+  "private": true,
+  "scripts": { "test": "playwright test", "test:smoke": "playwright test -g smoke" },
+  "devDependencies": { "@playwright/test": "^1.49.0" }
+}

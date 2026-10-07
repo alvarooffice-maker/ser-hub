@@ -616,6 +616,42 @@ function buildAniversariantes(){
     </div></div>`;
 }
 
+// Projetos parados: registros ainda abertos numa etapa há mais dias que o limite dela
+function buildParados(){
+  const agora = Date.now();
+  const regras = [
+    { etapa:'Proposta',    icon:'📄', dados:State.propostas,    abre:r=>['enviada','em_aberto'].includes(r.status), limite:7 },
+    { etapa:'Vistoria',    icon:'🔍', dados:State.vistorias,    abre:r=>r.status==='agendada', limite:7 },
+    { etapa:'Contrato',    icon:'✍️', dados:State.contratos,    abre:r=>r.status==='enviado', limite:5 },
+    { etapa:'Logística',   icon:'📦', dados:State.logistica,    abre:r=>['aguardando','comprado','enviado'].includes(r.status), limite:15 },
+    { etapa:'Instalação',  icon:'🔧', dados:State.instalacoes,  abre:r=>['aguardando_agendamento','agendada'].includes(r.status), limite:10 },
+    { etapa:'Homologação', icon:'📋', dados:State.homologacoes, abre:r=>!r.data_ativacao, limite:20 },
+  ];
+  const lista = [];
+  regras.forEach(g=>{
+    const dados = isVend() ? filterByVendor(g.dados||[]) : (g.dados||[]);
+    dados.forEach(r=>{
+      if(!g.abre(r)) return;
+      const t = new Date(r.atualizado_em || r.criado_em).getTime();
+      if(!t) return;
+      const dias = Math.floor((agora-t)/86400000);
+      if(dias>=g.limite) lista.push({ etapa:g.etapa, icon:g.icon, nome:r.nome||r.cliente||'—', vendedor:r.vendedor||'', dias, limite:g.limite });
+    });
+  });
+  if(!lista.length) return '';
+  lista.sort((a,b)=>(b.dias-b.limite)-(a.dias-a.limite));
+  return `<div class="card" style="margin-bottom:16px">
+    <div class="card-header"><h3>⏳ Projetos parados <span style="font-size:11px;font-weight:400;color:var(--text-light)">(${lista.length} acima do prazo da etapa)</span></h3></div>
+    <div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">
+      ${lista.slice(0,10).map(a=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px">
+        <span>${a.icon} <b>${esc(a.nome)}</b> <span style="color:var(--text-light)">· ${a.etapa}${a.vendedor?' · '+esc(a.vendedor):''}</span></span>
+        <span style="color:${a.dias>=a.limite*2?'#dc2626':'#ca8a04'};font-weight:600;white-space:nowrap">${a.dias} dias</span>
+      </div>`).join('')}
+    </div>
+    <div style="font-size:11px;color:var(--text-light)">Prazos: proposta 7d · vistoria 7d · contrato 5d · logística 15d · instalação 10d · homologação 20d. Vermelho = o dobro do prazo.</div>
+  </div>`;
+}
+
 async function renderDashboard(){
   await loadAll();
   // Dashboard sempre mostra dados completos da empresa (visão geral para todos)
@@ -809,6 +845,8 @@ async function renderDashboard(){
     </div>
 
     ${buildAniversariantes()}
+
+    ${buildParados()}
 
     <!-- Régua de Relacionamento — disparos de hoje -->
     ${agendaHoje.length > 0 ? `
@@ -1292,7 +1330,7 @@ async function renderDashboard(){
       const mapa = new Map();
       const get = (canal)=>{ const k=normNameRank(canal); if(!mapa.has(k)) mapa.set(k,{display:canal,val:0,count:0,volume:0}); return mapa.get(k); };
       leadsPeriodo.forEach(l=>{ get(l.canal||'Sem canal').val++; });
-      contFiltrados.forEach(c=>{ const e=get(canalPorNome.get(normNameRank(c.nome||''))||'Sem canal'); e.count++; e.volume += Number(c.valor)||0; });
+      contFiltrados.forEach(c=>{ const e=get(c.canal||canalPorNome.get(normNameRank(c.nome||''))||'Sem canal'); e.count++; e.volume += Number(c.valor)||0; });
       const rows = [...mapa.values()].filter(e=>e.val>0||e.count>0).sort((a,b)=>(b.volume-a.volume)||(b.val-a.val));
       const porNome = new Map(rows.map(e=>[e.display,e]));
       $('#rankBody').innerHTML = rankCards(rows,{
