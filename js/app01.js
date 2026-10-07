@@ -622,11 +622,13 @@ async function renderHomeVendedor(){
       <div class="hv-btns">
         <button id="hvNovoLead" class="hv-btn hv-btn-primary">➕ Novo Lead</button>
         <button id="hvAppMan" class="hv-btn hv-btn-secondary">📱 App / Manutenção</button>
+        <button id="hvRelatorio" class="hv-btn hv-btn-secondary">📊 Relatório do mês</button>
       </div>
     </div>
   `;
   $('#hvNovoLead').addEventListener('click', ()=> openLeadModal());
   $('#hvAppMan').addEventListener('click', ()=> navigate('appmanutencao'));
+  $('#hvRelatorio')?.addEventListener('click', ()=> abrirRelatorioMensal());
 }
 
 // Aniversariantes dos próximos 7 dias: equipe (só quem lê perfis completos) e clientes (leads com nascimento)
@@ -651,7 +653,7 @@ function buildAniversariantes(){
     <div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">
       ${lista.slice(0,12).map(a=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px">
         <span><b>${esc(a.nome||'')}</b> <span style="color:var(--text-light)">· ${a.tipo}${a.idade>0&&a.idade<110?' · '+a.idade+' anos':''}</span></span>
-        <span>${a.dias===0?'🎉 hoje':a.dias===1?'amanhã':a.label}${a.tel?` · <a href="https://wa.me/55${String(a.tel).replace(/\D/g,'')}" target="_blank" rel="noopener">WhatsApp</a>`:''}</span>
+        <span>${a.dias===0?'🎉 hoje':a.dias===1?'amanhã':a.label}${a.tel?` · <a href="https://wa.me/55${String(a.tel).replace(/\D/g,'')}?text=${encodeURIComponent('Parabéns, '+String(a.nome||'').split(' ')[0]+'! 🎉 A equipe SER Energia Renovável deseja um dia muito especial e muita energia positiva pra você!')}" target="_blank" rel="noopener">Enviar parabéns</a>`:''}</span>
       </div>`).join('')}
     </div></div>`;
 }

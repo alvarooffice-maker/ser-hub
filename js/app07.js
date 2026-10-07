@@ -1197,3 +1197,56 @@ function openMetasVendedoresModal(){
 
 // boot
 checkSession();
+
+/* ============================================================
+   RELATÓRIO MENSAL (janela de impressão → Salvar como PDF)
+   ============================================================ */
+function abrirRelatorioMensal(){
+  const td = today(); const mes = td.slice(0,7);
+  const ini = mes+'-01', fim = td;
+  const noMes = d => d && String(d).slice(0,10) >= ini && String(d).slice(0,10) <= fim;
+  const contratos = (State.contratos||[]).filter(c=>c.status==='assinado' && noMes(c.data_assinatura));
+  const leads = (State.leads||[]).filter(l=>noMes(l.criado_em));
+  const volume = contratos.reduce((s,c)=>s+(Number(c.valor)||0),0);
+  const ticket = contratos.length ? volume/contratos.length : 0;
+  const conv = leads.length ? Math.round(contratos.length/leads.length*100) : 0;
+  const agrupa = (arr, f, v)=>{ const m=new Map(); arr.forEach(x=>{ const k=(f(x)||'—'); const e=m.get(k)||{n:0,val:0}; e.n++; e.val+=v(x); m.set(k,e); }); return [...m.entries()].sort((a,b)=>b[1].val-a[1].val||b[1].n-a[1].n); };
+  const tabela = (tit, linhas, cols)=> `<h2>${tit}</h2>` + (linhas.length ? `<table><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr>${linhas.map(l=>`<tr>${l.map((c,i)=>`<td${i?' class="n"':''}>${c}</td>`).join('')}</tr>`).join('')}</table>` : '<p class="vazio">Sem dados no período.</p>');
+  const vend = agrupa(contratos, c=>c.vendedor, c=>Number(c.valor)||0).map(([k,e])=>[esc(k), e.n, fmtBRL(e.val), fmtBRL(e.val/e.n)]);
+  const canais = agrupa(contratos, c=>c.canal, c=>Number(c.valor)||0).map(([k,e])=>[esc(k), e.n, fmtBRL(e.val)]);
+  const bancos = agrupa(contratos.filter(c=>c.banco), c=>c.banco, c=>Number(c.valor)||0).map(([k,e])=>[esc(k), e.n, fmtBRL(e.val)]);
+  const pgto = agrupa(contratos, c=>c.forma_pgto, ()=>1).map(([k,e])=>[esc(k), e.n, Math.round(e.n/Math.max(1,contratos.length)*100)+'%']);
+  const metas = (State.metas_vendedores||[]).filter(m=>m.mes===mes).map(m=>{
+    const real = contratos.filter(c=>normName(c.vendedor||'')===normName(m.vendedor||'')).reduce((s,c)=>s+(Number(c.valor)||0),0);
+    const meta = Number(m.valor)||0; return [esc(m.vendedor), fmtBRL(meta), fmtBRL(real), meta?Math.round(real/meta*100)+'%':'—'];
+  });
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório ${mes} — SER Hub</title><style>
+    body{font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#1f2937;margin:28px;font-size:13px}
+    h1{font-size:22px;margin:0 0 2px} .sub{color:#6b7280;margin-bottom:18px}
+    h2{font-size:15px;margin:22px 0 6px;border-bottom:2px solid #e5e7eb;padding-bottom:4px}
+    .kpis{display:flex;gap:10px;flex-wrap:wrap} .k{flex:1;min-width:130px;border:1px solid #e5e7eb;border-radius:8px;padding:10px}
+    .k b{display:block;font-size:18px;margin-top:2px}
+    table{width:100%;border-collapse:collapse} th,td{padding:6px 8px;border-bottom:1px solid #eee;text-align:left} td.n,th:not(:first-child){text-align:right}
+    .vazio{color:#9ca3af} @media print{body{margin:14mm} h2{break-after:avoid} table{break-inside:avoid}}
+  </style></head><body>
+    <h1>SER Energia Renovável — Relatório do mês</h1>
+    <div class="sub">Período: ${ini.split('-').reverse().join('/')} a ${fim.split('-').reverse().join('/')} · gerado em ${new Date().toLocaleString('pt-BR')}</div>
+    <div class="kpis">
+      <div class="k">Contratos assinados<b>${contratos.length}</b></div>
+      <div class="k">Volume vendido<b>${fmtBRL(volume)}</b></div>
+      <div class="k">Ticket médio<b>${fmtBRL(ticket)}</b></div>
+      <div class="k">Leads novos<b>${leads.length}</b></div>
+      <div class="k">Conversão<b>${conv}%</b></div>
+    </div>
+    ${tabela('Vendedores', vend, ['Vendedor','Contratos','Volume','Ticket médio'])}
+    ${tabela('Canais de aquisição (contratos)', canais, ['Canal','Contratos','Volume'])}
+    ${tabela('Bancos (financiamentos)', bancos, ['Banco','Contratos','Volume'])}
+    ${tabela('Forma de pagamento', pgto, ['Forma','Contratos','Participação'])}
+    ${tabela('Metas do mês', metas, ['Vendedor','Meta','Realizado','%'])}
+    <p style="margin-top:22px;color:#9ca3af;font-size:11px">Use Imprimir → Salvar como PDF.</p>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  if(!w){ toast('Libere pop-ups para abrir o relatório.','error'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(()=>{ try{ w.focus(); w.print(); }catch(_){} }, 400);
+}
