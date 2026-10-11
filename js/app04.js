@@ -442,24 +442,24 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
   .invest-val{font-size:56px}
 
   /* ── FUSÃO: Sobre + Contato → 1 folha ── */
-  body>.page:nth-child(7){page-break-after:auto!important;break-after:auto!important}
-  body>.page:nth-child(8)>.pg-header{display:none!important}
+  body>.page:nth-child(8){page-break-after:auto!important;break-after:auto!important}
+  body>.page:nth-child(9)>.pg-header{display:none!important}
 
   /* Trajetória oculta: espaço cedido ao contato */
-  body>.page:nth-child(7) .trajetoria-block{display:none!important}
+  body>.page:nth-child(8) .trajetoria-block{display:none!important}
 
   /* ── Sobre compacto para dividir folha com contato ── */
-  body>.page:nth-child(7) .page-inner{padding:14px 44px 8px}
-  body>.page:nth-child(7) .sec-title{font-size:20px;margin-bottom:10px}
-  body>.page:nth-child(7) .missao-grid{gap:10px;margin-bottom:12px}
-  body>.page:nth-child(7) .missao-card{padding:12px 14px}
-  body>.page:nth-child(7) .missao-card p{font-size:11.5px;line-height:1.6}
-  body>.page:nth-child(7) .ser-title{margin-bottom:10px}
-  body>.page:nth-child(7) .ser-grid{gap:10px;margin-top:0}
-  body>.page:nth-child(7) .ser-card{padding:12px 10px;border-top-width:4px}
-  body>.page:nth-child(7) .ser-letter{font-size:52px;margin-bottom:4px}
-  body>.page:nth-child(7) .ser-word{font-size:13px;margin-bottom:4px}
-  body>.page:nth-child(7) .ser-text{font-size:10.5px;line-height:1.55}
+  body>.page:nth-child(8) .page-inner{padding:14px 44px 8px}
+  body>.page:nth-child(8) .sec-title{font-size:20px;margin-bottom:10px}
+  body>.page:nth-child(8) .missao-grid{gap:10px;margin-bottom:12px}
+  body>.page:nth-child(8) .missao-card{padding:12px 14px}
+  body>.page:nth-child(8) .missao-card p{font-size:11.5px;line-height:1.6}
+  body>.page:nth-child(8) .ser-title{margin-bottom:10px}
+  body>.page:nth-child(8) .ser-grid{gap:10px;margin-top:0}
+  body>.page:nth-child(8) .ser-card{padding:12px 10px;border-top-width:4px}
+  body>.page:nth-child(8) .ser-letter{font-size:52px;margin-bottom:4px}
+  body>.page:nth-child(8) .ser-word{font-size:13px;margin-bottom:4px}
+  body>.page:nth-child(8) .ser-text{font-size:10.5px;line-height:1.55}
 
   /* ── Contato compacto: dados do vendedor abaixo do quem somos ── */
   .contact-wrap{
@@ -681,6 +681,67 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
 </div>
 </div>
 
+<!-- ══════════════════ PÁGINA 5B: CASAMENTO DE 25 ANOS ══════════════════ -->
+<div class="page">
+<div class="pg-header"><img src="https://crm.serenergiarenovavel.com.br/logo.png" alt="SER"/><div class="pg-header-right">NOSSO COMPROMISSO<br>${txt(p.nome)}</div></div>
+<div class="page-inner" style="padding:26px 44px 30px">
+  <div class="sec-tag">NOSSO COMPROMISSO COM VOCÊ</div>
+  <div class="sec-title" style="font-size:24px;line-height:1.25">Energia solar é um casamento de 25 anos.</div>
+  <p style="font-size:12.5px;color:#374151;line-height:1.7;margin-bottom:18px">
+    Os módulos e o inversor do seu sistema têm vida útil de 25 a 30 anos. Por isso, quando você escolhe uma empresa de energia solar, não está comprando um produto: está escolhendo <strong style="color:#1a0a2e">um parceiro para as próximas décadas</strong>. Na SER, o relacionamento não termina na instalação. Ele começa ali.
+  </p>
+
+  <div style="font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#6B21A8;margin-bottom:10px">NOSSOS 3 VOTOS · POR ESCRITO</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:22px">
+    <div style="border:2px solid #e9e2f5;border-top:4px solid #6B21A8;border-radius:12px;padding:14px 12px">
+      <div style="font-size:26px;font-weight:900;color:#4B0082;line-height:1">45 dias</div>
+      <div style="font-size:11px;font-weight:800;color:#1a0a2e;margin:6px 0 4px">Instalação garantida</div>
+      <div style="font-size:10px;color:#6b7280;line-height:1.55">Seu sistema instalado em até 45 dias após a assinatura do contrato. Se atrasarmos, você ganha <strong style="color:#1a0a2e">+1 ano de monitoramento e 1 manutenção com limpeza</strong>, sem custo.</div>
+    </div>
+    <div style="border:2px solid #e9e2f5;border-top:4px solid #6B21A8;border-radius:12px;padding:14px 12px">
+      <div style="font-size:26px;font-weight:900;color:#4B0082;line-height:1">48h</div>
+      <div style="font-size:11px;font-weight:800;color:#1a0a2e;margin:6px 0 4px">Atendimento técnico</div>
+      <div style="font-size:10px;color:#6b7280;line-height:1.55">Abriu um chamado? Nossa equipe atende em até 48 horas. Você não fica sozinho depois da venda.</div>
+    </div>
+    <div style="border:2px solid #e9e2f5;border-top:4px solid #6B21A8;border-radius:12px;padding:14px 12px">
+      <div style="font-size:26px;font-weight:900;color:#4B0082;line-height:1">1 ano</div>
+      <div style="font-size:11px;font-weight:800;color:#1a0a2e;margin:6px 0 4px">Monitoramento grátis</div>
+      <div style="font-size:10px;color:#6b7280;line-height:1.55">Acompanhamos a geração do seu sistema durante o primeiro ano. Se a produção cair, a gente avisa e age.</div>
+    </div>
+  </div>
+
+  <div style="font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#6B21A8;margin-bottom:12px">JORNADA SER · VOCÊ VAI OUVIR DA GENTE</div>
+  <div style="position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px">
+    <div style="position:absolute;top:21px;left:12%;right:12%;height:2px;background:#e9e2f5"></div>
+    <div style="text-align:center;position:relative">
+      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4B0082,#6B21A8);color:#fff;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">5</div>
+      <div style="font-size:11px;font-weight:800;color:#1a0a2e;margin-bottom:3px">Boas-vindas</div>
+      <div style="font-size:9.5px;color:#6b7280;line-height:1.5">5 dias após a instalação: conferimos se está tudo certo</div>
+    </div>
+    <div style="text-align:center;position:relative">
+      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4B0082,#6B21A8);color:#fff;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">30</div>
+      <div style="font-size:11px;font-weight:800;color:#1a0a2e;margin-bottom:3px">Homologação</div>
+      <div style="font-size:9.5px;color:#6b7280;line-height:1.5">Sistema homologado e acompanhamento da primeira fatura com desconto</div>
+    </div>
+    <div style="text-align:center;position:relative">
+      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4B0082,#6B21A8);color:#fff;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">90</div>
+      <div style="font-size:11px;font-weight:800;color:#1a0a2e;margin-bottom:3px">Resultados</div>
+      <div style="font-size:9.5px;color:#6b7280;line-height:1.5">Revisamos sua economia e convidamos você para o programa de indicação</div>
+    </div>
+    <div style="text-align:center;position:relative">
+      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4B0082,#6B21A8);color:#fff;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">300</div>
+      <div style="font-size:11px;font-weight:800;color:#1a0a2e;margin-bottom:3px">Cuidado anual</div>
+      <div style="font-size:9.5px;color:#6b7280;line-height:1.5">Planejamos a manutenção anual e a continuidade do monitoramento</div>
+    </div>
+  </div>
+
+  <div style="background:linear-gradient(135deg,#f9f5ff,#f0eaf8);border-left:4px solid #6B21A8;border-radius:10px;padding:14px 18px">
+    <div style="font-size:12px;color:#1a0a2e;line-height:1.7;font-style:italic">“Antes de fundar a SER, vimos de tudo no mercado solar: cliente que pagou e não recebeu, sistema instalado e nunca homologado, conta que continuou alta por falta de acompanhamento. Criamos a SER para fazer diferente: aqui, o pós-venda é a parte mais importante.”</div>
+    <div style="font-size:10px;font-weight:700;color:#6B21A8;margin-top:8px;letter-spacing:.05em">FUNDADORES · SER ENERGIA RENOVÁVEL</div>
+  </div>
+</div>
+</div>
+
 <!-- ══════════════════ PÁGINA 6: SOBRE A EMPRESA ══════════════════ -->
 <div class="page">
 <div class="pg-header"><img src="https://crm.serenergiarenovavel.com.br/logo.png" alt="SER"/><div class="pg-header-right">SOBRE A EMPRESA<br>Quem somos</div></div>
@@ -729,8 +790,8 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
         <div style="font-size:9px;font-weight:600;color:#6b7280;margin-top:6px;text-transform:uppercase;letter-spacing:.06em">Potência instalada</div>
       </div>
       <div style="text-align:center;background:linear-gradient(135deg,#f9f5ff,#f0eaf8);border-radius:12px;padding:16px 10px;border:1px solid #e9e2f5">
-        <div style="font-size:28px;font-weight:900;color:#4B0082;line-height:1">15</div>
-        <div style="font-size:9px;font-weight:600;color:#6b7280;margin-top:6px;text-transform:uppercase;letter-spacing:.06em">Dias até instalar</div>
+        <div style="font-size:28px;font-weight:900;color:#4B0082;line-height:1">48h</div>
+        <div style="font-size:9px;font-weight:600;color:#6b7280;margin-top:6px;text-transform:uppercase;letter-spacing:.06em">Atendimento técnico</div>
       </div>
       <div style="text-align:center;background:linear-gradient(135deg,#f9f5ff,#f0eaf8);border-radius:12px;padding:16px 10px;border:1px solid #e9e2f5">
         <div style="font-size:28px;font-weight:900;color:#4B0082;line-height:1">98%</div>
@@ -773,7 +834,7 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
       <div style="text-align:center;flex:1">
         <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4B0082,#6B21A8);color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">3</div>
         <div style="font-size:11px;font-weight:800;color:#1a0a2e;margin-bottom:4px">Instalação</div>
-        <div style="font-size:10px;color:#6b7280;line-height:1.5">Equipe instala em até 30 dias úteis</div>
+        <div style="font-size:10px;color:#6b7280;line-height:1.5">Instalação garantida em até 45 dias</div>
       </div>
       <div style="text-align:center;flex:1">
         <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4B0082,#6B21A8);color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">4</div>
@@ -896,14 +957,18 @@ async function gerarPDF(){
     pages[4].classList.remove('__pdf-hide-header');
     adicionar(g2Canvas, 297);
 
-    // 4. Sobre + Contato — fundidas em 1 folha (compactadas)
-    pages[5].classList.add('__pdf-compact-sobre');
-    pages[6].classList.add('__pdf-hide-header', '__pdf-compact-contato');
-    const g3 = agrupar([pages[5], pages[6]]);
+    // 4. Compromisso (Casamento de 25 anos) — folha própria
+    const compCanvas = await capturar(pages[5]);
+    adicionar(compCanvas, 297);
+
+    // 5. Sobre + Contato — fundidas em 1 folha (compactadas)
+    pages[6].classList.add('__pdf-compact-sobre');
+    pages[7].classList.add('__pdf-hide-header', '__pdf-compact-contato');
+    const g3 = agrupar([pages[6], pages[7]]);
     const g3Canvas = await capturar(g3);
     desagrupar(g3);
-    pages[5].classList.remove('__pdf-compact-sobre');
-    pages[6].classList.remove('__pdf-hide-header', '__pdf-compact-contato');
+    pages[6].classList.remove('__pdf-compact-sobre');
+    pages[7].classList.remove('__pdf-hide-header', '__pdf-compact-contato');
     adicionar(g3Canvas, 297);
 
     const nomeCliente = (document.title.replace(/^Proposta SER\s*[—-]\s*/,'').trim()||'').replace(/[^a-zA-Z0-9À-ú ]/g,'').trim();
