@@ -515,7 +515,7 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
       <div class="capa-eco-sub">/mês · SER Energia Renovável</div>
     </div>
     <div class="capa-eco-proj">
-      <div class="big">${fRk(proj25)} projetados em 25 anos</div>
+      <div class="big">${fRk(proj25)} economizados em 25 anos</div>
       <div style="font-size:10px;color:#a78bfa;margin-top:4px">Belém · Pará · Brasil</div>
     </div>
   </div>
@@ -535,7 +535,7 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
   <div class="metric-row">
     <div class="metric-card"><div class="metric-icon">⚡</div><div><span class="metric-val">${p.kwp||'—'}</span><span class="metric-unit">kWp</span></div><div class="metric-label">POTÊNCIA INSTALADA</div></div>
     <div class="metric-card"><div class="metric-icon">☀️</div><div><span class="metric-val">${p.kwh||'—'}</span><span class="metric-unit">kWh/mês</span></div><div class="metric-label">GERAÇÃO ESTIMADA</div></div>
-    <div class="metric-card"><div class="metric-icon">📐</div><div><span class="metric-val">${p.area_minima||'—'}</span><span class="metric-unit">m²</span></div><div class="metric-label">ÁREA MÍNIMA</div></div>
+    <div class="metric-card"><div class="metric-icon">🏠</div><div><span class="metric-val">${p.area_minima||'—'}</span><span class="metric-unit">m²</span></div><div class="metric-label">ÁREA MÍNIMA</div></div>
   </div>
   ${(p.conta_sem_solar||p.conta_com_solar||p.economia_mensal)?`
   <div class="comp-title">COMPARATIVO DE CUSTOS</div>
@@ -669,7 +669,7 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
       <div style="font-size:9px;color:#6b7280;margin-top:2px">Homologação rápida</div>
     </div>
     <div style="border:2px solid #e9e2f5;border-radius:12px;padding:12px 16px;text-align:center;flex:1">
-      <div style="font-size:20px;margin-bottom:4px">⚡</div>
+      <div style="font-size:17px;margin-bottom:4px;letter-spacing:1px">❤️❤️❤️</div>
       <div style="font-size:11px;font-weight:800;color:#4B0082">25 ANOS</div>
       <div style="font-size:9px;color:#6b7280;margin-top:2px">Vida útil estimada</div>
     </div>

@@ -2,7 +2,7 @@
 // Estratégia: network-first para index.html/navegação (sempre pega versão nova),
 // cache-first só para assets realmente estáticos (logo, manifest), network-first para dados
 
-const CACHE_NAME = 'ser-hub-v41';
+const CACHE_NAME = 'ser-hub-v42';
 const STATIC_ASSETS = ['/logo.png', '/manifest.json', '/styles.css', '/js/app01.js', '/js/app02.js', '/js/app03.js', '/js/app04.js', '/js/app05.js', '/js/app06.js', '/js/app07.js'];
 
 self.addEventListener('install', e => {
