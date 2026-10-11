@@ -720,13 +720,13 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
     </div>
     <div style="text-align:center;position:relative">
       <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4B0082,#6B21A8);color:#fff;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">30</div>
-      <div style="font-size:11px;font-weight:800;color:#1a0a2e;margin-bottom:3px">Homologação</div>
-      <div style="font-size:9.5px;color:#6b7280;line-height:1.5">Sistema homologado e acompanhamento da primeira fatura com desconto</div>
+      <div style="font-size:11px;font-weight:800;color:#1a0a2e;margin-bottom:3px">Acompanhamento</div>
+      <div style="font-size:9.5px;color:#6b7280;line-height:1.5">Verificamos com você em que etapa está a homologação na concessionária</div>
     </div>
     <div style="text-align:center;position:relative">
       <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4B0082,#6B21A8);color:#fff;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">90</div>
-      <div style="font-size:11px;font-weight:800;color:#1a0a2e;margin-bottom:3px">Resultados</div>
-      <div style="font-size:9.5px;color:#6b7280;line-height:1.5">Revisamos sua economia e convidamos você para o programa de indicação</div>
+      <div style="font-size:11px;font-weight:800;color:#1a0a2e;margin-bottom:3px">Homologação e resultados</div>
+      <div style="font-size:9.5px;color:#6b7280;line-height:1.5">Conferimos a homologação e a economia na sua fatura, e convidamos você para o programa de indicação</div>
     </div>
     <div style="text-align:center;position:relative">
       <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4B0082,#6B21A8);color:#fff;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">300</div>
