@@ -324,6 +324,7 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
 .kit-card{border:2px solid #e9e2f5;border-radius:14px;padding:16px;text-align:center;position:relative}
 .kit-card.inv{border-color:#4B0082}
 .kit-card-icon{font-size:36px;margin-bottom:10px}
+.kit-card-img{display:block;width:120px;height:120px;object-fit:contain;margin:0 auto 8px}
 .kit-card-qtd{position:absolute;top:12px;right:12px;background:#4B0082;color:#fff;font-size:11px;font-weight:700;border-radius:20px;padding:2px 10px}
 .kit-card-brand{font-size:14px;font-weight:800;color:#1a0a2e;margin-bottom:2px}
 .kit-card-type{font-size:11px;color:#6b5f7a;margin-bottom:8px}
@@ -600,14 +601,14 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
   <div class="kit-cards">
     <div class="kit-card inv">
       <div class="kit-card-qtd">${p.qtd_inversores||'1'}x</div>
-      <div class="kit-card-icon">⚡</div>
+      <img class="kit-card-img" src="https://crm.serenergiarenovavel.com.br/img/kit-inversor.jpg" alt="Inversor"/>
       <div class="kit-card-brand">${p.marca_inversor||'—'}</div>
       <div class="kit-card-type">Inversor · ${p.pot_inversor||'—'} kW${p.fase?' · '+p.fase:''}${p.tensao?' · '+p.tensao+'V':''}</div>
       <div class="kit-card-pot">${p.pot_inversor||'—'}<span> kW</span></div>
     </div>
     <div class="kit-card">
       <div class="kit-card-qtd">${p.qtd_modulos||'—'}x</div>
-      <div class="kit-card-icon">🔆</div>
+      <img class="kit-card-img" src="https://crm.serenergiarenovavel.com.br/img/kit-modulo.jpg" alt="Módulo solar"/>
       <div class="kit-card-brand">${p.marca_modulo||'—'}</div>
       <div class="kit-card-type">Módulos · ${p.pot_modulo||'—'} W cada</div>
       <div class="kit-card-pot">${p.pot_modulo||'—'}<span> W</span></div>
