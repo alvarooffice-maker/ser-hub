@@ -194,7 +194,7 @@ ${(()=>{
    ============================================================ */
 function abrirPropostaJanela(p, imprimir=false){
   const fR  = v => 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
-  const fRk = v => { const n=Number(v||0); return n>=1000?'R$ '+Math.round(n/1000)+'k':fR(n); };
+  const fRk = v => { const n=Number(v||0); if(n>=1e6) return 'R$ '+(n/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+(n>=2e6?' milhões':' milhão'); return n>=1000?'R$ '+Math.round(n/1000).toLocaleString('pt-BR')+' mil':fR(n); };
   const _e = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const txt = v => _e(v)||'—';
   const hoje    = new Date().toLocaleDateString('pt-BR');
