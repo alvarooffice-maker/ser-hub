@@ -629,7 +629,7 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
 <div class="pg-header"><img src="https://crm.serenergiarenovavel.com.br/logo.png" alt="SER"/><div class="pg-header-right">INVESTIMENTO<br>${txt(p.nome)}</div></div>
 <div class="page-inner invest-wrap">
   <div class="invest-label">INVESTIMENTO TOTAL</div>
-  <div class="invest-val">${fR(p.valor)}</div>
+  <div class="invest-val">${Math.round(Number(p.valor||0)).toLocaleString('pt-BR')}</div>
   <div class="invest-sub">Simulação sujeita a análise de crédito conforme a instituição financeira escolhida</div>
   ${(p.forma_pgto||p.pgto_desc||p.banco)?`
   <div style="margin-top:20px;background:#f9f5ff;border-radius:12px;padding:14px 28px;text-align:center;max-width:400px">
