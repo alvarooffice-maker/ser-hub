@@ -207,14 +207,25 @@ async function checkSession(){
 
 async function loadProfile(){
   if(!State.user) return;
-  const { data } = await supa.from('perfis').select('*').eq('email', State.user.email).maybeSingle();
-  if(!data){
-    const newP = { id: State.user.id, email: State.user.email, nome: State.user.email.split('@')[0], perfil:'vendedor', ativo:true };
-    const { data:created } = await supa.from('perfis').insert(newP).select().maybeSingle();
-    State.profile = created || newP;
-  } else {
-    State.profile = data;
+  // Busca o perfil por id (e, se não achar, por e-mail), com novas tentativas: uma falha passageira
+  // não pode virar um perfil "vendedor" improvisado nem pedir o cadastro de novo.
+  let data = null, erro = null;
+  for(let t=0; t<3 && !data; t++){
+    if(t) await new Promise(r=>setTimeout(r, 700*t));
+    let r = await supa.from('perfis').select('*').eq('id', State.user.id).maybeSingle();
+    if(!r.data && !r.error) r = await supa.from('perfis').select('*').ilike('email', State.user.email).maybeSingle();
+    data = r.data; erro = r.error;
   }
+  if(!data && erro){
+    console.error('[loadProfile]', erro);
+    alert('Não foi possível carregar seu perfil agora ('+(erro.message||'erro')+'). Atualize a página e tente novamente. Se continuar, avise o administrador.');
+    await supa.auth.signOut(); State.user = null; State.profile = null; showLogin(); return;
+  }
+  if(!data){
+    alert('Seu cadastro não foi encontrado no sistema. Peça ao administrador para verificar seu acesso.');
+    await supa.auth.signOut(); State.user = null; State.profile = null; showLogin(); return;
+  }
+  State.profile = data;
 }
 
 async function doLogin(email,password){
@@ -303,7 +314,7 @@ function showCompletarCadastroModal(onComplete){
       cpf:      fd.cpf,
       endereco: fd.endereco,
       cep:      fd.cep,
-    }).eq('email', State.user.email);
+    }).eq('id', State.user.id);
     if(error){
       alert('Erro ao salvar cadastro: ' + error.message + '\n\nContate o administrador.');
       return;
