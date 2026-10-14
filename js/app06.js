@@ -411,7 +411,7 @@ async function openProjetoFinanceiroModal(contratoId, nomeCliente){
           const _pres     = comissao.pres_ativo ? Number(comissao.pres_val||0) : 0;
           const _ind      = comissao.ind_ativo  ? Number(comissao.ind_val||0)  : 0;
           const _taxa     = comissao.taxa_ativo ? Number(comissao.taxa_val||0) : 0;
-          const _vend_base = _vc * (Number(comissao.vend_pct)||0) / 100;
+          const _vend_base = baseComissao(comissao).base * (Number(comissao.vend_pct)||0) / 100;
           const _base_maj  = _vv - _vc - _obra - _pres - _ind - _taxa;
           const _major_val = Math.max(0, _base_maj) * (Number(comissao.vend_major_pct)||0) / 100;
           const linhas = [];

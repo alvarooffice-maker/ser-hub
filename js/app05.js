@@ -1036,7 +1036,8 @@ async function openComissoesPagarModal(mesSel){
   const linhasDe = com=>{
     const vc=Number(com.valor_contrato||0), vv=Number(com.valor_vendido||0)||vc;
     const obra=com.obra_ativo?Number(com.obra_val||0):0, pres=com.pres_ativo?Number(com.pres_val||0):0, ind=com.ind_ativo?Number(com.ind_val||0):0, taxa=com.taxa_ativo?Number(com.taxa_val||0):0;
-    const base = vc*(Number(com.vend_pct)||0)/100;
+    const bc = baseComissao(com).base;
+    const base = bc*(Number(com.vend_pct)||0)/100;
     const major = Math.max(0, vv-vc-obra-pres-ind-taxa)*(Number(com.vend_major_pct)||0)/100;
     const L=[];
     if(base)  L.push({tipo:'Vendedor',  val:base,  nome:com.vend_nome||'—', venda:true});
@@ -1044,7 +1045,8 @@ async function openComissoesPagarModal(mesSel){
     if(Number(com.sup_val)) L.push({tipo:'Supervisor', val:Number(com.sup_val), nome:com.sup_nome||'—', venda:false});
     if(com.sdr_ativo&&Number(com.sdr_val)) L.push({tipo:'SDR', val:Number(com.sdr_val), nome:com.sdr_nome||'—', venda:false});
     if(com.cap_ativo&&Number(com.cap_val)) L.push({tipo:'Captador', val:Number(com.cap_val), nome:com.cap_nome||'—', venda:false});
-    return L.map(l=>({...l, cliente:com.nome, status:com.status, comId:com.id, valorVenda:vc, mes:refMes(com)}));
+    const B=baseComissao(com);
+    return L.map(l=>({...l, cliente:com.nome, status:com.status, comId:com.id, valorVenda:vc, taxa:B.taxa, liquido:B.liquido, mes:refMes(com)}));
   };
   const todas = (State.comissoes||[]).flatMap(linhasDe);
   // Vendas assinadas que ainda não têm comissão lançada (por contrato ou por nome do cliente)
@@ -1115,7 +1117,7 @@ async function openComissoesPagarModal(mesSel){
             <td style="text-align:right">${p.vendas.size||'—'}</td><td style="text-align:right">${p.valorVendas?fR(p.valorVendas):'—'}</td>
             <td style="text-align:right;font-weight:700;color:#d97706">${fR(p.pendente)}</td><td style="text-align:right;color:#16a34a">${fR(p.pago)}</td></tr>
           ${p.itens.map(it=>`<tr data-cp-det="${i}" style="display:none"><td style="padding-left:28px">${esc(it.cliente||'—')} <span style="color:var(--text-light)">· ${it.tipo}${it.mes?' · '+nomeMes(it.mes):''}</span></td>
-            <td></td><td style="text-align:right;color:var(--text-light)">${it.valorVenda?fR(it.valorVenda):''}</td>
+            <td></td><td style="text-align:right;color:var(--text-light)">${it.valorVenda?fR(it.valorVenda):''}${it.taxa>0?`<div style="color:#6d28d9;font-size:11px">💳 líquido ${fR(it.liquido)} (taxa ${fR(it.taxa)})</div>`:''}</td>
             <td style="text-align:right">${it.status==='paga'?'':fR(it.val)}</td>
             <td style="text-align:right">${it.status==='paga'?'<span class="badge badge-ok">paga</span>':`<button class="btn btn-sm btn-success" data-cp-pagar="${it.comId}">✓ Pagar</button>`}</td></tr>`).join('')}
         `).join('')}</tbody></table></div>
@@ -1172,7 +1174,7 @@ async function renderCustoPorProjeto(){
     const _pres = com.pres_ativo ? Number(com.pres_val||0) : 0;
     const _ind  = com.ind_ativo  ? Number(com.ind_val||0)  : 0;
     const _taxa = com.taxa_ativo ? Number(com.taxa_val||0) : 0;
-    const _vend_base = _vc * (Number(com.vend_pct)||0) / 100;
+    const _vend_base = baseComissao(com).base * (Number(com.vend_pct)||0) / 100;
     const _major_val = Math.max(0, _vv - _vc - _obra - _pres - _ind - _taxa) * (Number(com.vend_major_pct)||0) / 100;
     const linhas = [];
     if(_vend_base) linhas.push({ tipo:'Comissão', val:_vend_base, nome:com.vend_nome||'—', cliente:com.nome, status:com.status, comId:com.id });
@@ -1283,7 +1285,7 @@ function gerarRelatorioComissoesPDF(){
     const _pres = com.pres_ativo ? Number(com.pres_val||0) : 0;
     const _ind  = com.ind_ativo  ? Number(com.ind_val||0)  : 0;
     const _taxa = com.taxa_ativo ? Number(com.taxa_val||0) : 0;
-    const _vend_base = _vc * (Number(com.vend_pct)||0) / 100;
+    const _vend_base = baseComissao(com).base * (Number(com.vend_pct)||0) / 100;
     const _base_maj  = _vv - _vc - _obra - _pres - _ind - _taxa;
     const _major_val = Math.max(0, _base_maj) * (Number(com.vend_major_pct)||0) / 100;
 
@@ -1479,12 +1481,12 @@ function openComissaoModal(item=null, nomePreenchido=null){
             ${formField({label:'Presente valor',name:'pres_val',type:'number',value:item.pres_val})}
           </div></div>
         </div>
-        <div class="section collapsed"><div class="section-header"><h4>Taxa de Cartão</h4><span class="section-toggle">▼</span></div>
+        <div class="section ${item.taxa_ativo?'':'collapsed'}"><div class="section-header"><h4>Taxa de Cartão</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
             ${formField({label:'Taxa de cartão ativa',name:'taxa_ativo',type:'toggle',value:item.taxa_ativo})}
             ${formField({label:'Custo da maquininha (R$)',name:'taxa_val',type:'number',value:item.taxa_val})}
           </div>
-          <div style="font-size:11px;color:var(--text-light);margin-top:6px">Descontada antes de calcular o majorado, como obra, presente e indicador.</div></div>
+          <div style="font-size:11px;color:var(--text-light);margin-top:6px">A comissão é calculada sobre o valor LÍQUIDO (vendido − taxa). O que foi vendido acima da referência paga a taxa primeiro; sem sobra, a base cai para referência − taxa.</div></div>
         </div>
         <div id="comPreview" class="preview-box"></div>
       </div>
@@ -1530,12 +1532,13 @@ function openComissaoModal(item=null, nomePreenchido=null){
   function recalc(){
     const raw = readForm(form);
     const vc  = Number(raw.valor_contrato)||0;
-    const vv  = Number(raw.valor_vendido)||0;
+    const vv  = Number(raw.valor_vendido)||vc;
     const vp  = Number(raw.vend_pct)||0;
     const vmp = Number(raw.vend_major_pct)||0;
-    const sup_val  = vc * ((Number(raw.sup_pct)||0)/100);
-    const sdr_val  = raw.sdr_ativo ? vc*((Number(raw.sdr_pct)||0)/100) : 0;
-    const cap_val  = raw.cap_ativo ? vc*((Number(raw.cap_pct)||0)/100) : 0;
+    const B = baseComissao(raw);   // base líquida (vendido − taxa de cartão)
+    const sup_val  = B.base * ((Number(raw.sup_pct)||0)/100);
+    const sdr_val  = raw.sdr_ativo ? B.base*((Number(raw.sdr_pct)||0)/100) : 0;
+    const cap_val  = raw.cap_ativo ? B.base*((Number(raw.cap_pct)||0)/100) : 0;
     const ind_val  = raw.ind_ativo ? (Number(raw.ind_val)||0) : 0;
     const obra_val = raw.obra_ativo ? (Number(raw.obra_val)||0) : 0;
     const pres_val = raw.pres_ativo ? (Number(raw.pres_val)||0) : 0;
@@ -1543,14 +1546,23 @@ function openComissaoModal(item=null, nomePreenchido=null){
     // Majorado: (valor_vendido − valor_referencia − obra − presente − indicador − taxa de cartão) × % majorado, mínimo R$ 0
     const base_major = vv - vc - obra_val - pres_val - ind_val - taxa_val;
     const major_val  = Math.max(0, base_major) * (vmp/100);
-    const vend_base  = vc * (vp/100);
+    const vend_base  = B.base * (vp/100);
     const vend_val   = vend_base + major_val;
     const total = vend_val + sup_val + sdr_val + cap_val + ind_val + obra_val + pres_val + taxa_val;
     const lucro = vc - total;
-    $('#comPreview').innerHTML = `
-      <div class="preview-row"><span>Comissão Vendedor</span><span>${fmtBRL(vend_base)}</span></div>
+    const pctTxt = v => (Number(v)||0).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%';
+    const blocoLiquido = taxa_val>0 ? `
+      <div style="border:2px solid #7c3aed;background:#faf5ff;border-radius:12px;padding:12px 14px;margin-bottom:12px">
+        <div style="font-weight:800;color:#6d28d9;margin-bottom:8px">💳 Comissão calculada sobre o valor LÍQUIDO</div>
+        <div class="preview-row"><span>Valor vendido</span><span>${fmtBRL(B.vv)}</span></div>
+        <div class="preview-row" style="color:#dc2626"><span>(−) Taxa de cartão (maquininha)</span><span>− ${fmtBRL(taxa_val)}</span></div>
+        <div class="preview-row" style="font-weight:800;color:#15803d;font-size:15px"><span>(=) Valor líquido</span><span>${fmtBRL(B.liquido)}</span></div>
+        <div style="margin-top:6px;font-size:12px;color:#6d28d9"><b>Base das comissões: ${fmtBRL(B.base)}</b>${B.base<vc?` (referência ${fmtBRL(vc)} − taxa ${fmtBRL(vc-B.base)})`:' (a taxa foi absorvida pelo que passou da referência)'}</div>
+      </div>` : '';
+    $('#comPreview').innerHTML = blocoLiquido + `
+      <div class="preview-row"><span>Comissão Vendedor <small style="color:#6b7280">(${pctTxt(vp)} de ${fmtBRL(B.base)})</small></span><span>${fmtBRL(vend_base)}</span></div>
       ${major_val>0?`<div class="preview-row"><span>Majorado Vendedor</span><span>${fmtBRL(major_val)}</span></div>`:''}
-      <div class="preview-row"><span>Supervisor</span><span>${fmtBRL(sup_val)}</span></div>
+      <div class="preview-row"><span>Supervisor <small style="color:#6b7280">(${pctTxt(raw.sup_pct)} de ${fmtBRL(B.base)})</small></span><span>${fmtBRL(sup_val)}</span></div>
       <div class="preview-row"><span>SDR</span><span>${fmtBRL(sdr_val)}</span></div>
       <div class="preview-row"><span>Captador</span><span>${fmtBRL(cap_val)}</span></div>
       <div class="preview-row"><span>Indicador</span><span>${fmtBRL(ind_val)}</span></div>
@@ -1560,7 +1572,7 @@ function openComissaoModal(item=null, nomePreenchido=null){
       <div class="preview-row"><span>Total saídas</span><span>${fmtBRL(total)}</span></div>
       <div class="preview-row"><span>Lucro Líquido</span><span>${fmtBRL(lucro)}</span></div>
     `;
-    return { vend_val, vend_base, major_val, sup_val, sdr_val, cap_val, ind_val, total_saidas:total, lucro_liquido:lucro };
+    return { vend_val, vend_base, major_val, sup_val, sdr_val, cap_val, ind_val, total_saidas:total, lucro_liquido:lucro, base_comissao:B.base, valor_liquido:B.liquido };
   }
   form.addEventListener('input', recalc);
   recalc();
@@ -1640,23 +1652,33 @@ async function sincronizarDespesaComissao(comissaoId, com){
 /* ============================================================
    CUSTO REAL / MARGEM POR PROJETO
    ============================================================ */
+/* Base de cálculo da comissão.
+   Líquido = valor vendido − taxa de cartão. A taxa é absorvida primeiro pelo que foi vendido ACIMA da referência;
+   se não houver sobra (ex.: vendido = referência), a base das % cai para referência − taxa. */
+function baseComissao(com){
+  const vc   = Number(com.valor_contrato)||0;
+  const vv   = Number(com.valor_vendido)||vc;
+  const taxa = com.taxa_ativo ? (Number(com.taxa_val)||0) : 0;
+  const sobra = Math.max(0, vv - vc);
+  const base = Math.max(0, vc - Math.max(0, taxa - sobra));
+  return { vc, vv, taxa, liquido: Math.max(0, vv - taxa), base };
+}
+
 function calcComissaoTotal(com){
   if(!com) return 0;
-  const vc  = Number(com.valor_contrato)||0;
-  const vv  = Number(com.valor_vendido)||vc;
+  const { vc, vv, taxa, base } = baseComissao(com);
   const vp  = Number(com.vend_pct)||0;
   const vmp = Number(com.vend_major_pct)||0;
-  const sup_val  = vc * ((Number(com.sup_pct)||0)/100);
-  const sdr_val  = com.sdr_ativo ? vc*((Number(com.sdr_pct)||0)/100) : 0;
-  const cap_val  = com.cap_ativo ? vc*((Number(com.cap_pct)||0)/100) : 0;
+  const sup_val  = base * ((Number(com.sup_pct)||0)/100);
+  const sdr_val  = com.sdr_ativo ? base*((Number(com.sdr_pct)||0)/100) : 0;
+  const cap_val  = com.cap_ativo ? base*((Number(com.cap_pct)||0)/100) : 0;
   const ind_val  = com.ind_ativo ? (Number(com.ind_val)||0) : 0;
   const obra_val = com.obra_ativo ? (Number(com.obra_val)||0) : 0;
   const pres_val = com.pres_ativo ? (Number(com.pres_val)||0) : 0;
-  const taxa_val = com.taxa_ativo ? (Number(com.taxa_val)||0) : 0;
-  const base_major = vv - vc - obra_val - pres_val - ind_val - taxa_val;
+  const base_major = vv - vc - taxa - obra_val - pres_val - ind_val;
   const major_val  = Math.max(0, base_major) * (vmp/100);
-  const vend_val = vc*(vp/100) + major_val;
-  return vend_val + sup_val + sdr_val + cap_val + ind_val + obra_val + pres_val + taxa_val;
+  const vend_val = base*(vp/100) + major_val;
+  return vend_val + sup_val + sdr_val + cap_val + ind_val + obra_val + pres_val + taxa;
 }
 
 function buildMargemProjetoSection(despesas){
