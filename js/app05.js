@@ -1099,10 +1099,10 @@ async function openComissoesPagarModal(mesSel){
       ${vendedoresMes.length ? `<div style="margin:0 0 16px">
         <div style="font-weight:700;font-size:15px;margin-bottom:8px">🧾 Vendas ${mes==='todos'?'(todos os meses)':'de '+nomeMes(mes)} por vendedor — total ${fR(totalVendidoMes)}</div>
         ${vendedoresMes.map(g=>`<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden">
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--bg-alt)">
-            <strong>👤 ${esc(g.nome)}</strong><span style="font-weight:700;color:#7c3aed">${fR(g.total)} <span style="font-weight:400;color:var(--text-light);font-size:12px">· ${g.vendas.length} venda${g.vendas.length!==1?'s':''}</span></span>
+          <div data-cp-vend="${esc(g.nome)}" title="Clique para recolher/expandir as vendas" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--bg-alt);cursor:pointer">
+            <strong>▾ 👤 ${esc(g.nome)}</strong><span style="font-weight:700;color:#7c3aed">${fR(g.total)} <span style="font-weight:400;color:var(--text-light);font-size:12px">· ${g.vendas.length} venda${g.vendas.length!==1?'s':''}</span></span>
           </div>
-          <table style="font-size:13px;width:100%"><tbody>
+          <table data-cp-vendas="${esc(g.nome)}" style="font-size:13px;width:100%"><tbody>
             ${g.vendas.map(v=>`<tr><td style="padding:6px 12px">${esc(v.cliente||'')}${mes==='todos'&&v.data?` <span style="color:var(--text-light);font-size:11px">· ${nomeMes(String(v.data).slice(0,7))}</span>`:''}</td>
               <td style="text-align:right;padding:6px 12px;font-weight:600">${fR(v.valor)}</td>
               <td style="text-align:right;padding:6px 12px;width:120px">${v.lancada?'<span class="badge badge-ok">comissão lançada</span>':`<button class="btn btn-sm btn-primary" data-cp-lancar="${esc(v.cliente||'')}">Lançar</button>`}</td></tr>`).join('')}
@@ -1125,10 +1125,18 @@ async function openComissoesPagarModal(mesSel){
     </div>`,'lg');
 
   $('#cpMes')?.addEventListener('change', e=> openComissoesPagarModal(e.target.value));
+  $$('[data-cp-vend]').forEach(h=> h.addEventListener('click', ()=>{
+    const t = [...document.querySelectorAll('[data-cp-vendas]')].find(x=>x.dataset.cpVendas===h.dataset.cpVend);
+    if(!t) return; const fechar = t.style.display!=='none';
+    t.style.display = fechar ? 'none' : '';
+    const st = h.querySelector('strong'); if(st) st.textContent = st.textContent.replace(/^[▾▸]/, fechar?'▸':'▾');
+  }));
   $$('[data-cp-lancar]').forEach(b=> b.addEventListener('click', ()=> openComissaoModal(null, b.dataset.cpLancar)));
   $('#cpPagas')?.addEventListener('change', e=>{ window._comPagarMostrarPagas = e.target.checked; openComissoesPagarModal(mes); });
   $$('[data-cp-toggle]').forEach(tr=> tr.addEventListener('click', ()=>{
-    $$('[data-cp-det="'+tr.dataset.cpToggle+'"]').forEach(r=> r.style.display = r.style.display==='none' ? '' : 'none');
+    let aberto = false;
+    $$('[data-cp-det="'+tr.dataset.cpToggle+'"]').forEach(r=>{ r.style.display = r.style.display==='none' ? '' : 'none'; aberto = r.style.display!=='none'; });
+    const st = tr.querySelector('strong'); if(st) st.textContent = st.textContent.replace(/^[▾▸]/, aberto?'▾':'▸');
   }));
   $$('[data-cp-pagar]').forEach(b=> b.addEventListener('click', async ()=>{
     if(!confirm('Marcar esta comissão como PAGA? (vale para todos os envolvidos nesta venda)')) return;
@@ -1404,13 +1412,24 @@ function gerarRelatorioComissoesPDF(){
 function openComissaoModal(item=null, nomePreenchido=null){
   const isNew = !item;
   item = item || {};
-  if(nomePreenchido && isNew) item = { ...item, nome: nomePreenchido };
+  if(nomePreenchido && isNew){
+    item = { ...item, nome: nomePreenchido };
+    const ct = (State.contratos||[]).find(c=>(c.nome||'').trim().toLowerCase()===nomePreenchido.trim().toLowerCase());
+    if(ct){
+      if(ct.vendedor && !item.vend_nome) item.vend_nome = ct.vendedor.trim();
+      if(ct.supervisor_nome && !item.sup_nome) item.sup_nome = ct.supervisor_nome.trim();
+    }
+  }
   const statusOpts = [['pendente','Pendente'],['aprovada','Aprovada'],['paga','Paga'],['cancelada','Cancelada']];
 
   // Listas por perfil vindas de State.perfis
   const perfisAtivos = (State.perfis||[]).filter(p=>p.ativo!==false && p.nome);
   const nomesPorPerfil = perfil => ['', ...perfisAtivos.filter(p=> perfil==='vendedor' ? ['vendedor','supervisor'].includes(p.perfil) : p.perfil===perfil).map(p=>p.nome)];
-  const selectOpts    = perfil => nomesPorPerfil(perfil).map(n=>n?[n,n]:['','— selecione —']);
+  const selectOpts    = (perfil, atual) => {
+    const nomes = nomesPorPerfil(perfil);
+    if(atual && !nomes.some(n=>(n||'').trim()===atual.trim())) nomes.push(atual);
+    return nomes.map(n=>n?[n,n]:['','— selecione —']);
+  };
 
   // Todos os contratos válidos (exceto cancelado/perdido) para busca de cliente
   const contratosAssinados = (State.contratos||[]).filter(c=>!['cancelado','perdido'].includes(c.status));
@@ -1428,14 +1447,14 @@ function openComissaoModal(item=null, nomePreenchido=null){
         </div>
         <div class="section"><div class="section-header"><h4>Vendedor</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
-            ${formField({label:'Nome',name:'vend_nome',type:'select',value:item.vend_nome||'',options:selectOpts('vendedor')})}
+            ${formField({label:'Nome',name:'vend_nome',type:'select',value:item.vend_nome||'',options:selectOpts('vendedor', item.vend_nome)})}
             ${formField({label:'%',name:'vend_pct',type:'number',value:item.vend_pct})}
             ${formField({label:'% Major',name:'vend_major_pct',type:'number',value:item.vend_major_pct})}
           </div></div>
         </div>
         <div class="section"><div class="section-header"><h4>Supervisor</h4><span class="section-toggle">▼</span></div>
           <div class="section-body"><div class="form-grid">
-            ${formField({label:'Nome',name:'sup_nome',type:'select',value:item.sup_nome||'',options:selectOpts('supervisor')})}
+            ${formField({label:'Nome',name:'sup_nome',type:'select',value:item.sup_nome||'',options:selectOpts('supervisor', item.sup_nome)})}
             ${formField({label:'%',name:'sup_pct',type:'number',value:item.sup_pct})}
           </div></div>
         </div>
