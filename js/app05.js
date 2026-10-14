@@ -1047,9 +1047,14 @@ async function openComissoesPagarModal(mesSel){
     return L.map(l=>({...l, cliente:com.nome, status:com.status, comId:com.id, valorVenda:vc, mes:refMes(com)}));
   };
   const todas = (State.comissoes||[]).flatMap(linhasDe);
-  const meses = [...new Set(todas.map(l=>l.mes).filter(Boolean))].sort().reverse();
+  // Vendas assinadas que ainda não têm comissão lançada (por contrato ou por nome do cliente)
+  const comLancada = new Set((State.comissoes||[]).flatMap(c=>[String(c.contrato_id||''), norm(c.nome)]).filter(Boolean));
+  const semComissao = contratos.filter(c=>c.status==='assinado' && !comLancada.has(String(c.id)) && !comLancada.has(norm(c.nome)))
+    .map(c=>({ id:c.id, nome:c.nome, vendedor:c.vendedor, valor:Number(c.valor)||0, mes:String(c.data_assinatura||'').slice(0,7) }));
+  const meses = [...new Set([...todas.map(l=>l.mes), ...semComissao.map(v=>v.mes)].filter(Boolean))].sort().reverse();
   const mes = mesSel===undefined ? 'todos' : mesSel;
   const mostrarPagas = !!window._comPagarMostrarPagas;
+  const semMes = semComissao.filter(v=>mes==='todos'||v.mes===mes).sort((a,b)=>b.mes.localeCompare(a.mes)||a.nome.localeCompare(b.nome));
   const filtradas = todas.filter(l=>(mes==='todos'||l.mes===mes) && (mostrarPagas || l.status!=='paga'));
 
   const porPessoa = {};
@@ -1092,9 +1097,16 @@ async function openComissoesPagarModal(mesSel){
         `).join('')}</tbody></table></div>
         <div style="font-size:11px;color:var(--text-light);margin-top:8px">Clique no nome para ver os clientes. O botão "Pagar" marca a comissão <b>inteira</b> daquela venda como paga (vendedor, supervisor e demais).</div>`
         : '<div class="empty" style="padding:24px">Nenhuma comissão pendente neste filtro.</div>'}
+      ${semMes.length ? `<div style="margin-top:16px;border:1px solid #fde68a;background:#fffbeb;border-radius:10px;padding:12px">
+        <div style="font-weight:700;margin-bottom:6px">⚠️ Vendas assinadas SEM comissão lançada (${semMes.length} · ${fR(semMes.reduce((a,v)=>a+v.valor,0))} vendidos)</div>
+        <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">Essas vendas não entram no total acima porque a comissão ainda não foi cadastrada. Clique em "Lançar" para preencher percentuais e valores.</div>
+        <div class="table-wrap"><table style="font-size:13px"><thead><tr><th>Cliente</th><th>Vendedor</th><th>Mês</th><th style="text-align:right">Valor da venda</th><th></th></tr></thead><tbody>
+          ${semMes.map(v=>`<tr><td>${esc(v.nome||'')}</td><td>${esc(v.vendedor||'—')}</td><td>${v.mes?nomeMes(v.mes):'—'}</td><td style="text-align:right">${fR(v.valor)}</td><td style="text-align:right"><button class="btn btn-sm btn-primary" data-cp-lancar="${esc(v.nome||'')}">Lançar</button></td></tr>`).join('')}
+        </tbody></table></div></div>` : ''}
     </div>`,'lg');
 
   $('#cpMes')?.addEventListener('change', e=> openComissoesPagarModal(e.target.value));
+  $$('[data-cp-lancar]').forEach(b=> b.addEventListener('click', ()=> openComissaoModal(null, b.dataset.cpLancar)));
   $('#cpPagas')?.addEventListener('change', e=>{ window._comPagarMostrarPagas = e.target.checked; openComissoesPagarModal(mes); });
   $$('[data-cp-toggle]').forEach(tr=> tr.addEventListener('click', ()=>{
     $$('[data-cp-det="'+tr.dataset.cpToggle+'"]').forEach(r=> r.style.display = r.style.display==='none' ? '' : 'none');
