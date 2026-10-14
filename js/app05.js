@@ -1055,6 +1055,18 @@ async function openComissoesPagarModal(mesSel){
   const mes = mesSel===undefined ? 'todos' : mesSel;
   const mostrarPagas = !!window._comPagarMostrarPagas;
   const semMes = semComissao.filter(v=>mes==='todos'||v.mes===mes).sort((a,b)=>b.mes.localeCompare(a.mes)||a.nome.localeCompare(b.nome));
+  const vendasFiltro = contratos.filter(c=>c.status==='assinado' && (mes==='todos' || String(c.data_assinatura||'').slice(0,7)===mes));
+  const porVendedor = {};
+  vendasFiltro.forEach(c=>{
+    const nome = (c.vendedor||'').trim() || 'Sem vendedor'; const k = norm(nome);
+    const g = porVendedor[k] ||= { nome, total:0, vendas:[] };
+    const valor = Number(c.valor)||0;
+    g.total += valor;
+    g.vendas.push({ cliente:c.nome, valor, data:c.data_assinatura, lancada: comLancada.has(String(c.id)) || comLancada.has(norm(c.nome)) });
+  });
+  const vendedoresMes = Object.values(porVendedor).sort((a,b)=>b.total-a.total);
+  vendedoresMes.forEach(g=>g.vendas.sort((a,b)=>String(a.data).localeCompare(String(b.data))));
+  const totalVendidoMes = vendedoresMes.reduce((a,g)=>a+g.total,0);
   const filtradas = todas.filter(l=>(mes==='todos'||l.mes===mes) && (mostrarPagas || l.status!=='paga'));
 
   const porPessoa = {};
@@ -1084,6 +1096,18 @@ async function openComissoesPagarModal(mesSel){
         <div class="metric" style="border-color:#16a34a"><div class="metric-label">Já pago</div><div class="metric-value">${fR(totPago)}</div></div>
         <div class="metric"><div class="metric-label">Pessoas</div><div class="metric-value">${pessoas.length}</div></div>
       </div>
+      ${vendedoresMes.length ? `<div style="margin:0 0 16px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px">🧾 Vendas ${mes==='todos'?'(todos os meses)':'de '+nomeMes(mes)} por vendedor — total ${fR(totalVendidoMes)}</div>
+        ${vendedoresMes.map(g=>`<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--bg-alt)">
+            <strong>👤 ${esc(g.nome)}</strong><span style="font-weight:700;color:#7c3aed">${fR(g.total)} <span style="font-weight:400;color:var(--text-light);font-size:12px">· ${g.vendas.length} venda${g.vendas.length!==1?'s':''}</span></span>
+          </div>
+          <table style="font-size:13px;width:100%"><tbody>
+            ${g.vendas.map(v=>`<tr><td style="padding:6px 12px">${esc(v.cliente||'')}${mes==='todos'&&v.data?` <span style="color:var(--text-light);font-size:11px">· ${nomeMes(String(v.data).slice(0,7))}</span>`:''}</td>
+              <td style="text-align:right;padding:6px 12px;font-weight:600">${fR(v.valor)}</td>
+              <td style="text-align:right;padding:6px 12px;width:120px">${v.lancada?'<span class="badge badge-ok">comissão lançada</span>':`<button class="btn btn-sm btn-primary" data-cp-lancar="${esc(v.cliente||'')}">Lançar</button>`}</td></tr>`).join('')}
+          </tbody></table></div>`).join('')}
+      </div>` : ''}
       ${pessoas.length ? `<div class="table-wrap"><table style="font-size:13px">
         <thead><tr><th>Quem</th><th style="text-align:right">Vendas</th><th style="text-align:right">Valor vendido</th><th style="text-align:right">A pagar</th><th style="text-align:right">Pago</th></tr></thead>
         <tbody>${pessoas.map((p,i)=>`
@@ -1097,12 +1121,7 @@ async function openComissoesPagarModal(mesSel){
         `).join('')}</tbody></table></div>
         <div style="font-size:11px;color:var(--text-light);margin-top:8px">Clique no nome para ver os clientes. O botão "Pagar" marca a comissão <b>inteira</b> daquela venda como paga (vendedor, supervisor e demais).</div>`
         : '<div class="empty" style="padding:24px">Nenhuma comissão pendente neste filtro.</div>'}
-      ${semMes.length ? `<div style="margin-top:16px;border:1px solid #fde68a;background:#fffbeb;border-radius:10px;padding:12px">
-        <div style="font-weight:700;margin-bottom:6px">⚠️ Vendas assinadas SEM comissão lançada (${semMes.length} · ${fR(semMes.reduce((a,v)=>a+v.valor,0))} vendidos)</div>
-        <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">Essas vendas não entram no total acima porque a comissão ainda não foi cadastrada. Clique em "Lançar" para preencher percentuais e valores.</div>
-        <div class="table-wrap"><table style="font-size:13px"><thead><tr><th>Cliente</th><th>Vendedor</th><th>Mês</th><th style="text-align:right">Valor da venda</th><th></th></tr></thead><tbody>
-          ${semMes.map(v=>`<tr><td>${esc(v.nome||'')}</td><td>${esc(v.vendedor||'—')}</td><td>${v.mes?nomeMes(v.mes):'—'}</td><td style="text-align:right">${fR(v.valor)}</td><td style="text-align:right"><button class="btn btn-sm btn-primary" data-cp-lancar="${esc(v.nome||'')}">Lançar</button></td></tr>`).join('')}
-        </tbody></table></div></div>` : ''}
+
     </div>`,'lg');
 
   $('#cpMes')?.addEventListener('change', e=> openComissoesPagarModal(e.target.value));
