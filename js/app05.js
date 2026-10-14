@@ -1035,9 +1035,9 @@ async function openComissoesPagarModal(mesSel){
   };
   const linhasDe = com=>{
     const vc=Number(com.valor_contrato||0), vv=Number(com.valor_vendido||0)||vc;
-    const obra=com.obra_ativo?Number(com.obra_val||0):0, pres=com.pres_ativo?Number(com.pres_val||0):0, ind=com.ind_ativo?Number(com.ind_val||0):0;
+    const obra=com.obra_ativo?Number(com.obra_val||0):0, pres=com.pres_ativo?Number(com.pres_val||0):0, ind=com.ind_ativo?Number(com.ind_val||0):0, taxa=com.taxa_ativo?Number(com.taxa_val||0):0;
     const base = vc*(Number(com.vend_pct)||0)/100;
-    const major = Math.max(0, vv-vc-obra-pres-ind)*(Number(com.vend_major_pct)||0)/100;
+    const major = Math.max(0, vv-vc-obra-pres-ind-taxa)*(Number(com.vend_major_pct)||0)/100;
     const L=[];
     if(base)  L.push({tipo:'Vendedor',  val:base,  nome:com.vend_nome||'—', venda:true});
     if(major) L.push({tipo:'Majorado',  val:major, nome:com.vend_nome||'—', venda:false});
@@ -1163,8 +1163,9 @@ async function renderCustoPorProjeto(){
     const _obra = com.obra_ativo ? Number(com.obra_val||0) : 0;
     const _pres = com.pres_ativo ? Number(com.pres_val||0) : 0;
     const _ind  = com.ind_ativo  ? Number(com.ind_val||0)  : 0;
+    const _taxa = com.taxa_ativo ? Number(com.taxa_val||0) : 0;
     const _vend_base = _vc * (Number(com.vend_pct)||0) / 100;
-    const _major_val = Math.max(0, _vv - _vc - _obra - _pres - _ind) * (Number(com.vend_major_pct)||0) / 100;
+    const _major_val = Math.max(0, _vv - _vc - _obra - _pres - _ind - _taxa) * (Number(com.vend_major_pct)||0) / 100;
     const linhas = [];
     if(_vend_base) linhas.push({ tipo:'Comissão', val:_vend_base, nome:com.vend_nome||'—', cliente:com.nome, status:com.status, comId:com.id });
     if(_major_val) linhas.push({ tipo:'Majorado',  val:_major_val, nome:com.vend_nome||'—', cliente:com.nome, status:com.status, comId:com.id });
@@ -1273,8 +1274,9 @@ function gerarRelatorioComissoesPDF(){
     const _obra = com.obra_ativo ? Number(com.obra_val||0) : 0;
     const _pres = com.pres_ativo ? Number(com.pres_val||0) : 0;
     const _ind  = com.ind_ativo  ? Number(com.ind_val||0)  : 0;
+    const _taxa = com.taxa_ativo ? Number(com.taxa_val||0) : 0;
     const _vend_base = _vc * (Number(com.vend_pct)||0) / 100;
-    const _base_maj  = _vv - _vc - _obra - _pres - _ind;
+    const _base_maj  = _vv - _vc - _obra - _pres - _ind - _taxa;
     const _major_val = Math.max(0, _base_maj) * (Number(com.vend_major_pct)||0) / 100;
 
     const linhas = [];
@@ -1458,6 +1460,13 @@ function openComissaoModal(item=null, nomePreenchido=null){
             ${formField({label:'Presente valor',name:'pres_val',type:'number',value:item.pres_val})}
           </div></div>
         </div>
+        <div class="section collapsed"><div class="section-header"><h4>Taxa de Cartão</h4><span class="section-toggle">▼</span></div>
+          <div class="section-body"><div class="form-grid">
+            ${formField({label:'Taxa de cartão ativa',name:'taxa_ativo',type:'toggle',value:item.taxa_ativo})}
+            ${formField({label:'Custo da maquininha (R$)',name:'taxa_val',type:'number',value:item.taxa_val})}
+          </div>
+          <div style="font-size:11px;color:var(--text-light);margin-top:6px">Descontada antes de calcular o majorado, como obra, presente e indicador.</div></div>
+        </div>
         <div id="comPreview" class="preview-box"></div>
       </div>
       <div class="modal-footer">
@@ -1511,12 +1520,13 @@ function openComissaoModal(item=null, nomePreenchido=null){
     const ind_val  = raw.ind_ativo ? (Number(raw.ind_val)||0) : 0;
     const obra_val = raw.obra_ativo ? (Number(raw.obra_val)||0) : 0;
     const pres_val = raw.pres_ativo ? (Number(raw.pres_val)||0) : 0;
-    // Majorado: (valor_vendido − valor_referencia − obra − presente − indicador) × % majorado, mínimo R$ 0
-    const base_major = vv - vc - obra_val - pres_val - ind_val;
+    const taxa_val = raw.taxa_ativo ? (Number(raw.taxa_val)||0) : 0;
+    // Majorado: (valor_vendido − valor_referencia − obra − presente − indicador − taxa de cartão) × % majorado, mínimo R$ 0
+    const base_major = vv - vc - obra_val - pres_val - ind_val - taxa_val;
     const major_val  = Math.max(0, base_major) * (vmp/100);
     const vend_base  = vc * (vp/100);
     const vend_val   = vend_base + major_val;
-    const total = vend_val + sup_val + sdr_val + cap_val + ind_val + obra_val + pres_val;
+    const total = vend_val + sup_val + sdr_val + cap_val + ind_val + obra_val + pres_val + taxa_val;
     const lucro = vc - total;
     $('#comPreview').innerHTML = `
       <div class="preview-row"><span>Comissão Vendedor</span><span>${fmtBRL(vend_base)}</span></div>
@@ -1527,6 +1537,7 @@ function openComissaoModal(item=null, nomePreenchido=null){
       <div class="preview-row"><span>Indicador</span><span>${fmtBRL(ind_val)}</span></div>
       <div class="preview-row"><span>Obra</span><span>${fmtBRL(obra_val)}</span></div>
       <div class="preview-row"><span>Presente</span><span>${fmtBRL(pres_val)}</span></div>
+      <div class="preview-row"><span>Taxa de cartão</span><span>${fmtBRL(taxa_val)}</span></div>
       <div class="preview-row"><span>Total saídas</span><span>${fmtBRL(total)}</span></div>
       <div class="preview-row"><span>Lucro Líquido</span><span>${fmtBRL(lucro)}</span></div>
     `;
@@ -1540,7 +1551,7 @@ function openComissaoModal(item=null, nomePreenchido=null){
     const data = readForm(form);
     const calc = recalc();
     Object.assign(data, calc);
-    ['valor_contrato','valor_vendido','vend_pct','vend_major_pct','vend_base','major_val','sup_pct','sdr_pct','cap_pct','ind_val','obra_val','pres_val'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
+    ['valor_contrato','valor_vendido','vend_pct','vend_major_pct','vend_base','major_val','sup_pct','sdr_pct','cap_pct','ind_val','obra_val','pres_val','taxa_val'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     if(isNew){
       data.criado_por = State.user?.id;
       const { data: criada, error } = await supa.from('comissoes').insert(data).select('id').single();
@@ -1622,10 +1633,11 @@ function calcComissaoTotal(com){
   const ind_val  = com.ind_ativo ? (Number(com.ind_val)||0) : 0;
   const obra_val = com.obra_ativo ? (Number(com.obra_val)||0) : 0;
   const pres_val = com.pres_ativo ? (Number(com.pres_val)||0) : 0;
-  const base_major = vv - vc - obra_val - pres_val - ind_val;
+  const taxa_val = com.taxa_ativo ? (Number(com.taxa_val)||0) : 0;
+  const base_major = vv - vc - obra_val - pres_val - ind_val - taxa_val;
   const major_val  = Math.max(0, base_major) * (vmp/100);
   const vend_val = vc*(vp/100) + major_val;
-  return vend_val + sup_val + sdr_val + cap_val + ind_val + obra_val + pres_val;
+  return vend_val + sup_val + sdr_val + cap_val + ind_val + obra_val + pres_val + taxa_val;
 }
 
 function buildMargemProjetoSection(despesas){

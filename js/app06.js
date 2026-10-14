@@ -410,8 +410,9 @@ async function openProjetoFinanceiroModal(contratoId, nomeCliente){
           const _obra     = comissao.obra_ativo ? Number(comissao.obra_val||0) : 0;
           const _pres     = comissao.pres_ativo ? Number(comissao.pres_val||0) : 0;
           const _ind      = comissao.ind_ativo  ? Number(comissao.ind_val||0)  : 0;
+          const _taxa     = comissao.taxa_ativo ? Number(comissao.taxa_val||0) : 0;
           const _vend_base = _vc * (Number(comissao.vend_pct)||0) / 100;
-          const _base_maj  = _vv - _vc - _obra - _pres - _ind;
+          const _base_maj  = _vv - _vc - _obra - _pres - _ind - _taxa;
           const _major_val = Math.max(0, _base_maj) * (Number(comissao.vend_major_pct)||0) / 100;
           const linhas = [];
           if(_vend_base) linhas.push([comissao.vend_nome||'Vendedor','Comissão Vendedor',_vend_base]);
@@ -422,6 +423,7 @@ async function openProjetoFinanceiroModal(contratoId, nomeCliente){
           if(comissao.ind_ativo && Number(comissao.ind_val))  linhas.push([comissao.ind_nome||'Indicador','Indicador',comissao.ind_val]);
           if(comissao.obra_ativo && Number(comissao.obra_val)) linhas.push(['Obra','Obra',comissao.obra_val]);
           if(comissao.pres_ativo && Number(comissao.pres_val)) linhas.push(['Presente','Presente',comissao.pres_val]);
+          if(comissao.taxa_ativo && Number(comissao.taxa_val)) linhas.push(['Taxa de cartão','Taxa de cartão',comissao.taxa_val]);
           const totalComLinhas = linhas.reduce((s,[,,v])=>s+(Number(v)||0),0);
           return `<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Tipo</th><th>Valor / %</th><th>Status</th></tr></thead><tbody>
             ${linhas.map(([nome,tipo,val])=>`<tr>
