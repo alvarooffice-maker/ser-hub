@@ -1018,6 +1018,103 @@ table.kit tr.total td{font-weight:700;color:#4B0082;border-top:2px solid #6B21A8
   if(imprimir) setTimeout(()=>{ win.focus(); win.print(); }, 600);
 }
 
+
+/* ============================================================
+   COMISSÕES A PAGAR — por mês e por vendedor (modal aberto pelo KPI do Financeiro)
+   ============================================================ */
+async function openComissoesPagarModal(mesSel){
+  await Promise.all([loadTable('comissoes'), loadTable('contratos')]);
+  const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const norm = t=>String(t||'').toLowerCase().trim();
+  const contratos = State.contratos||[];
+  const nomeMes = ym=>{ const [y,m]=ym.split('-'); return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][+m-1]+'/'+y; };
+  // Mês de referência: assinatura do contrato (se achar) senão criação da comissão
+  const refMes = com=>{
+    const c = contratos.find(x=>String(x.id)===String(com.contrato_id)) || contratos.find(x=>norm(x.nome)===norm(com.nome));
+    return String(c?.data_assinatura || com.criado_em || '').slice(0,7);
+  };
+  const linhasDe = com=>{
+    const vc=Number(com.valor_contrato||0), vv=Number(com.valor_vendido||0)||vc;
+    const obra=com.obra_ativo?Number(com.obra_val||0):0, pres=com.pres_ativo?Number(com.pres_val||0):0, ind=com.ind_ativo?Number(com.ind_val||0):0;
+    const base = vc*(Number(com.vend_pct)||0)/100;
+    const major = Math.max(0, vv-vc-obra-pres-ind)*(Number(com.vend_major_pct)||0)/100;
+    const L=[];
+    if(base)  L.push({tipo:'Vendedor',  val:base,  nome:com.vend_nome||'—', venda:true});
+    if(major) L.push({tipo:'Majorado',  val:major, nome:com.vend_nome||'—', venda:false});
+    if(Number(com.sup_val)) L.push({tipo:'Supervisor', val:Number(com.sup_val), nome:com.sup_nome||'—', venda:false});
+    if(com.sdr_ativo&&Number(com.sdr_val)) L.push({tipo:'SDR', val:Number(com.sdr_val), nome:com.sdr_nome||'—', venda:false});
+    if(com.cap_ativo&&Number(com.cap_val)) L.push({tipo:'Captador', val:Number(com.cap_val), nome:com.cap_nome||'—', venda:false});
+    return L.map(l=>({...l, cliente:com.nome, status:com.status, comId:com.id, valorVenda:vc, mes:refMes(com)}));
+  };
+  const todas = (State.comissoes||[]).flatMap(linhasDe);
+  const meses = [...new Set(todas.map(l=>l.mes).filter(Boolean))].sort().reverse();
+  const mes = mesSel===undefined ? 'todos' : mesSel;
+  const mostrarPagas = !!window._comPagarMostrarPagas;
+  const filtradas = todas.filter(l=>(mes==='todos'||l.mes===mes) && (mostrarPagas || l.status!=='paga'));
+
+  const porPessoa = {};
+  filtradas.forEach(l=>{
+    const k = norm(l.nome); const p = porPessoa[k] ||= { nome:l.nome, vendas:new Set(), valorVendas:0, pendente:0, pago:0, itens:[] };
+    if(l.venda){ p.vendas.add(l.comId); p.valorVendas += l.valorVenda; }
+    if(l.status==='paga') p.pago += l.val; else p.pendente += l.val;
+    p.itens.push(l);
+  });
+  const pessoas = Object.values(porPessoa).sort((a,b)=>b.pendente-a.pendente || b.pago-a.pago);
+  const totPend = pessoas.reduce((s,p)=>s+p.pendente,0), totPago = pessoas.reduce((s,p)=>s+p.pago,0);
+
+  openModal(`
+    <div class="modal-header"><h2>💰 Comissões a Pagar</h2><button class="modal-close">×</button></div>
+    <div class="modal-body">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px">
+        <div><label style="font-size:11px;color:var(--text-light);display:block">Mês de referência (assinatura do contrato)</label>
+          <select id="cpMes" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px">
+            <option value="todos" ${mes==='todos'?'selected':''}>Todos os meses</option>
+            ${meses.map(m=>`<option value="${m}" ${mes===m?'selected':''}>${nomeMes(m)}</option>`).join('')}
+          </select></div>
+        <label style="font-size:13px;display:flex;gap:6px;align-items:center;margin-bottom:8px"><input type="checkbox" id="cpPagas" ${mostrarPagas?'checked':''}> mostrar já pagas</label>
+        <button class="btn btn-secondary btn-sm" id="cpImprimir" style="margin-left:auto">🖨️ Imprimir / PDF</button>
+      </div>
+      <div class="metrics" style="margin-bottom:12px">
+        <div class="metric" style="border-color:var(--warning)"><div class="metric-label">A pagar</div><div class="metric-value">${fR(totPend)}</div></div>
+        <div class="metric" style="border-color:#16a34a"><div class="metric-label">Já pago</div><div class="metric-value">${fR(totPago)}</div></div>
+        <div class="metric"><div class="metric-label">Pessoas</div><div class="metric-value">${pessoas.length}</div></div>
+      </div>
+      ${pessoas.length ? `<div class="table-wrap"><table style="font-size:13px">
+        <thead><tr><th>Quem</th><th style="text-align:right">Vendas</th><th style="text-align:right">Valor vendido</th><th style="text-align:right">A pagar</th><th style="text-align:right">Pago</th></tr></thead>
+        <tbody>${pessoas.map((p,i)=>`
+          <tr style="cursor:pointer;background:var(--bg-alt)" data-cp-toggle="${i}"><td><strong>▸ ${esc(p.nome)}</strong></td>
+            <td style="text-align:right">${p.vendas.size||'—'}</td><td style="text-align:right">${p.valorVendas?fR(p.valorVendas):'—'}</td>
+            <td style="text-align:right;font-weight:700;color:#d97706">${fR(p.pendente)}</td><td style="text-align:right;color:#16a34a">${fR(p.pago)}</td></tr>
+          ${p.itens.map(it=>`<tr data-cp-det="${i}" style="display:none"><td style="padding-left:28px">${esc(it.cliente||'—')} <span style="color:var(--text-light)">· ${it.tipo}${it.mes?' · '+nomeMes(it.mes):''}</span></td>
+            <td></td><td style="text-align:right;color:var(--text-light)">${it.valorVenda?fR(it.valorVenda):''}</td>
+            <td style="text-align:right">${it.status==='paga'?'':fR(it.val)}</td>
+            <td style="text-align:right">${it.status==='paga'?'<span class="badge badge-ok">paga</span>':`<button class="btn btn-sm btn-success" data-cp-pagar="${it.comId}">✓ Pagar</button>`}</td></tr>`).join('')}
+        `).join('')}</tbody></table></div>
+        <div style="font-size:11px;color:var(--text-light);margin-top:8px">Clique no nome para ver os clientes. O botão "Pagar" marca a comissão <b>inteira</b> daquela venda como paga (vendedor, supervisor e demais).</div>`
+        : '<div class="empty" style="padding:24px">Nenhuma comissão pendente neste filtro.</div>'}
+    </div>`,'lg');
+
+  $('#cpMes')?.addEventListener('change', e=> openComissoesPagarModal(e.target.value));
+  $('#cpPagas')?.addEventListener('change', e=>{ window._comPagarMostrarPagas = e.target.checked; openComissoesPagarModal(mes); });
+  $$('[data-cp-toggle]').forEach(tr=> tr.addEventListener('click', ()=>{
+    $$('[data-cp-det="'+tr.dataset.cpToggle+'"]').forEach(r=> r.style.display = r.style.display==='none' ? '' : 'none');
+  }));
+  $$('[data-cp-pagar]').forEach(b=> b.addEventListener('click', async ()=>{
+    if(!confirm('Marcar esta comissão como PAGA? (vale para todos os envolvidos nesta venda)')) return;
+    const { error } = await supa.from('comissoes').update({status:'paga'}).eq('id', b.dataset.cpPagar);
+    if(error) return toast(error.message,'error');
+    toast('Marcado como paga','success');
+    openComissoesPagarModal(mes);
+  }));
+  $('#cpImprimir')?.addEventListener('click', ()=>{
+    const w = window.open('','_blank'); if(!w) return toast('Libere pop-ups para imprimir.','error');
+    w.document.write(`<!doctype html><meta charset="utf-8"><title>Comissões ${mes==='todos'?'(todos os meses)':nomeMes(mes)}</title><style>body{font-family:Arial,sans-serif;font-size:12px;margin:20px}h1{font-size:18px}table{width:100%;border-collapse:collapse;margin-bottom:14px}th,td{border-bottom:1px solid #ddd;padding:5px 6px;text-align:left}.n{text-align:right}h2{font-size:14px;margin:14px 0 4px}</style>
+      <h1>Comissões — ${mes==='todos'?'todos os meses':nomeMes(mes)}</h1><p>A pagar: <b>${fR(totPend)}</b> · Já pago: ${fR(totPago)} · gerado em ${new Date().toLocaleString('pt-BR')}</p>
+      ${pessoas.map(p=>`<h2>${esc(p.nome)} — a pagar ${fR(p.pendente)} · ${p.vendas.size} venda(s) · ${fR(p.valorVendas)}</h2><table><tr><th>Cliente</th><th>Tipo</th><th class="n">Valor</th><th>Status</th></tr>${p.itens.map(it=>`<tr><td>${esc(it.cliente||'')}</td><td>${it.tipo}</td><td class="n">${fR(it.val)}</td><td>${it.status==='paga'?'paga':'pendente'}</td></tr>`).join('')}</table>`).join('')}`);
+    w.document.close(); setTimeout(()=>{ try{ w.focus(); w.print(); }catch(_){} }, 400);
+  });
+}
+
 /* ============================================================
    COMISSOES
    ============================================================ */
@@ -1612,7 +1709,7 @@ async function renderFinanceiro(){
       <div class="metric"><div class="metric-label">Receita Total</div><div class="metric-value">${fmtBRL(totalR)}</div></div>
       <div class="metric" style="border-color:var(--danger)"><div class="metric-label">Despesa Total</div><div class="metric-value">${fmtBRL(totalD)}</div></div>
       <div class="metric" style="border-color:var(--info)"><div class="metric-label">Lucro</div><div class="metric-value">${fmtBRL(lucro)}</div></div>
-      <div class="metric" style="border-color:var(--warning)"><div class="metric-label">Comissões a Pagar</div><div class="metric-value">${fmtBRL(comissoesPag)}</div></div>
+      <div class="metric" id="kpiComissoesPagar" role="button" tabindex="0" title="Clique para ver e pagar por mês" style="border-color:var(--warning);cursor:pointer" onclick="openComissoesPagarModal()"><div class="metric-label">Comissões a Pagar ▸</div><div class="metric-value">${fmtBRL(comissoesPag)}</div></div>
     </div>
     <div class="charts-grid">
       <div class="card"><div class="card-header"><h3>Movimentação Mensal</h3></div><canvas id="chartFin" height="220"></canvas></div>
