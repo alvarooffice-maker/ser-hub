@@ -1270,13 +1270,13 @@ async function renderCustoPorProjeto(){
 async function renderComissoes(){ renderCustoPorProjeto(); }
 
 function gerarRelatorioComissoesPDF(){
+  // Mesmo conteúdo do painel "Comissões a Pagar": só o que está pendente, por pessoa, com valor por cliente.
   const comissoes = State.comissoes || [];
-  const contratos = (State.contratos || []).filter(c=>c.status==='assinado');
   const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const pct = (v,base)=> base ? ' ('+(((Number(v)||0)/(Number(base)||1))*100).toFixed(1)+'%)' : '';
-  const hoje = new Date().toLocaleDateString('pt-BR');
+  const e = t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const agora = new Date();
+  const hoje = agora.toLocaleDateString('pt-BR');
 
-  // Agrupa linhas de comissão por pessoa
   const porPessoa = {};
   comissoes.forEach(com=>{
     const _vc   = Number(com.valor_contrato||0);
@@ -1286,127 +1286,71 @@ function gerarRelatorioComissoesPDF(){
     const _ind  = com.ind_ativo  ? Number(com.ind_val||0)  : 0;
     const _taxa = com.taxa_ativo ? Number(com.taxa_val||0) : 0;
     const _vend_base = baseComissao(com).base * (Number(com.vend_pct)||0) / 100;
-    const _base_maj  = _vv - _vc - _obra - _pres - _ind - _taxa;
-    const _major_val = Math.max(0, _base_maj) * (Number(com.vend_major_pct)||0) / 100;
-
+    const _major_val = Math.max(0, _vv - _vc - _obra - _pres - _ind - _taxa) * (Number(com.vend_major_pct)||0) / 100;
     const linhas = [];
-    if(_vend_base)                     linhas.push({ tipo:'Comissão Vendedor', val:_vend_base, nome:com.vend_nome||'Vendedor', cliente:com.nome, status:com.status });
-    if(_major_val)                     linhas.push({ tipo:'Majorado',          val:_major_val, nome:com.vend_nome||'Vendedor', cliente:com.nome, status:com.status });
-    if(Number(com.sup_val))            linhas.push({ tipo:'Supervisor',        val:Number(com.sup_val), nome:com.sup_nome||'Supervisor', cliente:com.nome, status:com.status });
-    if(com.sdr_ativo&&Number(com.sdr_val)) linhas.push({ tipo:'SDR',          val:Number(com.sdr_val), nome:com.sdr_nome||'SDR', cliente:com.nome, status:com.status });
-    if(com.cap_ativo&&Number(com.cap_val)) linhas.push({ tipo:'Captador',     val:Number(com.cap_val), nome:com.cap_nome||'Captador', cliente:com.nome, status:com.status });
-
+    if(_vend_base) linhas.push({ tipo:'Comissão',   val:_vend_base, nome:com.vend_nome||'—' });
+    if(_major_val) linhas.push({ tipo:'Majorado',   val:_major_val, nome:com.vend_nome||'—' });
+    if(Number(com.sup_val)) linhas.push({ tipo:'Supervisor', val:Number(com.sup_val), nome:com.sup_nome||'—' });
+    if(com.sdr_ativo&&Number(com.sdr_val)) linhas.push({ tipo:'SDR',      val:Number(com.sdr_val), nome:com.sdr_nome||'—' });
+    if(com.cap_ativo&&Number(com.cap_val)) linhas.push({ tipo:'Captador', val:Number(com.cap_val), nome:com.cap_nome||'—' });
     linhas.forEach(l=>{
-      const key = l.nome.trim().toLowerCase();
-      if(!porPessoa[key]) porPessoa[key] = { nome:l.nome, itens:[], total:0, pago:0, pendente:0 };
-      porPessoa[key].itens.push(l);
-      porPessoa[key].total += l.val;
-      if(l.status==='paga') porPessoa[key].pago += l.val;
-      else porPessoa[key].pendente += l.val;
+      if(com.status==='paga') return;                    // só o que falta pagar (igual ao painel)
+      const key = (l.nome||'').trim().toLowerCase();
+      const pp = porPessoa[key] ||= { nome:l.nome, pendente:0, itens:[] };
+      pp.itens.push({ ...l, cliente:com.nome, liquido: _taxa>0 ? Math.max(0,_vv-_taxa) : null, taxa:_taxa });
+      pp.pendente += l.val;
     });
   });
+  const pessoas = Object.values(porPessoa).filter(p=>p.pendente>0).sort((a,b)=>b.pendente-a.pendente);
+  const totalPend = pessoas.reduce((s,p)=>s+p.pendente,0);
+  const qtdLinhas = pessoas.reduce((s,p)=>s+p.itens.length,0);
 
-  const pessoas = Object.values(porPessoa).sort((a,b)=>b.total-a.total);
-  const totalGeral = pessoas.reduce((s,p)=>s+p.total,0);
-  const totalPago  = pessoas.reduce((s,p)=>s+p.pago,0);
-  const totalPend  = pessoas.reduce((s,p)=>s+p.pendente,0);
-
-  const statusBadge = s => {
-    const map = { paga:'#16a34a', pendente:'#d97706', aprovada:'#2563eb', cancelada:'#9ca3af' };
-    return `<span style="background:${map[s]||'#6b7280'}20;color:${map[s]||'#6b7280'};border:1px solid ${map[s]||'#6b7280'}40;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;text-transform:uppercase">${s||'—'}</span>`;
-  };
-
-  const pessoasSecs = pessoas.map(p=>`
-    <div style="margin-bottom:28px;page-break-inside:avoid">
-      <div style="display:flex;align-items:center;justify-content:space-between;background:#1a3a5c;color:#fff;padding:8px 14px;border-radius:6px 6px 0 0">
-        <span style="font-weight:700;font-size:14px">👤 ${p.nome}</span>
-        <span style="font-size:13px">${fR(p.total)}</span>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead>
-          <tr style="background:#f1f5f9">
-            <th style="text-align:left;padding:6px 10px;border-bottom:1px solid #e2e8f0">Cliente</th>
-            <th style="text-align:left;padding:6px 10px;border-bottom:1px solid #e2e8f0">Tipo</th>
-            <th style="text-align:right;padding:6px 10px;border-bottom:1px solid #e2e8f0">Valor</th>
-            <th style="text-align:center;padding:6px 10px;border-bottom:1px solid #e2e8f0">Status</th>
-          </tr>
-        </thead>
+  const secoes = pessoas.map(p=>`
+    <section class="pessoa">
+      <div class="pessoa-head"><span class="pessoa-nome">👤 ${e(p.nome)}</span><span class="pessoa-total">${fR(p.pendente)} <small>pendente</small></span></div>
+      <table>
+        <thead><tr><th>Cliente</th><th>Tipo</th><th class="n">Valor</th></tr></thead>
         <tbody>
-          ${p.itens.map((it,i)=>`
-          <tr style="background:${i%2?'#f8fafc':'#fff'}">
-            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9">${it.cliente||'—'}</td>
-            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#64748b">${it.tipo}</td>
-            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:600;color:#dc2626">${fR(it.val)}</td>
-            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;text-align:center">${statusBadge(it.status)}</td>
-          </tr>`).join('')}
-          <tr style="background:#fef9f0">
-            <td colspan="2" style="padding:6px 10px;font-weight:700;font-size:11px;color:#92400e">SUBTOTAL</td>
-            <td style="padding:6px 10px;text-align:right;font-weight:700;color:#92400e">${fR(p.total)}</td>
-            <td style="padding:6px 10px;text-align:center;font-size:11px;color:#64748b">
-              <span style="color:#16a34a">Pago: ${fR(p.pago)}</span> &nbsp;
-              <span style="color:#d97706">Pend: ${fR(p.pendente)}</span>
-            </td>
-          </tr>
+          ${p.itens.map(it=>`<tr><td>${e(it.cliente||'—')}${it.taxa>0?`<div class="obs">💳 líquido ${fR(it.liquido)} (taxa de cartão ${fR(it.taxa)})</div>`:''}</td><td class="tipo">${e(it.tipo)}</td><td class="n val">${fR(it.val)}</td></tr>`).join('')}
         </tbody>
+        <tfoot><tr><td colspan="2">Total de ${e(p.nome)}</td><td class="n">${fR(p.pendente)}</td></tr></tfoot>
       </table>
-    </div>`).join('');
+    </section>`).join('');
 
   const w = window.open('','_blank');
   if(!w){ alert('Popup bloqueado. Permita popups para este site.'); return; }
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Relatório de Comissões — SER Energia</title>
+  w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+  <title>Comissões a Pagar — ${hoje}</title>
   <style>
+    @page{size:A4 portrait;margin:14mm 12mm}
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;padding:32px}
-    .print-bar{position:fixed;top:0;left:0;right:0;background:#1a3a5c;color:#fff;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:999;font-size:13px}
-    .print-bar button{background:#f59e0b;color:#1a3a5c;border:none;border-radius:6px;padding:6px 16px;font-weight:700;cursor:pointer;font-size:13px}
-    .report-body{margin-top:56px}
-    @media print{.print-bar{display:none}.report-body{margin-top:0}}
-    h1{font-size:22px;color:#1a3a5c;margin-bottom:4px}
-    .sub{font-size:13px;color:#64748b;margin-bottom:24px}
-    .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px}
-    .summary-card{border-radius:8px;padding:16px;text-align:center}
-    .summary-card .label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;font-weight:600}
-    .summary-card .value{font-size:20px;font-weight:800}
-    @media print{body{padding:16px}h1{font-size:18px}}
-  </style>
-  </head><body>
-  <div class="print-bar">
-    <span>SER Energia Renovável — Relatório de Comissões</span>
-    <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
-  </div>
-  <div class="report-body">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px">
-      <div>
-        <h1>Relatório de Comissões</h1>
-        <div class="sub">Gerado em ${hoje} &nbsp;·&nbsp; ${comissoes.length} contrato${comissoes.length!==1?'s':''} &nbsp;·&nbsp; ${pessoas.length} colaborador${pessoas.length!==1?'es':''}</div>
-      </div>
-      <div style="text-align:right;font-size:11px;color:#94a3b8;font-weight:600;letter-spacing:.5px">SER ENERGIA RENOVÁVEL</div>
+    body{font-family:-apple-system,'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;padding:24px 28px;font-size:13px}
+    .barra{position:sticky;top:0;background:#1a3a5c;color:#fff;margin:-24px -28px 18px;padding:10px 24px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
+    .barra button{background:#f59e0b;color:#1a3a5c;border:0;border-radius:6px;padding:7px 16px;font-weight:700;cursor:pointer}
+    .topo{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1a3a5c;padding-bottom:10px;margin-bottom:16px}
+    h1{font-size:22px;color:#1a3a5c} .sub{color:#64748b;font-size:12px;margin-top:2px} .marca{font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:.6px}
+    .total{background:#fffbeb;border:2px solid #f59e0b;border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center}
+    .total .rot{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:#92400e;font-weight:700} .total .val{font-size:28px;font-weight:800;color:#b45309}
+    .pessoa{margin-bottom:16px;break-inside:avoid;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}
+    .pessoa-head{display:flex;justify-content:space-between;align-items:center;background:#f1f5f9;padding:9px 14px}
+    .pessoa-nome{font-weight:800;font-size:14px} .pessoa-total{font-weight:800;color:#d97706;font-size:14px} .pessoa-total small{font-weight:600;font-size:11px}
+    table{width:100%;border-collapse:collapse} th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:#64748b;text-align:left;padding:7px 14px;border-bottom:1px solid #e2e8f0}
+    td{padding:8px 14px;border-bottom:1px solid #f1f5f9;vertical-align:top} .n{text-align:right} .tipo{color:#64748b} .val{font-weight:700;color:#b45309;white-space:nowrap}
+    .obs{font-size:10.5px;color:#6d28d9;margin-top:2px}
+    tfoot td{background:#fffbeb;font-weight:800;color:#92400e;border-bottom:0}
+    .aprov{margin-top:26px;break-inside:avoid;display:flex;gap:40px} .aprov div{flex:1;border-top:1px solid #64748b;padding-top:5px;font-size:11px;color:#475569;text-align:center}
+    .rodape{margin-top:18px;font-size:10.5px;color:#94a3b8;display:flex;justify-content:space-between}
+    @media print{.barra{display:none} body{padding:0}}
+  </style></head><body>
+    <div class="barra"><span>SER Energia Renovável — Comissões a Pagar</span><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>
+    <div class="topo">
+      <div><h1>💰 Comissões a Pagar</h1><div class="sub">Gerado em ${hoje} às ${agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ${pessoas.length} colaborador${pessoas.length!==1?'es':''} · ${qtdLinhas} lançamento${qtdLinhas!==1?'s':''}</div></div>
+      <div class="marca">SER ENERGIA RENOVÁVEL</div>
     </div>
-
-    <div class="summary-grid">
-      <div class="summary-card" style="background:#eff6ff;border:1px solid #bfdbfe">
-        <div class="label" style="color:#1d4ed8">Total Comissões</div>
-        <div class="value" style="color:#1d4ed8">${fR(totalGeral)}</div>
-      </div>
-      <div class="summary-card" style="background:#f0fdf4;border:1px solid #bbf7d0">
-        <div class="label" style="color:#15803d">Total Pago</div>
-        <div class="value" style="color:#15803d">${fR(totalPago)}</div>
-      </div>
-      <div class="summary-card" style="background:#fffbeb;border:1px solid #fde68a">
-        <div class="label" style="color:#b45309">Total Pendente</div>
-        <div class="value" style="color:#b45309">${fR(totalPend)}</div>
-      </div>
-    </div>
-
-    ${pessoas.length ? pessoasSecs : '<p style="color:#94a3b8;text-align:center;padding:40px">Nenhuma comissão lançada.</p>'}
-
-    <div style="margin-top:32px;padding-top:16px;border-top:2px solid #1a3a5c;display:flex;justify-content:space-between;font-size:12px;color:#64748b">
-      <span>SER Energia Renovável</span>
-      <span>Relatório gerado automaticamente pelo SER Hub</span>
-    </div>
-  </div>
-  <script>window.onload=()=>{};<\/script>
+    <div class="total"><span class="rot">Total a pagar</span><span class="val">${fR(totalPend)}</span></div>
+    ${pessoas.length ? secoes : '<p style="text-align:center;color:#94a3b8;padding:40px">✅ Nenhuma comissão pendente de pagamento.</p>'}
+    ${pessoas.length ? `<div class="aprov"><div>Aprovado — Sócio(a)</div><div>Aprovado — Sócio(a)</div><div>Financeiro (pago em ___/___/______)</div></div>` : ''}
+    <div class="rodape"><span>SER Energia Renovável</span><span>Gerado pelo SER Hub</span></div>
   </body></html>`);
   w.document.close();
 }
