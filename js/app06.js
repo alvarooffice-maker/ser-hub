@@ -310,7 +310,7 @@ async function openProjetoFinanceiroModal(contratoId, nomeCliente){
   const despPor = cat => despAll.filter(d=>d.categoria===cat);
 
   // Comissão vinculada pelo nome do cliente
-  const comissao = (State.comissoes||[]).find(x=>(x.nome||'').toLowerCase().trim()===(nomeCliente||'').toLowerCase().trim());
+  const comissao = (State.comissoes||[]).find(x=>String(x.contrato_id)===String(contratoId)) || (State.comissoes||[]).find(x=>!x.contrato_id && (x.nome||'').toLowerCase().trim()===(nomeCliente||'').toLowerCase().trim());
   const totalCom = comissao ? Number(comissao.total_saidas)||0 : 0;
 
   const totalDesp = despAll.reduce((s,d)=>s+(Number(d.valor)||0),0) + totalCom;

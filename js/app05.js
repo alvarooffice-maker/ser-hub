@@ -1022,7 +1022,8 @@ table.kit tr.total td{font-weight:700;color:#4B0082;border-top:2px solid #6B21A8
 /* ============================================================
    COMISSÕES A PAGAR — por mês e por vendedor (modal aberto pelo KPI do Financeiro)
    ============================================================ */
-async function openComissoesPagarModal(mesSel){
+async function openComissoesPagarModal(mesSel, pagina){
+  if(pagina===undefined) pagina = !!window._comPagarPagina; window._comPagarPagina = pagina;
   await Promise.all([loadTable('comissoes'), loadTable('contratos')]);
   const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const norm = t=>String(t||'').toLowerCase().trim();
@@ -1081,9 +1082,8 @@ async function openComissoesPagarModal(mesSel){
   const pessoas = Object.values(porPessoa).sort((a,b)=>b.pendente-a.pendente || b.pago-a.pago);
   const totPend = pessoas.reduce((s,p)=>s+p.pendente,0), totPago = pessoas.reduce((s,p)=>s+p.pago,0);
 
-  openModal(`
-    <div class="modal-header"><h2>💰 Comissões a Pagar</h2><button class="modal-close">×</button></div>
-    <div class="modal-body">
+  const corpoHtml = `
+    <div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px">
         <div><label style="font-size:11px;color:var(--text-light);display:block">Mês de referência (assinatura do contrato)</label>
           <select id="cpMes" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px">
@@ -1124,7 +1124,14 @@ async function openComissoesPagarModal(mesSel){
         <div style="font-size:11px;color:var(--text-light);margin-top:8px">Clique no nome para ver os clientes. O botão "Pagar" marca a comissão <b>inteira</b> daquela venda como paga (vendedor, supervisor e demais).</div>`
         : '<div class="empty" style="padding:24px">Nenhuma comissão pendente neste filtro.</div>'}
 
-    </div>`,'lg');
+    </div>`;
+  if(pagina){
+    $('#pageActions').innerHTML = `<button class="btn btn-primary" id="cpNova">+ Nova Comissão</button>`;
+    $('#cpNova').addEventListener('click', ()=> openComissaoModal());
+    $('#content').innerHTML = `<div class="card" style="padding:16px">${corpoHtml}</div>`;
+  } else {
+    openModal(`<div class="modal-header"><h2>💰 Comissões a Pagar</h2><button class="modal-close">×</button></div><div class="modal-body">${corpoHtml}</div>`,'lg');
+  }
 
   $('#cpMes')?.addEventListener('change', e=> openComissoesPagarModal(e.target.value));
   $$('[data-cp-vend]').forEach(h=> h.addEventListener('click', ()=>{
@@ -1230,7 +1237,7 @@ async function renderCustoPorProjeto(){
         ${contratos.length ? contratos.map(c=>{
           const desp = (State.despesas||[]).filter(d=>String(d.contrato_id)===String(c.id));
           const rec  = (State.receitas||[]).filter(r=>String(r.contrato_id)===String(c.id));
-          const com  = (State.comissoes||[]).find(x=>(x.nome||'').toLowerCase().trim()===(c.nome||'').toLowerCase().trim());
+          const com  = (State.comissoes||[]).find(x=>String(x.contrato_id)===String(c.id)) || (State.comissoes||[]).find(x=>!x.contrato_id && (x.nome||'').toLowerCase().trim()===(c.nome||'').toLowerCase().trim());
           const totalDesp = desp.reduce((s,d)=>s+(Number(d.valor)||0),0) + (com ? Number(com.total_saidas)||0 : 0);
           const totalRec  = rec.reduce((s,r)=>s+(Number(r.valor)||0),0) || Number(c.valor)||0;
           const margem    = totalRec - totalDesp;
@@ -1261,7 +1268,8 @@ async function renderCustoPorProjeto(){
   });
 }
 
-async function renderComissoes(){ renderCustoPorProjeto(); }
+async function renderComissoes(){ if(window._comPagarPagina && State.route==='comissoes') openComissoesPagarModal(undefined, true); else renderCustoPorProjeto(); }
+async function renderComissoesPagina(){ return openComissoesPagarModal(undefined, true); }
 
 /* "A pagar" = comissões de pessoas (vendedor, majorado, supervisor, SDR, captador) ainda NÃO pagas
    (status aprovada ou pendente; canceladas ficam de fora). É a mesma regra do painel, do PDF e da tela por mês. */
@@ -1548,6 +1556,11 @@ function openComissaoModal(item=null, nomePreenchido=null){
     const data = readForm(form);
     const calc = recalc();
     Object.assign(data, calc);
+    if(!data.contrato_id){
+      const ctSel = (State.contratos||[]).filter(c=>(c.nome||'').trim().toLowerCase()===(data.nome||'').trim().toLowerCase())
+        .sort((a,b)=>(b.status==='assinado')-(a.status==='assinado') || Math.abs((Number(a.valor)||0)-(Number(data.valor_vendido)||Number(data.valor_contrato)||0))-Math.abs((Number(b.valor)||0)-(Number(data.valor_vendido)||Number(data.valor_contrato)||0)))[0];
+      if(ctSel) data.contrato_id = ctSel.id;
+    }
     ['valor_contrato','valor_vendido','vend_pct','vend_major_pct','vend_base','major_val','sup_pct','sdr_pct','cap_pct','ind_val','obra_val','pres_val','taxa_val'].forEach(k=>{ data[k] = data[k]!=null ? Number(data[k]) : null; });
     if(isNew){
       data.criado_por = State.user?.id;
@@ -1659,7 +1672,7 @@ function buildMargemProjetoSection(despesas){
       .reduce((s,d)=>s+(Number(d.valor)||0),0);
     const inst = instalacoes.find(i=>String(i.contrato_id)===String(c.id));
     const extrasInstalacao = inst ? (Number(inst.val_poste)||0)+(Number(inst.val_troca_padrao)||0) : 0;
-    const com = comissoes.find(x=>normName(x.nome||'')===normName(c.nome||''));
+    const com = comissoes.find(x=>String(x.contrato_id)===String(c.id)) || comissoes.find(x=>!x.contrato_id && normName(x.nome||'')===normName(c.nome||''));
     const comissaoTotal = calcComissaoTotal(com);
     const custoTotal = despesasContrato + extrasInstalacao + comissaoTotal;
     const margem = receita - custoTotal;
@@ -1759,7 +1772,7 @@ async function renderFinanceiro(){
       <div class="metric"><div class="metric-label">Receita Total</div><div class="metric-value">${fmtBRL(totalR)}</div></div>
       <div class="metric" style="border-color:var(--danger)"><div class="metric-label">Despesa Total</div><div class="metric-value">${fmtBRL(totalD)}</div></div>
       <div class="metric" style="border-color:var(--info)"><div class="metric-label">Lucro</div><div class="metric-value">${fmtBRL(lucro)}</div></div>
-      <div class="metric" id="kpiComissoesPagar" role="button" tabindex="0" title="Clique para ver e pagar por mês" style="border-color:var(--warning);cursor:pointer" onclick="openComissoesPagarModal()"><div class="metric-label">Comissões a Pagar ▸</div><div class="metric-value">${fmtBRL(comissoesPag)}</div></div>
+      <div class="metric" id="kpiComissoesPagar" role="button" tabindex="0" title="Clique para ver e pagar por mês" style="border-color:var(--warning);cursor:pointer" onclick="openComissoesPagarModal(undefined,false)"><div class="metric-label">Comissões a Pagar ▸</div><div class="metric-value">${fmtBRL(comissoesPag)}</div></div>
     </div>
     <div class="charts-grid">
       <div class="card"><div class="card-header"><h3>Movimentação Mensal</h3></div><canvas id="chartFin" height="220"></canvas></div>

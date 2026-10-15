@@ -356,6 +356,7 @@ const ROUTES = [
   { id:'baterias', label:'Calculadora de Baterias', icon:'🔋' },
   { id:'disparador', label:'Disparador de Mensagens', icon:'💬' },
   { id:'posvenda_rel', label:'Relatório Pós-Venda', icon:'📬', section:'RELATÓRIOS' },
+  { id:'comissoes', label:'Comissões', icon:'💸', section:'GESTÃO' },
   { id:'custo_projeto', label:'Custo por Projeto', icon:'💰', section:'GESTÃO' },
   { id:'financeiro', label:'Financeiro', icon:'📈', section:'GESTÃO' },
   { id:'cadastros', label:'Cadastros', icon:'👥', section:'GESTÃO' },
@@ -369,7 +370,7 @@ function visibleRoutes(){
   return ROUTES.filter(r=>{
     if(r.adminOnly && !['admin','supervisor'].includes(role)) return false;
     if(r.id==='gestao_custos') return isGestor();
-    if(role==='financeiro') return ['dashboard','calendario','clientes','custo_projeto','financeiro'].includes(r.id);
+    if(role==='financeiro') return ['dashboard','calendario','clientes','comissoes','custo_projeto','financeiro'].includes(r.id);
     if(role==='vendedor') return ['home_vendedor','dashboard','calendario','clientes','pipeline','reservico','appmanutencao','remarketing','baterias','disparador','posvenda_rel'].includes(r.id);
     if(role==='tec_vistoria') return ['dashboard','calendario','clientes','vistoriador','reservico','appmanutencao'].includes(r.id);
     if(role==='tec_instalacao') return ['dashboard','calendario','clientes','instalador','reservico','appmanutencao'].includes(r.id);
@@ -428,7 +429,8 @@ function navigate(route){
     case 'remarketing': renderRemarketing(); break;
     case 'baterias': renderBaterias(); break;
     case 'disparador': renderDisparador(); break;
-    case 'custo_projeto': renderCustoPorProjeto(); break;
+    case 'comissoes': window._comPagarPagina = true; renderComissoesPagina(); break;
+    case 'custo_projeto': window._comPagarPagina = false; renderCustoPorProjeto(); break;
     case 'financeiro': renderFinanceiro(); break;
     case 'cadastros': renderCadastros(); break;
     case 'usuarios': renderUsuarios(); break;
