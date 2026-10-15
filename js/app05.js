@@ -1048,7 +1048,7 @@ async function openComissoesPagarModal(mesSel){
     const B=baseComissao(com);
     return L.map(l=>({...l, cliente:com.nome, status:com.status, comId:com.id, valorVenda:vc, taxa:B.taxa, liquido:B.liquido, mes:refMes(com)}));
   };
-  const todas = (State.comissoes||[]).flatMap(linhasDe);
+  const todas = (State.comissoes||[]).filter(c=>c.status!=='cancelada').flatMap(linhasDe);
   // Vendas assinadas que ainda não têm comissão lançada (por contrato ou por nome do cliente)
   const comLancada = new Set((State.comissoes||[]).flatMap(c=>[String(c.contrato_id||''), norm(c.nome)]).filter(Boolean));
   const semComissao = contratos.filter(c=>c.status==='assinado' && !comLancada.has(String(c.id)) && !comLancada.has(norm(c.nome)))
@@ -1159,7 +1159,7 @@ async function renderCustoPorProjeto(){
   const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
   // Constrói resumo por pessoa para o painel de pagamento
-  const comissoes = State.comissoes || [];
+  const comissoes = (State.comissoes || []).filter(c=>c.status!=='cancelada');
   const porPessoa = {};
   comissoes.forEach(com=>{
     const _vc   = Number(com.valor_contrato||0);
@@ -1263,6 +1263,21 @@ async function renderCustoPorProjeto(){
 
 async function renderComissoes(){ renderCustoPorProjeto(); }
 
+/* "A pagar" = comissões de pessoas (vendedor, majorado, supervisor, SDR, captador) ainda NÃO pagas
+   (status aprovada ou pendente; canceladas ficam de fora). É a mesma regra do painel, do PDF e da tela por mês. */
+function totalComissoesAPagar(lista){
+  return (lista||State.comissoes||[]).filter(c=>c.status!=='paga' && c.status!=='cancelada').reduce((soma,com)=>{
+    const vc=Number(com.valor_contrato||0), vv=Number(com.valor_vendido||0)||vc;
+    const obra=com.obra_ativo?Number(com.obra_val||0):0, pres=com.pres_ativo?Number(com.pres_val||0):0, ind=com.ind_ativo?Number(com.ind_val||0):0, taxa=com.taxa_ativo?Number(com.taxa_val||0):0;
+    const base = baseComissao(com).base;
+    const vend = base*(Number(com.vend_pct)||0)/100;
+    const major = Math.max(0, vv-vc-obra-pres-ind-taxa)*(Number(com.vend_major_pct)||0)/100;
+    const sup = Number(com.sup_val)||0;
+    const sdr = com.sdr_ativo?(Number(com.sdr_val)||0):0, cap = com.cap_ativo?(Number(com.cap_val)||0):0;
+    return soma + vend + major + sup + sdr + cap;
+  },0);
+}
+
 function mesRefComissao(com){
   const norm = t=>String(t||'').toLowerCase().trim();
   const c = (State.contratos||[]).find(x=>String(x.id)===String(com.contrato_id)) || (State.contratos||[]).find(x=>norm(x.nome)===norm(com.nome));
@@ -1280,6 +1295,7 @@ function gerarRelatorioComissoesPDF(opts={}){
 
   const porPessoa = {};
   comissoes.forEach(com=>{
+    if(com.status==='cancelada') return;
     if(mes && mesRefComissao(com)!==mes) return;
     const _vc   = Number(com.valor_contrato||0);
     const _vv   = Number(com.valor_vendido||0) || _vc;
@@ -1703,7 +1719,7 @@ async function renderFinanceiro(){
   const totalR = receitas.filter(r=>r.status!=='cancelado').reduce((s,r)=>s+(Number(r.valor)||0),0);
   const totalD = despesas.filter(d=>d.status!=='cancelado').reduce((s,d)=>s+(Number(d.valor)||0),0);
   const lucro = totalR - totalD;
-  const comissoesPag = State.comissoes.filter(c=>c.status==='aprovada').reduce((s,c)=>s+(Number(c.total_saidas)||0),0);
+  const comissoesPag = totalComissoesAPagar(State.comissoes);
 
   const months = {};
   receitas.forEach(r=>{
