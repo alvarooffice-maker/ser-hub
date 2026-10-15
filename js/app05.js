@@ -1147,13 +1147,7 @@ async function openComissoesPagarModal(mesSel){
     toast('Marcado como paga','success');
     openComissoesPagarModal(mes);
   }));
-  $('#cpImprimir')?.addEventListener('click', ()=>{
-    const w = window.open('','_blank'); if(!w) return toast('Libere pop-ups para imprimir.','error');
-    w.document.write(`<!doctype html><meta charset="utf-8"><title>Comissões ${mes==='todos'?'(todos os meses)':nomeMes(mes)}</title><style>body{font-family:Arial,sans-serif;font-size:12px;margin:20px}h1{font-size:18px}table{width:100%;border-collapse:collapse;margin-bottom:14px}th,td{border-bottom:1px solid #ddd;padding:5px 6px;text-align:left}.n{text-align:right}h2{font-size:14px;margin:14px 0 4px}</style>
-      <h1>Comissões — ${mes==='todos'?'todos os meses':nomeMes(mes)}</h1><p>A pagar: <b>${fR(totPend)}</b> · Já pago: ${fR(totPago)} · gerado em ${new Date().toLocaleString('pt-BR')}</p>
-      ${pessoas.map(p=>`<h2>${esc(p.nome)} — a pagar ${fR(p.pendente)} · ${p.vendas.size} venda(s) · ${fR(p.valorVendas)}</h2><table><tr><th>Cliente</th><th>Tipo</th><th class="n">Valor</th><th>Status</th></tr>${p.itens.map(it=>`<tr><td>${esc(it.cliente||'')}</td><td>${it.tipo}</td><td class="n">${fR(it.val)}</td><td>${it.status==='paga'?'paga':'pendente'}</td></tr>`).join('')}</table>`).join('')}`);
-    w.document.close(); setTimeout(()=>{ try{ w.focus(); w.print(); }catch(_){} }, 400);
-  });
+  $('#cpImprimir')?.addEventListener('click', ()=> gerarRelatorioComissoesPDF({ mes: mes==='todos' ? undefined : mes, mostrarPagas: !!window._comPagarMostrarPagas }));
 }
 
 /* ============================================================
@@ -1269,7 +1263,14 @@ async function renderCustoPorProjeto(){
 
 async function renderComissoes(){ renderCustoPorProjeto(); }
 
-function gerarRelatorioComissoesPDF(){
+function mesRefComissao(com){
+  const norm = t=>String(t||'').toLowerCase().trim();
+  const c = (State.contratos||[]).find(x=>String(x.id)===String(com.contrato_id)) || (State.contratos||[]).find(x=>norm(x.nome)===norm(com.nome));
+  return String(c?.data_assinatura || com.criado_em || '').slice(0,7);
+}
+function gerarRelatorioComissoesPDF(opts={}){
+  const { mes, mostrarPagas } = opts;            // mes: 'YYYY-MM' (filtro) | undefined = todos
+  const nomeMesPdf = ym=>{ const [y,m]=ym.split('-'); return ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][+m-1]+' de '+y; };
   // Mesmo conteúdo do painel "Comissões a Pagar": só o que está pendente, por pessoa, com valor por cliente.
   const comissoes = State.comissoes || [];
   const fR = v=>'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1279,6 +1280,7 @@ function gerarRelatorioComissoesPDF(){
 
   const porPessoa = {};
   comissoes.forEach(com=>{
+    if(mes && mesRefComissao(com)!==mes) return;
     const _vc   = Number(com.valor_contrato||0);
     const _vv   = Number(com.valor_vendido||0) || _vc;
     const _obra = com.obra_ativo ? Number(com.obra_val||0) : 0;
@@ -1288,39 +1290,43 @@ function gerarRelatorioComissoesPDF(){
     const _vend_base = baseComissao(com).base * (Number(com.vend_pct)||0) / 100;
     const _major_val = Math.max(0, _vv - _vc - _obra - _pres - _ind - _taxa) * (Number(com.vend_major_pct)||0) / 100;
     const linhas = [];
-    if(_vend_base) linhas.push({ tipo:'Comissão',   val:_vend_base, nome:com.vend_nome||'—' });
+    if(_vend_base) linhas.push({ tipo:'Comissão',   val:_vend_base, nome:com.vend_nome||'—', venda:_vv });
     if(_major_val) linhas.push({ tipo:'Majorado',   val:_major_val, nome:com.vend_nome||'—' });
     if(Number(com.sup_val)) linhas.push({ tipo:'Supervisor', val:Number(com.sup_val), nome:com.sup_nome||'—' });
     if(com.sdr_ativo&&Number(com.sdr_val)) linhas.push({ tipo:'SDR',      val:Number(com.sdr_val), nome:com.sdr_nome||'—' });
     if(com.cap_ativo&&Number(com.cap_val)) linhas.push({ tipo:'Captador', val:Number(com.cap_val), nome:com.cap_nome||'—' });
     linhas.forEach(l=>{
-      if(com.status==='paga') return;                    // só o que falta pagar (igual ao painel)
+      const paga = com.status==='paga';
+      if(paga && !mostrarPagas) return;                  // padrão: só o que falta pagar (igual ao painel)
       const key = (l.nome||'').trim().toLowerCase();
-      const pp = porPessoa[key] ||= { nome:l.nome, pendente:0, itens:[] };
-      pp.itens.push({ ...l, cliente:com.nome, liquido: _taxa>0 ? Math.max(0,_vv-_taxa) : null, taxa:_taxa });
-      pp.pendente += l.val;
+      const pp = porPessoa[key] ||= { nome:l.nome, pendente:0, pago:0, vendas:0, valorVendas:0, itens:[] };
+      pp.itens.push({ ...l, paga, cliente:com.nome, liquido: _taxa>0 ? Math.max(0,_vv-_taxa) : null, taxa:_taxa });
+      if(paga) pp.pago += l.val; else pp.pendente += l.val;
+      if(l.venda){ pp.vendas++; pp.valorVendas += l.venda; }
     });
   });
-  const pessoas = Object.values(porPessoa).filter(p=>p.pendente>0).sort((a,b)=>b.pendente-a.pendente);
+  const pessoas = Object.values(porPessoa).filter(p=>p.pendente>0 || (mostrarPagas && p.pago>0)).sort((a,b)=>(b.pendente-a.pendente)||(b.pago-a.pago));
   const totalPend = pessoas.reduce((s,p)=>s+p.pendente,0);
+  const totalPago = pessoas.reduce((s,p)=>s+p.pago,0);
+  const periodoTxt = mes ? nomeMesPdf(mes) : 'todos os meses';
   const qtdLinhas = pessoas.reduce((s,p)=>s+p.itens.length,0);
 
   const secoes = pessoas.map(p=>`
     <section class="pessoa">
-      <div class="pessoa-head"><span class="pessoa-nome">👤 ${e(p.nome)}</span><span class="pessoa-total">${fR(p.pendente)} <small>pendente</small></span></div>
+      <div class="pessoa-head"><span class="pessoa-nome">👤 ${e(p.nome)}${p.vendas?` <small class="vendas">${p.vendas} venda${p.vendas!==1?'s':''} · ${fR(p.valorVendas)} vendidos</small>`:''}</span><span class="pessoa-total">${fR(p.pendente)} <small>pendente</small></span></div>
       <table>
-        <thead><tr><th>Cliente</th><th>Tipo</th><th class="n">Valor</th></tr></thead>
+        <thead><tr><th>Cliente</th><th>Tipo</th><th class="n">Valor</th>${mostrarPagas?'<th class="n">Situação</th>':''}</tr></thead>
         <tbody>
-          ${p.itens.map(it=>`<tr><td>${e(it.cliente||'—')}${it.taxa>0?`<div class="obs">💳 líquido ${fR(it.liquido)} (taxa de cartão ${fR(it.taxa)})</div>`:''}</td><td class="tipo">${e(it.tipo)}</td><td class="n val">${fR(it.val)}</td></tr>`).join('')}
+          ${p.itens.map(it=>`<tr><td>${e(it.cliente||'—')}${it.taxa>0?`<div class="obs">💳 líquido ${fR(it.liquido)} (taxa de cartão ${fR(it.taxa)})</div>`:''}</td><td class="tipo">${e(it.tipo)}</td><td class="n val">${fR(it.val)}</td>${mostrarPagas?`<td class="n" style="color:${it.paga?'#15803d':'#b45309'};font-weight:700">${it.paga?'paga':'pendente'}</td>`:''}</tr>`).join('')}
         </tbody>
-        <tfoot><tr><td colspan="2">Total de ${e(p.nome)}</td><td class="n">${fR(p.pendente)}</td></tr></tfoot>
+        <tfoot><tr><td colspan="2">Total a pagar — ${e(p.nome)}</td><td class="n">${fR(p.pendente)}</td>${mostrarPagas?`<td class="n" style="font-weight:600;color:#15803d">pago ${fR(p.pago)}</td>`:''}</tr></tfoot>
       </table>
     </section>`).join('');
 
   const w = window.open('','_blank');
   if(!w){ alert('Popup bloqueado. Permita popups para este site.'); return; }
   w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-  <title>Comissões a Pagar — ${hoje}</title>
+  <title>Comissões a Pagar — ${periodoTxt}</title>
   <style>
     @page{size:A4 portrait;margin:14mm 12mm}
     *{box-sizing:border-box;margin:0;padding:0}
@@ -1336,7 +1342,7 @@ function gerarRelatorioComissoesPDF(){
     .pessoa-nome{font-weight:800;font-size:14px} .pessoa-total{font-weight:800;color:#d97706;font-size:14px} .pessoa-total small{font-weight:600;font-size:11px}
     table{width:100%;border-collapse:collapse} th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:#64748b;text-align:left;padding:7px 14px;border-bottom:1px solid #e2e8f0}
     td{padding:8px 14px;border-bottom:1px solid #f1f5f9;vertical-align:top} .n{text-align:right} .tipo{color:#64748b} .val{font-weight:700;color:#b45309;white-space:nowrap}
-    .obs{font-size:10.5px;color:#6d28d9;margin-top:2px}
+    .obs{font-size:10.5px;color:#6d28d9;margin-top:2px} .vendas{font-weight:600;color:#64748b;font-size:11.5px;margin-left:8px}
     tfoot td{background:#fffbeb;font-weight:800;color:#92400e;border-bottom:0}
     .aprov{margin-top:26px;break-inside:avoid;display:flex;gap:40px} .aprov div{flex:1;border-top:1px solid #64748b;padding-top:5px;font-size:11px;color:#475569;text-align:center}
     .rodape{margin-top:18px;font-size:10.5px;color:#94a3b8;display:flex;justify-content:space-between}
@@ -1344,10 +1350,10 @@ function gerarRelatorioComissoesPDF(){
   </style></head><body>
     <div class="barra"><span>SER Energia Renovável — Comissões a Pagar</span><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>
     <div class="topo">
-      <div><h1>💰 Comissões a Pagar</h1><div class="sub">Gerado em ${hoje} às ${agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ${pessoas.length} colaborador${pessoas.length!==1?'es':''} · ${qtdLinhas} lançamento${qtdLinhas!==1?'s':''}</div></div>
+      <div><h1>💰 Comissões a Pagar${mes?` — <span style="color:#b45309">${periodoTxt}</span>`:''}</h1><div class="sub">${mes?'Vendas assinadas em '+periodoTxt+' · ':''}Gerado em ${hoje} às ${agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ${pessoas.length} colaborador${pessoas.length!==1?'es':''} · ${qtdLinhas} lançamento${qtdLinhas!==1?'s':''}</div></div>
       <div class="marca">SER ENERGIA RENOVÁVEL</div>
     </div>
-    <div class="total"><span class="rot">Total a pagar</span><span class="val">${fR(totalPend)}</span></div>
+    <div class="total"><span class="rot">Total a pagar${mes?' — '+periodoTxt:''}</span><span class="val">${fR(totalPend)}</span>${mostrarPagas?`<span style="font-size:12px;color:#15803d;font-weight:700">já pago: ${fR(totalPago)}</span>`:''}</div>
     ${pessoas.length ? secoes : '<p style="text-align:center;color:#94a3b8;padding:40px">✅ Nenhuma comissão pendente de pagamento.</p>'}
     ${pessoas.length ? `<div class="aprov"><div>Aprovado — Sócio(a)</div><div>Aprovado — Sócio(a)</div><div>Financeiro (pago em ___/___/______)</div></div>` : ''}
     <div class="rodape"><span>SER Energia Renovável</span><span>Gerado pelo SER Hub</span></div>
