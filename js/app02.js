@@ -917,12 +917,20 @@ async function transitionCard(id, fromStage, toStage){
     const dataAtiv = await pedirDataHomologacao(item);
     if(!dataAtiv) return;                       // cancelou: o card não se move
     payload.data_ativacao = dataAtiv;
-    const { error: eh } = await supa.from('homologacoes').update({ data_ativacao: dataAtiv }).eq('id', item.id);
-    if(eh){ toast('Erro ao gravar a data de homologação: '+eh.message,'error'); return; }
   }
 
   const { error } = await supa.from(toCfg.table).insert(payload);
-  if(error){ toast('Erro: '+error.message,'error'); return; }
+  if(error){
+    const msg = /row-level security/i.test(error.message) ? 'Seu perfil não tem permissão para criar o Pós-venda. Avise o administrador.'
+              : /duplicate key|uq_posvenda/i.test(error.message) ? 'Este cliente já está no Pós-venda.'
+              : error.message;
+    toast('Erro: '+msg,'error'); return;
+  }
+  // só depois que o Pós-venda foi criado: grava a data também na homologação (se falhar, o card já avançou e a data está no pós-venda)
+  if(toStage==='posvenda'){
+    const { error: eh } = await supa.from('homologacoes').update({ data_ativacao: payload.data_ativacao }).eq('id', item.id);
+    if(eh) console.warn('[data_ativacao homologação]', eh.message);
+  }
   toast(`Movido para ${toCfg.label}`,'success');
   await loadAll();
   renderPipeline();
