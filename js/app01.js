@@ -720,11 +720,18 @@ function buildParados(){
     { etapa:'Instalação',  icon:'🔧', dados:State.instalacoes,  abre:r=>['aguardando_agendamento','agendada'].includes(r.status), limite:10 },
     { etapa:'Homologação', icon:'📋', dados:State.homologacoes, abre:r=>!r.data_ativacao, limite:20 },
   ];
+  // Clientes que já avançaram (contrato assinado ou proposta aceita): propostas antigas em aberto são duplicadas/esquecidas, não "paradas"
+  const nn = t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+  const avancados = new Set([
+    ...(State.contratos||[]).filter(c=>c.status==='assinado').map(c=>nn(c.nome)),
+    ...(State.propostas||[]).filter(p=>p.status==='aceita').map(p=>nn(p.nome)),
+  ]);
   const lista = [], antigos = [];
   regras.forEach(g=>{
     const dados = isVend() ? filterByVendor(g.dados||[]) : (g.dados||[]);
     dados.forEach(r=>{
       if(!g.abre(r)) return;
+      if(g.etapa==='Proposta' && avancados.has(nn(r.nome))) return;
       const t = new Date(r.atualizado_em || r.criado_em).getTime();
       if(!t) return;
       const dias = Math.floor((agora-t)/86400000);
