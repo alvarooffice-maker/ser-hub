@@ -130,7 +130,6 @@ function openHomologacaoModal(item=null){
             ${formField({label:'Estimado',name:'estimado',type:'number',value:item.estimado})}
             ${formField({label:'Pago',name:'pago',type:'number',value:item.pago})}
             ${formField({label:'Data Assinatura',name:'data_assinatura',type:'date',value:item.data_assinatura})}
-            ${formField({label:'Data Ativação (homol.)',name:'data_ativacao',type:'date',value:item.data_ativacao,placeholder:'Data real da ativação'})}
           </div></div>
         </div>
 
@@ -378,7 +377,7 @@ function openPosVendaModal(item=null){
           ${formField({label:'kWp',name:'_kwp',value:item.kwp,readonly:true})}
           ${formField({label:'Vendedor',name:'_vendedor',value:item.vendedor,readonly:true})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status||'ativo',options:statusOpts})}
-          ${formField({label:'Data Ativação',name:'data_ativacao',type:'date',value:item.data_ativacao})}
+          ${formField({label:item.data_ativacao?'Data da homologação (definida ao mover para Pós-venda)':'Data da homologação (preencha — registro antigo sem data)',name:'data_ativacao',type:'date',value:item.data_ativacao,readonly:!!item.data_ativacao})}
           ${formField({label:'Observações',name:'obs',type:'textarea',value:item.obs,full:true})}
         </div>
 

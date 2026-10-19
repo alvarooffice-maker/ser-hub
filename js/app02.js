@@ -912,11 +912,55 @@ async function transitionCard(id, fromStage, toStage){
   const payload = buildTransitionPayload(item, fromStage, toStage);
   payload.criado_por = State.user?.id;
 
+  // Homologação → Pós-venda: a data de homologação (ativação) é pedida UMA vez, aqui, e é obrigatória
+  if(toStage==='posvenda'){
+    const dataAtiv = await pedirDataHomologacao(item);
+    if(!dataAtiv) return;                       // cancelou: o card não se move
+    payload.data_ativacao = dataAtiv;
+    const { error: eh } = await supa.from('homologacoes').update({ data_ativacao: dataAtiv }).eq('id', item.id);
+    if(eh){ toast('Erro ao gravar a data de homologação: '+eh.message,'error'); return; }
+  }
+
   const { error } = await supa.from(toCfg.table).insert(payload);
   if(error){ toast('Erro: '+error.message,'error'); return; }
   toast(`Movido para ${toCfg.label}`,'success');
   await loadAll();
   renderPipeline();
+}
+
+// Pergunta a data de homologação ao mover para Pós-venda. Resolve com 'AAAA-MM-DD' ou null se cancelar.
+function pedirDataHomologacao(item){
+  return new Promise(resolve=>{
+    const hoje = new Date().toISOString().slice(0,10);
+    const sugerida = String(item.data_ativacao || item.data_aprovacao || '').slice(0,10);
+    let concluido = false;
+    openModal(`
+      <div class="modal-header"><h2>📅 Data da homologação</h2><button class="modal-close">×</button></div>
+      <form id="dataHomForm">
+        <div class="modal-body">
+          <p style="margin:0 0 12px;font-size:14px;color:var(--text-light)">Para enviar <b>${esc(item.nome||'')}</b> ao Pós-venda, informe a data em que a homologação foi concluída (usina ativada). Esse campo é obrigatório.</p>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Data da homologação *</label>
+          <input type="date" id="dataHomInput" required max="${hoje}" value="${sugerida}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px">
+          <div style="font-size:11px;color:var(--text-light);margin-top:6px">${sugerida?'Sugerida pela data de aprovação da homologação — confirme ou corrija.':'Não pode ser data futura.'}</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Mover para Pós-venda</button>
+        </div>
+      </form>`,'sm');
+    const input = $('#dataHomInput'); input?.focus();
+    $('#dataHomForm').addEventListener('submit', e=>{
+      e.preventDefault();
+      const v = input.value;
+      if(!v){ toast('Informe a data da homologação.','error'); return; }
+      if(v > hoje){ toast('A data da homologação não pode ser futura.','error'); return; }
+      concluido = true; closeModal(); resolve(v);
+    });
+    // fechar/cancelar sem confirmar
+    const raiz = document.getElementById('modalRoot');
+    const obs = new MutationObserver(()=>{ if(!raiz.classList.contains('active') && !concluido){ obs.disconnect(); resolve(null); } });
+    if(raiz) obs.observe(raiz,{attributes:true,attributeFilter:['class']});
+  });
 }
 
 function confirmDialog(title, body, okLabel, cancelLabel, onOk){
