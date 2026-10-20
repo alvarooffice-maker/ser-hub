@@ -1227,11 +1227,18 @@ function renderLinkedDocBtns(linked){
   if(instalacao)all.push({icon:'🔧', label:'Instalação', editId:'lnkInstEditBtn',  pdfId:null,            allowed:['admin','supervisor','vendedor','financeiro','tec_instalacao','tec_homologacao']});
   if(homologacao)all.push({icon:'⚡', label:'Homologação',editId:'lnkHomEditBtn',  pdfId:null,            allowed:['admin','supervisor','vendedor','financeiro','tec_homologacao']});
   const items = all.filter(it => !it.allowed || it.allowed.includes(role));
+  // Laudo da vistoria: homologador e instaladores veem (somente leitura) nos seus modais
+  const leitorLaudo = ['tec_homologacao','tec_instalacao','tec_vistoria_instalacao'].includes(role);
+  if(vistoria && leitorLaudo) items.unshift({icon:'🔍', label:'Laudo da Vistoria', verId:'lnkVistViewBtn', pdfId:'lnkVistDlBtn', soLeitura:true});
   if(!items.length) return '';
   return `
     <div class="linked-docs-bar">
       <span class="linked-docs-label">🔗 Vincular:</span>
-      ${items.map(it=>`
+      ${items.map(it=>it.soLeitura ? `
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary btn-sm" id="${it.verId}">📄 ${it.icon} ${it.label}</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="${it.pdfId}" title="Imprimir / PDF">🖨️</button>
+        </div>` : `
         <div class="btn-group">
           <button type="button" class="btn btn-secondary btn-sm" id="${it.editId}">✏️ ${it.icon} ${it.label}</button>
           ${it.pdfId?`<button type="button" class="btn btn-secondary btn-sm" id="${it.pdfId}" title="Imprimir / PDF">🖨️</button>`:''}
@@ -1247,6 +1254,7 @@ function attachLinkedDocListeners(linked){
   }
   if(vistoria){
     $('#lnkVistEditBtn')?.addEventListener('click', ()=>{ closeModal(); openVistoriaModal(vistoria); });
+    $('#lnkVistViewBtn')?.addEventListener('click', ()=> abrirVistoriaJanela(vistoria, false));
     $('#lnkVistDlBtn')?.addEventListener('click',   ()=> abrirVistoriaJanela(vistoria, true));
   }
   if(contrato){
