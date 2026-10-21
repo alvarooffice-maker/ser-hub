@@ -348,28 +348,69 @@ function attachCalEvents(){
   }
   function closeSearch(){ overlay.classList.remove('open'); active = -1; }
 
+  // Campos pesquisáveis além do nome do card (rótulo mostrado no resultado → de onde veio o achado)
+  const joinEnd = it => [it.rua, it.numero, it.bairro, it.cidade].filter(Boolean).join(', ');
+  const extraFields = {
+    contrato:     it=>[['Pagamento / tomador', it.pgto_desc], ['Forma de pagamento', it.forma_pgto], ['Banco', it.banco], ['Supervisor', it.supervisor_nome], ['Endereço', joinEnd(it)], ['Observações', it.obs]],
+    homologacao:  it=>[['Titular / homologador', it.hom_nome], ['CPF do titular', it.hom_cpf], ['RG do titular', it.hom_rg], ['Técnico', it.tecnico], ['Observações', it.obs]],
+    instalacao:   it=>[['Técnico', it.tecnico], ['Endereço', it.endereco], ['Observações', it.obs]],
+    vistoria:     it=>[['Técnico', it.tecnico], ['Responsável na ausência', it.responsavel_ausencia], ['Endereço', joinEnd(it)]],
+    proposta:     it=>[['Endereço', joinEnd(it)]],
+    lead:         it=>[['Observações', it.obs]],
+    logistica:    it=>[['Observações', it.obs]],
+    posvenda:     it=>[['Observações', it.obs]],
+    atendimentos: it=>[['Descrição', it.descricao], ['Responsável', it.responsavel], ['Observações', it.obs]],
+    appman:       it=>[['Responsável', it.responsavel], ['Técnico', it.tecnico_responsavel], ['Forma de pagamento', it.forma_pagamento], ['Observações', it.obs]],
+  };
+  const semAcento = t => String(t==null?'':t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const soDigitos = t => String(t==null?'':t).replace(/\D/g,'');
+  const realce = (texto, tokens) => {
+    const t = String(texto); const n = semAcento(t); let ini = -1, len = 0;
+    for(const k of tokens){ const i = n.indexOf(k); if(i>=0){ ini=i; len=k.length; break; } }
+    if(ini<0) return esc(t.slice(0,80));
+    const de = Math.max(0, ini-25), ate = Math.min(t.length, ini+len+45);
+    return (de>0?'…':'')+esc(t.slice(de,ini))+'<mark style="background:#fde68a;border-radius:3px;padding:0 2px">'+esc(t.slice(ini,ini+len))+'</mark>'+esc(t.slice(ini+len,ate))+(ate<t.length?'…':'');
+  };
+
   function search(q){
     if(!q.trim()){ results.innerHTML = ''; active=-1; return; }
-    const norm = q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    const tokens = semAcento(q).split(/\s+/).filter(Boolean);
+    const qDig = soDigitos(q); const buscaNumerica = qDig.length>=3 && /^[\d\s().+\-\/]+$/.test(q.trim());
+    const ordem = Object.keys(stageDataKey);
     const hits = [];
     Object.entries(stageDataKey).forEach(([stageId, key])=>{
       (State[key]||[]).forEach(item=>{
-        const hay = ((item.nome||'')+' '+(item.telefone||'')+' '+(item.cpf||'')+(item.email||''))
-          .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-        if(hay.includes(norm)) hits.push({stageId, item});
+        // campos básicos (peso maior) + campos extras da etapa
+        const basicos = [['Nome', item.nome], ['Telefone', item.telefone], ['CPF', item.cpf], ['E-mail', item.email]];
+        const extras  = (extraFields[stageId]?extraFields[stageId](item):[]).filter(([,v])=>v);
+        const todos   = [...basicos, ...extras];
+        const texto   = semAcento(todos.map(([,v])=>v||'').join(' | '));
+        let ok = tokens.every(k=>texto.includes(k));
+        if(!ok && buscaNumerica){
+          ok = [item.telefone, item.cpf, item.hom_cpf, item.vend_telefone].some(v=>soDigitos(v).includes(qDig));
+        }
+        if(!ok) return;
+        const naNome = tokens.every(k=>semAcento(item.nome||'').includes(k));
+        // de onde veio o achado quando NÃO é o nome do card
+        let origem = null;
+        if(!naNome){
+          const campo = todos.find(([r,v])=>r!=='Nome' && v && tokens.some(k=>semAcento(v).includes(k)))
+                     || (buscaNumerica ? todos.find(([r,v])=>v && soDigitos(v).includes(qDig)) : null);
+          if(campo) origem = { rotulo:campo[0], html:realce(campo[1], tokens) };
+        }
+        hits.push({ stageId, item, origem, score: naNome ? 3 : (origem && ['Telefone','CPF','E-mail'].includes(origem.rotulo) ? 2 : 1) });
       });
     });
-    // Dedup: same item can appear in multiple stages — keep most advanced
+    // Dedup por nome do card: mantém o achado mais forte e, empatando, a etapa mais avançada
     const seen = new Map();
     hits.forEach(h=>{
-      const key = (h.item.nome||'').toLowerCase().trim();
-      const prev = seen.get(key);
-      if(!prev || Object.keys(stageDataKey).indexOf(h.stageId) > Object.keys(stageDataKey).indexOf(prev.stageId))
-        seen.set(key, h);
+      const k = (h.item.nome||'').toLowerCase().trim() + (h.score===1 ? '|'+h.stageId : '');
+      const prev = seen.get(k);
+      if(!prev || h.score>prev.score || (h.score===prev.score && ordem.indexOf(h.stageId)>ordem.indexOf(prev.stageId))) seen.set(k, h);
     });
-    const deduped = [...seen.values()].slice(0,12);
+    const deduped = [...seen.values()].sort((a,b)=>b.score-a.score || ordem.indexOf(b.stageId)-ordem.indexOf(a.stageId)).slice(0,20);
     if(!deduped.length){
-      results.innerHTML = `<div class="gsr-empty">Nenhum resultado para "<strong>${esc(q)}</strong>"</div>`;
+      results.innerHTML = `<div class="gsr-empty">Nenhum resultado para "<strong>${esc(q)}</strong>"<div style="font-size:11px;margin-top:6px;color:#94a3b8">Busca por nome, telefone, CPF, tomador do financiamento (descrição do pagamento), titular/homologador, técnico, endereço e observações.</div></div>`;
       active = -1; return;
     }
     results.innerHTML = deduped.map((h,i)=>`
@@ -377,7 +418,8 @@ function attachCalEvents(){
         <span class="gsr-badge" style="background:${stageColors[h.stageId]||'#6b7280'}">${stageLabels[h.stageId]||h.stageId}</span>
         <div style="flex:1;min-width:0">
           <div class="gsr-name">${esc(h.item.nome||'—')}</div>
-          <div class="gsr-sub">${[h.item.telefone, h.item.vendedor, h.item.projeto].filter(Boolean).join(' · ')}</div>
+          <div class="gsr-sub">${[h.item.telefone, h.item.vendedor, h.item.projeto].filter(Boolean).map(esc).join(' · ')}</div>
+          ${h.origem?`<div class="gsr-sub" style="color:#92400e;margin-top:2px">🔎 <b>${esc(h.origem.rotulo)}:</b> ${h.origem.html}</div>`:''}
         </div>
       </div>`).join('');
     active = -1;
