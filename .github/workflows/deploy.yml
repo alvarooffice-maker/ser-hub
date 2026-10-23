@@ -1,10 +1,13 @@
 name: Deploy (GitHub Pages)
 
-# Publica o build do Astro (dist/) no GitHub Pages a cada push na main.
+# Publica o build do Astro (dist/) no GitHub Pages.
 # Antes do primeiro deploy: Settings → Pages → Source = "GitHub Actions".
+# SEGURANÇA DE LANÇAMENTO: por enquanto só roda MANUALMENTE (Actions → "Deploy (GitHub Pages)" → Run workflow),
+# para que juntar o ramo na main não troque o sistema em produção sem querer.
+# Depois que o Astro estiver aprovado e estável, descomente o bloco "push" para publicar a cada alteração na main.
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 permissions:
