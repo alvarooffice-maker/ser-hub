@@ -618,3 +618,27 @@ th{position:sticky;top:0;z-index:1}
 .fech-passo.ok{border-color:var(--success)}.fech-passo.ok>span{background:var(--success);color:#fff}
 .fech-passo.pend{border-color:var(--warning)}.fech-passo.pend>span{background:var(--warning);color:#fff}
 @media(max-width:768px){.fech-passos{grid-template-columns:1fr}}
+
+/* metas: anel e ranking */
+.meta-hero{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.meta-arco{animation:metaArco 1.1s cubic-bezier(.2,.8,.2,1)}
+@keyframes metaArco{from{stroke-dashoffset:var(--c)}to{stroke-dashoffset:var(--o)}}
+.meta-info{flex:1;min-width:190px}
+.meta-titulo{font-size:12px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px}
+.meta-valor{font-size:24px;font-weight:800;margin:2px 0 6px}.meta-valor small{font-size:12px;font-weight:500;color:var(--text-light)}
+.meta-linha{font-size:12.5px;margin-top:5px}
+.meta-chip{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;white-space:nowrap}
+.chip-batida{background:#dcfce7;color:#166534}.chip-ritmo{background:#ecfccb;color:#3f6212}.chip-atento{background:#fef9c3;color:#854d0e}.chip-atras{background:#ffedd5;color:#9a3412}.chip-sem{background:var(--hover);color:var(--text-light)}
+.mv-lista{display:flex;flex-direction:column;gap:12px;padding:6px 0}
+.mv-row{display:flex;align-items:center;gap:10px}
+.mv-pos{width:30px;text-align:center;font-size:18px;font-weight:700;color:var(--text-light)}
+.mv-av{width:36px;height:36px;border-radius:50%;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.mv-corpo{flex:1;min-width:0}
+.mv-topo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px}
+.mv-barra{position:relative;height:12px;background:var(--hover);border-radius:8px;overflow:visible}
+.mv-barra i{display:block;height:100%;border-radius:8px;animation:mvLarg 1s cubic-bezier(.2,.8,.2,1)}
+@keyframes mvLarg{from{width:0}}
+.mv-barra u{position:absolute;top:-3px;width:3px;height:18px;background:var(--text);border-radius:2px;opacity:.7}
+.mv-base{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--text-light);margin-top:4px}
+[data-theme="dark"] .chip-batida{background:#14532d;color:#bbf7d0}[data-theme="dark"] .chip-ritmo{background:#365314;color:#d9f99d}[data-theme="dark"] .chip-atento{background:#713f12;color:#fef08a}[data-theme="dark"] .chip-atras{background:#7c2d12;color:#fed7aa}
+@media(max-width:560px){.mv-pos{width:22px;font-size:15px}.mv-base{font-size:11px}}

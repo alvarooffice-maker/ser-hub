@@ -4,7 +4,7 @@ import { attachExtraKanbanCols, attachKanbanDnD, attachKanbanSearch, closeModal,
 import { _idbOp, carregarPreviewsPendentes, resolverArquivosPendentes } from './app03.js';
 import { renderBaterias, renderComissoesPagina, renderCustoPorProjeto, renderFinanceiro, renderRemarketing } from './app05.js';
 import { renderCadastros, renderClientes, renderDisparador, renderUsuarios } from './app06.js';
-import { abrirRelatorioMensal, buildPreditivoSection, buildTempoMedioSection, openMetasVendedoresModal, renderCalendario, renderGestaoCustos, renderMetasVendedor, renderMonitoramento, renderRelatorioPosvenda } from './app07.js';
+import { buildMetaLoja, abrirRelatorioMensal, buildPreditivoSection, buildTempoMedioSection, openMetasVendedoresModal, renderCalendario, renderGestaoCustos, renderMetasVendedor, renderMonitoramento, renderRelatorioPosvenda } from './app07.js';
 import { uiConfirm, uiAlert, registrarAviso, agruparMenu } from './app08.js';
 /* ============================================================
    SISTEMA SER - CRM SOLAR COMPLETO
@@ -974,30 +974,8 @@ export async function renderDashboard(){
 
     <div class="row-meta">
       <!-- Meta do mês -->
-      <div class="card" style="padding:16px;display:flex;flex-direction:column;align-items:center;gap:4px">
-        <div style="font-size:12px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Meta do Mês</div>
-        ${(()=>{
-          const _p=pctMeta, _cx=90,_cy=82,_R=64,_tW=13;
-          const _clamp=Math.min(1.02,_p);
-          const _angDeg=-180+_clamp*180, _angRad=_angDeg*Math.PI/180;
-          const _nx=_cx+_R*0.68*Math.cos(_angRad), _ny=_cy+_R*0.68*Math.sin(_angRad);
-          const _gaugeCol=(_pv)=>{const s=[[239,68,68],[249,115,22],[234,179,8],[34,197,94]],sc=Math.min(_pv,1)*3,i=Math.min(2,Math.floor(sc)),t=sc-i,[r1,g1,b1]=s[i],[r2,g2,b2]=s[i+1];return'rgb('+Math.round(r1+(r2-r1)*t)+','+Math.round(g1+(g2-g1)*t)+','+Math.round(b1+(b2-b1)*t)+')';};
-          const _col=_gaugeCol(_p);
-          const _arc=(r,a1,a2)=>{const s=a1*Math.PI/180,e=a2*Math.PI/180;return 'M '+(_cx+r*Math.cos(s))+' '+(_cy+r*Math.sin(s))+' A '+r+' '+r+' 0 0 1 '+(_cx+r*Math.cos(e))+' '+(_cy+r*Math.sin(e));};
-          const _fillEnd=Math.min(0,_angDeg);
-          const _tick=(pm,c)=>{const a=(-180+pm*180)*Math.PI/180;return '<line x1="'+(_cx+(_R+5)*Math.cos(a))+'" y1="'+(_cy+(_R+5)*Math.sin(a))+'" x2="'+(_cx+(_R+13)*Math.cos(a))+'" y2="'+(_cy+(_R+13)*Math.sin(a))+'" stroke="'+c+'" stroke-width="3" stroke-linecap="round"/>';};
-          const _pctLbl=Math.round(Math.min(1,_p)*100)+'%';
-          return '<svg width="180" height="100" viewBox="0 0 180 100" style="overflow:visible">'
-            +'<path d="'+_arc(_R,-180,0)+'" fill="none" stroke="#e5e7eb" stroke-width="'+_tW+'" stroke-linecap="round"/>'
-            +(_p>0?'<path d="'+_arc(_R,-180,_fillEnd)+'" fill="none" stroke="'+_col+'" stroke-width="'+_tW+'" stroke-linecap="round" opacity="0.9"/>':'')
-            +_tick(.4,'#ea580c')+_tick(.7,'#ca8a04')+_tick(1,'#16a34a')
-            +'<line x1="'+_cx+'" y1="'+_cy+'" x2="'+_nx+'" y2="'+_ny+'" stroke="'+_col+'" stroke-width="4.5" stroke-linecap="round"/>'
-            +'<circle cx="'+_cx+'" cy="'+_cy+'" r="7" fill="'+_col+'"/>'
-            +'<text x="'+_cx+'" y="'+(_cy+22)+'" text-anchor="middle" font-size="22" font-weight="800" fill="'+_col+'" font-family="inherit">'+_pctLbl+'</text>'
-            +'</svg>';
-        })()}
-        <div style="font-size:14px;font-weight:700;color:var(--text)">${fmtBRL(valorMes)}</div>
-        <div style="font-size:11px;color:var(--text-light)">de ${metaValor?fmtBRL(metaValor):'sem meta'}</div>
+      <div class="card" style="padding:16px;display:flex;flex-direction:column;align-items:stretch;gap:4px">
+        ${buildMetaLoja({valor:valorMes, meta:metaValor})}
         ${isAdmin()?`<button class="btn btn-sm btn-secondary" id="editMetaBtn" style="margin-top:6px;font-size:11px">✏️ Definir meta</button>`:''}
       </div>
 

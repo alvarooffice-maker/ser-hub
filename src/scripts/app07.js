@@ -994,6 +994,43 @@ export function buildTempoMedioSection(){
 /* ============================================================
    METAS POR VENDEDOR  (seção do dashboard)
    ============================================================ */
+
+/* ---- Metas: anel de progresso + ritmo do mês (loja e vendedores) ---- */
+function ritmoMeta(valor, meta){
+  const td = today(); const dia = Number(td.slice(8,10))||1, dias = new Date(Number(td.slice(0,4)), Number(td.slice(5,7)), 0).getDate();
+  const proj = valor/dia*dias, esperado = meta>0 ? meta*dia/dias : 0, restante = Math.max(0, meta-valor), diasRest = Math.max(0, dias-dia);
+  const porDia = diasRest>0 ? restante/diasRest : restante;
+  let estado='sem', msg='Sem meta definida';
+  if(meta>0){
+    if(valor>=meta){ estado='batida'; msg='Meta batida! 🏆'; }
+    else if(proj>=meta){ estado='ritmo'; msg='No ritmo ✔'; }
+    else if(valor>=esperado*0.8){ estado='atento'; msg='Quase no ritmo'; }
+    else { estado='atras'; msg='Atrás do ritmo'; }
+  }
+  return { dia, dias, diasRest, proj, esperado, restante, porDia, estado, msg, fracEsperada: meta>0 ? dia/dias : 0 };
+}
+function corMeta(p){ return p>=1?'#16a34a':p>=.7?'#65a30d':p>=.4?'#eab308':'#f97316'; }
+export function buildMetaLoja({ valor, meta }){
+  const r = ritmoMeta(valor, meta), pct = meta>0 ? valor/meta : 0, col = corMeta(pct);
+  const R=54, C=2*Math.PI*R, off = C*(1-Math.min(1,pct));
+  const a = (r.fracEsperada*360-90)*Math.PI/180;
+  const tick = meta>0 ? `<line x1="${70+(R-9)*Math.cos(a)}" y1="${70+(R-9)*Math.sin(a)}" x2="${70+(R+9)*Math.cos(a)}" y2="${70+(R+9)*Math.sin(a)}" stroke="var(--text)" stroke-width="3" stroke-linecap="round"><title>Onde deveria estar hoje</title></line>` : '';
+  return `<div class="meta-hero estado-${r.estado}">
+    <div class="meta-ring"><svg viewBox="0 0 140 140" width="150" height="150">
+      <circle cx="70" cy="70" r="${R}" fill="none" stroke="var(--hover)" stroke-width="13"/>
+      <circle class="meta-arco" cx="70" cy="70" r="${R}" fill="none" stroke="${col}" stroke-width="13" stroke-linecap="round" transform="rotate(-90 70 70)" stroke-dasharray="${C}" style="--c:${C};--o:${off}" stroke-dashoffset="${off}"/>
+      ${tick}
+      <text x="70" y="68" text-anchor="middle" font-size="27" font-weight="800" fill="${col}">${meta>0?Math.round(pct*100)+'%':'—'}</text>
+      <text x="70" y="86" text-anchor="middle" font-size="10" fill="var(--text-light)">da meta</text></svg></div>
+    <div class="meta-info">
+      <div class="meta-titulo">Meta do mês</div>
+      <div class="meta-valor">${fmtBRL(valor)} <small>de ${meta>0?fmtBRL(meta):'sem meta'}</small></div>
+      <span class="meta-chip chip-${r.estado}">${r.msg}</span>
+      ${meta>0 && valor<meta ? `<div class="meta-linha">Faltam <b>${fmtBRL(r.restante)}</b> em ${r.diasRest} dia(s) → <b>${fmtBRL(r.porDia)}/dia</b></div>` : ''}
+      ${meta>0 ? `<div class="meta-linha">Projeção do mês: <b>${fmtBRL(r.proj)}</b> <span style="color:var(--text-light)">(${Math.round(r.proj/meta*100)}% da meta)</span></div>` : ''}
+    </div></div>`;
+}
+
 export async function renderMetasVendedor(){
   const td = today();
   const mesAtual = td.slice(0,7);
@@ -1011,36 +1048,17 @@ export async function renderMetasVendedor(){
     return { nome:p.nome, meta, realizado, pct, metaRec, proj };
   }).filter(r=>r.meta>0 || r.realizado>0).sort((a,b)=>b.realizado-a.realizado);
 
-  const gaugeSVG = (r) => {
-    const pct = r.meta>0 ? Math.min(1.02, r.pct) : 0;
-    const cx=80, cy=76, R=58, tW=11;
-    // 0% = -180° (esquerda), 100% = 0° (direita) — semicírculo superior
-    const angDeg = -180 + Math.min(1.02,pct)*180;
-    const angRad = angDeg*Math.PI/180;
-    const nx = cx + R*0.68*Math.cos(angRad);
-    const ny = cy + R*0.68*Math.sin(angRad);
-    const _gaugeCol=(pv)=>{const s=[[239,68,68],[249,115,22],[234,179,8],[34,197,94]],sc=Math.min(pv,1)*3,i=Math.min(2,Math.floor(sc)),t=sc-i,[r1,g1,b1]=s[i],[r2,g2,b2]=s[i+1];return'rgb('+Math.round(r1+(r2-r1)*t)+','+Math.round(g1+(g2-g1)*t)+','+Math.round(b1+(b2-b1)*t)+')';};
-    const col = _gaugeCol(pct);
-    const arc = (r2,a1,a2) => { const s=a1*Math.PI/180,e=a2*Math.PI/180; return 'M '+(cx+r2*Math.cos(s))+' '+(cy+r2*Math.sin(s))+' A '+r2+' '+r2+' 0 0 1 '+(cx+r2*Math.cos(e))+' '+(cy+r2*Math.sin(e)); };
-    const fillEnd = Math.min(0, angDeg);
-    const tick = (pm,c) => { const a=(-180+pm*180)*Math.PI/180; return '<line x1="'+(cx+(R+5)*Math.cos(a))+'" y1="'+(cy+(R+5)*Math.sin(a))+'" x2="'+(cx+(R+12)*Math.cos(a))+'" y2="'+(cy+(R+12)*Math.sin(a))+'" stroke="'+c+'" stroke-width="2.5" stroke-linecap="round"/>'; };
-    const pctLabel = r.meta>0 ? Math.round(Math.min(1,pct)*100)+'%' : '0%';
-    const emoji = pct>=1?'🏆':pct>=.7?'💪':pct>=.4?'⚡':'🔥';
-    const firstName = r.nome.split(' ')[0];
-    return '<div style="display:flex;flex-direction:column;align-items:center;min-width:140px;max-width:160px">'
-      +'<svg width="160" height="92" viewBox="0 0 160 92" style="overflow:visible">'
-      +'<path d="'+arc(R,-180,0)+'" fill="none" stroke="#e5e7eb" stroke-width="'+tW+'" stroke-linecap="round"/>'
-      +(pct>0?'<path d="'+arc(R,-180,fillEnd)+'" fill="none" stroke="'+col+'" stroke-width="'+tW+'" stroke-linecap="round" opacity="0.9"/>':'')
-      +tick(.4,'#ea580c')+tick(.7,'#ca8a04')+tick(1,'#16a34a')
-      +'<line x1="'+cx+'" y1="'+cy+'" x2="'+nx+'" y2="'+ny+'" stroke="'+col+'" stroke-width="3.5" stroke-linecap="round"/>'
-      +'<circle cx="'+cx+'" cy="'+cy+'" r="5.5" fill="'+col+'"/>'
-      +'<text x="'+cx+'" y="'+(cy+20)+'" text-anchor="middle" font-size="17" font-weight="700" fill="'+col+'" font-family="inherit">'+pctLabel+'</text>'
-      +'<text x="'+cx+'" y="12" text-anchor="middle" font-size="13">'+emoji+'</text>'
-      +'</svg>'
-      +'<div style="font-weight:700;font-size:13px;margin-top:-2px">'+esc(firstName)+'</div>'
-      +'<div style="font-size:10px;color:var(--text-light);margin-top:2px">'+fmtBRL(r.realizado)+' / '+(r.meta?fmtBRL(r.meta):'sem meta')+'</div>'
-      +(r.meta>0?'<div style="font-size:10px;margin-top:1px;color:'+(r.proj>=r.meta?'#16a34a':'#ca8a04')+'">Projeção: '+fmtBRL(r.proj)+(r.proj>=r.meta?' ✔':'')+'</div>':'')
-      +'</div>';
+  const medalha = i => ['🥇','🥈','🥉'][i] || String(i+1)+'º';
+  const linha = (r,i) => {
+    const rt = ritmoMeta(r.realizado, r.meta), pct = r.meta>0 ? r.realizado/r.meta : 0, col = corMeta(pct);
+    return `<div class="mv-row">
+      <div class="mv-pos">${medalha(i)}</div>
+      <div class="mv-av" style="background:${col}">${esc((r.nome||'?')[0].toUpperCase())}</div>
+      <div class="mv-corpo">
+        <div class="mv-topo"><b>${esc(r.nome)}</b><span class="meta-chip chip-${rt.estado}">${rt.msg}</span></div>
+        <div class="mv-barra"><i style="width:${Math.min(100,pct*100)}%;background:${col}"></i>${r.meta>0?`<u style="left:${rt.fracEsperada*100}%" title="Onde deveria estar hoje"></u>`:''}</div>
+        <div class="mv-base"><span>${fmtBRL(r.realizado)} / ${r.meta?fmtBRL(r.meta):'sem meta'}</span><span>${r.meta>0?Math.round(pct*100)+'%':''}${r.meta>0&&r.realizado<r.meta?` · falta ${fmtBRL(rt.restante)}`:''}${r.meta>0?` · projeção ${fmtBRL(rt.proj)}`:''}</span></div>
+      </div></div>`;
   };
 
   if(!rows.length) return `<div class="card" style="margin-bottom:16px">
@@ -1056,9 +1074,7 @@ export async function renderMetasVendedor(){
       <h3>🎯 Metas por Vendedor — <span style="font-weight:400;font-size:13px;color:var(--text-light)">${mesAtual}</span></h3>
       ${isAdmin()?`<button class="btn btn-sm btn-secondary" id="editMetasVendBtn">✏️ Definir metas</button>`:''}
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;justify-content:center">
-      ${rows.map(r=>gaugeSVG(r)).join('')}
-    </div>
+    <div class="mv-lista">${rows.map(linha).join('')}</div>
   </div>`;
 }
 
