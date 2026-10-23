@@ -1,0 +1,21 @@
+---
+import Base from '../layouts/Base.astro';
+import AuthScreen from '../components/AuthScreen.astro';
+import AppShell from '../components/AppShell.astro';
+import ModalRoot from '../components/ModalRoot.astro';
+import Toast from '../components/Toast.astro';
+import GlobalSearch from '../components/GlobalSearch.astro';
+import '../styles/styles.css';
+---
+<Base title="Sistema SER - SER Energia Renovável" themeColor="#3B6D11">
+  <link slot="head" rel="manifest" href="manifest.json" />
+  <AuthScreen />
+  <AppShell />
+  <ModalRoot />
+  <Toast />
+  <GlobalSearch />
+</Base>
+
+<script>
+  import '../scripts/main.js';
+</script>
