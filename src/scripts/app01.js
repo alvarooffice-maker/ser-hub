@@ -237,6 +237,7 @@ export async function loadProfile(){
 }
 
 export async function doLogin(email,password){
+  await limparCopiasDeDados();   // nada de dados do usuário anterior neste aparelho
   const { data, error } = await supa.auth.signInWithPassword({ email, password });
   if(error) throw error;
   State.user = data.user;
@@ -248,7 +249,27 @@ export async function doLogin(email,password){
   return true;
 }
 
+// Apaga do aparelho as cópias de LEITURA que o Service Worker guarda das respostas do banco/arquivos
+// (podem ter dados pessoais). Não mexe no app em si (página, JS, CSS) nem nos pendentes do modo offline
+// (fila de salvamentos e fotos aguardando envio), para ninguém perder trabalho feito sem sinal.
+export async function limparCopiasDeDados(){
+  try{
+    if(!('caches' in window)) return 0;
+    let apagadas = 0;
+    for(const nome of await caches.keys()){
+      const cache = await caches.open(nome);
+      for(const req of await cache.keys()){
+        const u = new URL(req.url);
+        const ehDado = u.hostname.includes('supabase') || u.pathname.startsWith('/rest/') || u.pathname.startsWith('/storage/') || u.pathname.startsWith('/functions/');
+        if(ehDado && await cache.delete(req)) apagadas++;
+      }
+    }
+    return apagadas;
+  }catch(e){ console.warn('[limparCopiasDeDados]', e); return 0; }
+}
+
 export async function doLogout(){
+  await limparCopiasDeDados();
   await supa.auth.signOut();
   State.user = null; State.profile = null;
   location.reload();
