@@ -5,6 +5,7 @@ import { _idbOp, carregarPreviewsPendentes, resolverArquivosPendentes } from './
 import { renderBaterias, renderComissoesPagina, renderCustoPorProjeto, renderFinanceiro, renderRemarketing } from './app05.js';
 import { renderCadastros, renderClientes, renderDisparador, renderUsuarios } from './app06.js';
 import { abrirRelatorioMensal, buildPreditivoSection, buildTempoMedioSection, openMetasVendedoresModal, renderCalendario, renderGestaoCustos, renderMetasVendedor, renderMonitoramento, renderRelatorioPosvenda } from './app07.js';
+import { uiConfirm, uiAlert, registrarAviso, agruparMenu } from './app08.js';
 /* ============================================================
    SISTEMA SER - CRM SOLAR COMPLETO
    ============================================================ */
@@ -90,6 +91,7 @@ export const uid = ()=> 'id_'+Math.random().toString(36).slice(2,11);
 
 export function toast(msg,type='info',ms=3200){
   const stack = $('#toastStack');
+  registrarAviso(msg,type);
   const t = document.createElement('div');
   t.className = 'toast '+type;
   t.textContent = msg;
@@ -185,7 +187,7 @@ export function badge(value){
   return `<span class="badge badge-${v}">${esc(String(value).replace(/_/g,' '))}</span>`;
 }
 
-export async function confirmDel(msg='Confirma exclusão?'){ return confirm(msg); }
+export async function confirmDel(msg='Confirma exclusão?'){ return uiConfirm(msg,{ok:'Excluir',perigo:true}); }
 
 export function isAdmin(){ return State.profile?.perfil === 'admin'; }
 export function isVend(){ return State.profile?.perfil === 'vendedor'; }
@@ -226,11 +228,11 @@ export async function loadProfile(){
   }
   if(!data && erro){
     console.error('[loadProfile]', erro);
-    alert('Não foi possível carregar seu perfil agora ('+(erro.message||'erro')+'). Atualize a página e tente novamente. Se continuar, avise o administrador.');
+    await uiAlert('Não foi possível carregar seu perfil agora ('+(erro.message||'erro')+'). Atualize a página e tente novamente. Se continuar, avise o administrador.');
     await supa.auth.signOut(); State.user = null; State.profile = null; showLogin(); return;
   }
   if(!data){
-    alert('Seu cadastro não foi encontrado no sistema. Peça ao administrador para verificar seu acesso.');
+    await uiAlert('Seu cadastro não foi encontrado no sistema. Peça ao administrador para verificar seu acesso.');
     await supa.auth.signOut(); State.user = null; State.profile = null; showLogin(); return;
   }
   State.profile = data;
@@ -285,7 +287,7 @@ export function showApp(){
   $('#app').classList.add('active');
   renderUser();
   renderNav();
-  const roleRouteMap = { tec_vistoria:'vistoriador', tec_instalacao:'instalador', tec_vistoria_instalacao:'vistoriador', tec_homologacao:'homologador', vendedor:'home_vendedor', supervisor:'home_vendedor', admin:'home_vendedor' };
+  const roleRouteMap = { tec_vistoria:'vistoriador', tec_instalacao:'instalador', tec_vistoria_instalacao:'vistoriador', tec_homologacao:'homologador', vendedor:'home_vendedor', supervisor:'dashboard', admin:'dashboard', financeiro:'comissoes' };
   const startRoute = roleRouteMap[userRole()] || 'dashboard';
   // Verifica cadastro completo antes de liberar o app
   if(perfilIncompleto(State.profile)){
@@ -345,7 +347,7 @@ export function showCompletarCadastroModal(onComplete){
       cep:      fd.cep,
     }).eq('id', State.user.id);
     if(error){
-      alert('Erro ao salvar cadastro: ' + error.message + '\n\nContate o administrador.');
+      await uiAlert('Erro ao salvar cadastro: ' + error.message + '\n\nContate o administrador.');
       return;
     }
     State.profile.telefone = fd.telefone;
@@ -433,11 +435,13 @@ export function renderNav(){
   });
   nav.innerHTML = html;
   $$('.nav-item', nav).forEach(el => el.addEventListener('click', ()=> navigate(el.dataset.route)));
+  agruparMenu();
 }
 
 export function navigate(route){
   State.route = route;
   $$('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.route === route));
+  agruparMenu();
   const r = ROUTES.find(x=>x.id===route);
   $('#pageTitle').textContent = r?.label || route;
   $('#pageActions').innerHTML = '';
@@ -1641,7 +1645,7 @@ export async function agendaMarcar(id, status){
   const row = document.getElementById('agenda-row-'+id);
   if(row) row.style.opacity='0.4';
   const {error} = await supa.from('relacionamento_agenda').update({status}).eq('id', id);
-  if(error){ if(row) row.style.opacity='1'; alert('Erro: '+error.message); return; }
+  if(error){ if(row) row.style.opacity='1'; await uiAlert('Erro: '+error.message); return; }
   if(row) row.remove();
   // Remove card se ficou vazio
   const card = document.querySelector('[data-agenda-card]');

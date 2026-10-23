@@ -3,6 +3,7 @@ import { attachCEP, closeModal, formField, openLeadModal, openModal, readForm } 
 import { openContratoModal, openPropostaModal, openVistoriaModal } from './app03.js';
 import { openInstalacaoModal, openLogisticaModal } from './app04.js';
 import { baseComissao, openComissaoModal, openDespesaModal, openHomologacaoModal, renderFinanceiro } from './app05.js';
+import { uiPrompt } from './app08.js';
 /* ============================================================
    DESPESAS PADRÃO EM LOTE
    ============================================================ */
@@ -634,7 +635,7 @@ export async function renderUsuarios(){
       else toast(`Reset enviado para ${u.email}`,'success');
     } else if(ds.setpwd!==undefined){
       const u = window._usrItems[+ds.setpwd]; if(!u||!u.email) return;
-      const nova = prompt(`Nova senha para ${u.nome||u.email}:\n(mín. 8 caracteres, letras e números, ex: Senha2025)`);
+      const nova = await uiPrompt(`Nova senha para ${u.nome||u.email}:\n(mín. 8 caracteres, letras e números, ex: Senha2025)`,'',{titulo:'Definir senha',tipo:'password'});
       if(!nova) return;
       if(nova.length < 8){ toast('Senha muito curta — mínimo 8 caracteres.','error'); return; }
       try {

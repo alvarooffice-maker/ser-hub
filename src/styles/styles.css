@@ -495,3 +495,126 @@ details.analises>summary small{font-weight:500;color:var(--text-light);font-size
 details.analises[open]>summary{margin-bottom:14px}
 @media(max-width:1000px){.kpi-feat,.kpi-sec{grid-template-columns:1fr 1fr}.row-meta{grid-template-columns:1fr}}
 @media(max-width:560px){.kpi-feat .metric-lg .metric-value{font-size:24px}.pa-it{flex-wrap:wrap}}
+
+/* ============================================================
+   EXPERIÊNCIA DO TIME (app08)
+   ============================================================ */
+/* 5. diálogos próprios */
+.ui-dialog-overlay{position:fixed;inset:0;background:rgba(15,8,25,.55);display:flex;align-items:center;justify-content:center;z-index:3000;padding:20px;animation:uiFade .12s ease}
+.ui-dialog{background:var(--card);color:var(--text);border-radius:14px;box-shadow:var(--shadow-lg);width:100%;max-width:420px;padding:22px}
+.ui-dialog h3{font-size:16px;margin-bottom:8px}
+.ui-dialog p{color:var(--text-light);font-size:14px;line-height:1.5;margin-bottom:16px}
+.ui-dialog-input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);margin-bottom:16px;outline:none}
+.ui-dialog-input:focus{border-color:var(--primary)}
+.ui-dialog-acoes{display:flex;justify-content:flex-end;gap:8px}
+@keyframes uiFade{from{opacity:0}to{opacity:1}}
+.btn:focus-visible,.nav-item:focus-visible,.tool-btn:focus-visible{outline:2px solid var(--primary-light);outline-offset:2px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+
+/* 7. sino, indicador de salvando */
+.topbar-tools{display:flex;gap:4px;align-items:center}
+.tool-btn{position:relative;font-size:17px;border-radius:8px;min-width:38px;min-height:38px;display:inline-flex;align-items:center;justify-content:center}
+.tool-btn:hover{background:var(--hover)}
+.bell-badge{position:absolute;top:2px;right:2px;background:#e53e3e;color:#fff;border-radius:9px;font-size:10px;font-weight:700;padding:0 5px;min-width:16px;line-height:16px;text-align:center}
+.bell-panel{position:fixed;top:62px;right:16px;width:340px;max-width:calc(100vw - 24px);max-height:70vh;overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);z-index:1500}
+.bell-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)}
+.bell-sec{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-light);padding:10px 14px 4px}
+.bell-item{display:flex;gap:10px;padding:9px 14px;font-size:13px;border-bottom:1px solid var(--border)}
+.bell-item.click{cursor:pointer}.bell-item.click:hover{background:var(--hover)}
+.bell-item small{display:block;color:var(--text-light);font-size:11px;margin-top:2px}
+.bell-vazio{padding:16px 14px;color:var(--text-light);font-size:13px}
+.save-state{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:2500;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);background:var(--card);color:var(--text);border:1px solid var(--border)}
+.save-state.busy{border-color:var(--info)}.save-state.ok{border-color:var(--success);color:var(--success)}.save-state.err{border-color:var(--danger);color:var(--danger)}
+
+/* 1. menu em grupos recolhíveis */
+.nav-section.colapsavel{cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+.nav-section.colapsavel::after{content:"▾";font-size:10px;opacity:.7;transition:transform .15s}
+.nav-section.colapsavel.fechado::after{transform:rotate(-90deg)}
+.nav-item.oculto-grupo{display:none}
+.sidebar.collapsed .nav-section.colapsavel::after{display:none}
+
+/* 4. formulários em passos */
+.modal.em-passos .section-header{display:none}
+.modal.em-passos .section{display:none;border:none;padding:0;margin:0}
+.modal.em-passos .section.passo-ativo{display:block}
+.modal.em-passos .section.passo-ativo > .section-content,.modal.em-passos .section.passo-ativo > div:not(.section-header){display:block}
+.passos-barra{display:flex;gap:6px;padding:10px 18px;border-bottom:1px solid var(--border);overflow-x:auto;background:var(--card)}
+.passo-chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);font-size:12.5px;color:var(--text-light);white-space:nowrap;background:var(--card)}
+.passo-chip i{font-style:normal;font-weight:700;width:20px;height:20px;border-radius:50%;background:var(--hover);display:inline-flex;align-items:center;justify-content:center;font-size:11px}
+.passo-chip.on{border-color:var(--primary);color:var(--primary);font-weight:600}.passo-chip.on i{background:var(--primary);color:#fff}
+.passo-chip.feito i{background:var(--success);color:#fff}
+.passos-nav{display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding-top:12px;border-top:1px dashed var(--border)}
+.passos-pos{font-size:12px;color:var(--text-light)}
+
+/* 3. kanban mais legível */
+.kanban-col{flex-basis:300px}
+.kanban-col-header{position:sticky;top:0;z-index:2;font-size:13.5px}
+.kanban-card .name{font-size:14px;line-height:1.3}
+.kanban-card .meta{font-size:12.5px;line-height:1.4}
+.kanban-card{border-left-width:4px}
+.kanban-card:hover{transform:translateY(-1px)}
+.kanban-card-inner{max-height:300px}
+
+/* 5. tabelas e botões: um padrão só */
+.btn{min-height:34px;justify-content:center}
+.btn-primary:hover,.btn-danger:hover{box-shadow:var(--shadow)}
+.table-wrap{border:1px solid var(--border)}
+th{position:sticky;top:0;z-index:1}
+.row-actions .btn{min-height:30px}
+
+/* 6. modo escuro */
+:root{--hover:#f5f4f0;--soft:#fafaf6}
+:root[data-theme="dark"]{
+  --bg:#120b1c; --card:#1d1429; --border:#3a2d4d; --text:#ece6f5; --text-light:#a99bbd;
+  --sidebar:#0c0614; --sidebar-hover:#2a1a42; --hover:#2a1f3a; --soft:#241a33;
+  --shadow:0 2px 8px rgba(0,0,0,.35); --shadow-lg:0 8px 24px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+[data-theme="dark"] .topbar,[data-theme="dark"] .modal,[data-theme="dark"] .table-wrap,[data-theme="dark"] .auth-box,
+[data-theme="dark"] .toast,[data-theme="dark"] .kanban-card,[data-theme="dark"] .kanban-card .footer,
+[data-theme="dark"] .btn-secondary,[data-theme="dark"] .period-btn.active,[data-theme="dark"] .col-search-input{background:var(--card);color:var(--text)}
+[data-theme="dark"] .kanban-col{background:#251a35}
+[data-theme="dark"] .kanban-col-header{background:#2f2244}
+[data-theme="dark"] .col-search-bar{background:#2f2244}
+[data-theme="dark"] .modal-footer,[data-theme="dark"] th,[data-theme="dark"] tbody tr:hover,[data-theme="dark"] .period-filter{background:var(--soft)}
+[data-theme="dark"] .btn-secondary:hover,[data-theme="dark"] .modal-close:hover{background:var(--hover)}
+[data-theme="dark"] input,[data-theme="dark"] select,[data-theme="dark"] textarea{background:#241a33;border-color:var(--border);color:var(--text)}
+[data-theme="dark"] .form-group input[readonly]{background:#1a1226}
+[data-theme="dark"] .funnel-bar{background:#2a1f3a}
+[data-theme="dark"] .linked-docs-bar{background:#241a33;border-color:var(--border)}
+[data-theme="dark"] .badge{filter:brightness(.92)}
+[data-theme="dark"] .topbar h1{color:var(--text)}
+[data-theme="dark"] .card [style*="background:#fff"],[data-theme="dark"] .modal [style*="background:#fff"],[data-theme="dark"] .content [style*="background:#fff"]{background:var(--card)!important;color:var(--text)}
+[data-theme="dark"] .content [style*="background:#f"]{background:var(--soft)!important}
+
+/* 6. celular de verdade */
+@media(max-width:768px){
+  .topbar h1{font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #globalSearchBtn kbd{display:none}
+  .btn{min-height:42px}.btn-sm{min-height:36px}
+  .nav-item{padding:13px 12px;font-size:15px}
+  .tool-btn{min-width:44px;min-height:44px}
+  .modal-overlay{padding:0;align-items:flex-end}
+  .modal{max-height:94vh;width:100%;border-radius:16px 16px 0 0}
+  .modal-footer{position:sticky;bottom:0}
+  .kanban{height:calc(100vh - 96px);scroll-snap-type:x mandatory}
+  .kanban-col{flex-basis:86vw;scroll-snap-align:start}
+  .table-wrap{overflow-x:auto}
+  input,select,textarea{font-size:16px}
+  .bell-panel{top:56px;right:8px}
+  .save-state{bottom:76px}
+}
+
+/* 8. painel de fechamento do mês */
+.fechamento{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.fech-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:15px}
+.fech-pct{font-weight:700;color:var(--success)}
+.fech-barra{height:10px;background:var(--hover);border-radius:6px;overflow:hidden;margin-bottom:12px}
+.fech-barra i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--success));border-radius:6px;transition:width .4s}
+.fech-passos{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.fech-passo{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;border:1px solid var(--border)}
+.fech-passo>span{flex:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;background:var(--hover);color:var(--text-light)}
+.fech-passo b{display:block;font-size:13px}.fech-passo small{color:var(--text-light);font-size:12px}
+.fech-passo.ok{border-color:var(--success)}.fech-passo.ok>span{background:var(--success);color:#fff}
+.fech-passo.pend{border-color:var(--warning)}.fech-passo.pend>span{background:var(--warning);color:#fff}
+@media(max-width:768px){.fech-passos{grid-template-columns:1fr}}
