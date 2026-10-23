@@ -1,0 +1,17 @@
+---
+interface Props { title: string; themeColor: string; }
+const { title, themeColor } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{title}</title>
+<meta name="theme-color" content={themeColor} />
+<slot name="head" />
+</head>
+<body>
+<slot />
+</body>
+</html>

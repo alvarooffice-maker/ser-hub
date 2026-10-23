@@ -1,15 +1,14 @@
-// Smoke tests gratuitos: node tests/smoke.js
-// Verifica sintaxe do JS inline e a presença dos fluxos críticos (offline, fotos, transições, assinatura).
-const fs = require('fs'), vm = require('vm');
+// Smoke tests gratuitos: node tests/smoke.cjs
+// Verifica sintaxe dos módulos em src/scripts e a presença dos fluxos críticos (offline, fotos, transições, assinatura).
+const fs = require('fs'), vm = require('vm'), { execFileSync } = require('child_process');
 const root = __dirname + '/../';
-const html = fs.readFileSync(root + 'index.html', 'utf8');
-const srcs = [...html.matchAll(/<script src="(js\/[^"]+)"><\/script>/g)].map(m => m[1]);
-const js = (srcs.length ? srcs.map(f => fs.readFileSync(root + f, 'utf8')) : [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1])).join('\n');
-console.log('arquivos JS:', srcs.length || 'inline');
+const srcs = fs.readdirSync(root + 'src/scripts').filter(f => /^app\d+\.js$/.test(f)).sort().map(f => 'src/scripts/' + f);
+const js = srcs.map(f => fs.readFileSync(root + f, 'utf8')).join('\n');
+console.log('arquivos JS:', srcs.length);
 let fail = 0;
 const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) fail++; };
 
-try { new vm.Script(js); ok(true, 'sintaxe do JS inline'); } catch (e) { ok(false, 'sintaxe: ' + e.message); }
+srcs.forEach(f => { try { execFileSync(process.execPath, ['--check', root + f], { stdio: 'pipe' }); ok(true, 'sintaxe ' + f); } catch (e) { ok(false, 'sintaxe ' + f + ': ' + String(e.stderr).split('\n').slice(0, 5).join(' ')); } });
 
 ['salvarComOffline', 'sincronizarFilaOffline', 'posSyncVistoria', 'posSyncInstalacao',
  'guardarArquivoOffline', 'resolverArquivosPendentes', 'carregarPreviewsPendentes',
@@ -20,7 +19,7 @@ ok(/offline:\s*!!item/.test(js), 'vistoria: foto offline só em edição');
 ok(/ser_offline_queue/.test(js), 'fila offline em localStorage');
 ok(/aguardando_agendamento/.test(js), 'transição proposta→vistoria');
 ok(/getContext\('2d'\)/.test(js) && /pointerdown/.test(js), 'assinatura em canvas (pointer events)');
-ok(/CACHE_NAME/.test(fs.readFileSync(__dirname + '/../sw.js', 'utf8')), 'service worker presente');
+ok(/CACHE_NAME/.test(fs.readFileSync(__dirname + '/../public/sw.js', 'utf8')), 'service worker presente');
 
 // Lógica pura: erro de rede detectado como "enfileirável"
 const m = js.match(/function isNetworkError[\s\S]*?\n\}/);
