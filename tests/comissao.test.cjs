@@ -2,7 +2,7 @@
 // Extrai as funções puras de js/app05.js e confere os valores — qualquer mudança que altere um valor falha aqui.
 const test = require('node:test'), assert = require('node:assert/strict');
 const fs = require('fs'), vm = require('vm');
-const src = fs.readFileSync(__dirname + '/../js/app05.js', 'utf8');
+const src = fs.readFileSync(__dirname + '/../src/scripts/app05.js', 'utf8');
 const pega = nome => { const m = src.match(new RegExp('function ' + nome + '[\\s\\S]*?\\n\\}')); assert.ok(m, 'função não encontrada: ' + nome); return m[0]; };
 const ctx = { State: { comissoes: [] } };
 vm.createContext(ctx);
