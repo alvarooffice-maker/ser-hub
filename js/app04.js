@@ -16,7 +16,7 @@ function abrirVistoriaJanela(v, imprimir=false){
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
-<title>Laudo Vistoria — ${v.nome||''}</title>
+<title>Laudo Vistoria — ${_e(v.nome||'')}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;background:#f0eaf8;color:#111;padding:20px}
@@ -85,8 +85,8 @@ table.kit .hl{color:#4B0082;font-weight:700}
   <div><div class="lbl">Técnico</div><div class="val">${txt(v.tecnico)}</div></div>
   <div><div class="lbl">Vendedor</div><div class="val">${txt(v.vendedor)}</div></div>
   <div><div class="lbl">CEP</div><div class="val">${txt(v.cep)}</div></div>
-  <div style="grid-column:span 2"><div class="lbl">Endereço</div><div class="val">${[v.rua,v.numero?'nº '+v.numero:'',v.complemento,v.bairro,v.cidade,v.estado].filter(Boolean).join(', ')||'—'}</div></div>
-  ${v.gmap?`<div style="grid-column:span 3"><div class="lbl">Google Maps</div><div class="val"><a href="${v.gmap}" target="_blank" style="color:#4B0082">${v.gmap}</a></div></div>`:''}
+  <div style="grid-column:span 2"><div class="lbl">Endereço</div><div class="val">${_e([v.rua,v.numero?'nº '+v.numero:'',v.complemento,v.bairro,v.cidade,v.estado].filter(Boolean).join(', '))||'—'}</div></div>
+  ${v.gmap?`<div style="grid-column:span 3"><div class="lbl">Google Maps</div><div class="val"><a href="${/^https?:\/\//i.test(v.gmap)?_e(v.gmap):'#'}" target="_blank" rel="noopener" style="color:#4B0082">${_e(v.gmap)}</a></div></div>`:''}
 </div>
 
 <div class="result-row">
@@ -102,8 +102,8 @@ table.kit .hl{color:#4B0082;font-weight:700}
 <table class="kit">
   <thead><tr><th>ITEM</th><th>QTD.</th><th>MARCA</th><th>POTÊNCIA</th><th>kWp TOTAL</th></tr></thead>
   <tbody>
-    <tr><td>Módulos Solares</td><td class="hl">${v.qtd_modulos||'—'} un.</td><td class="hl">${v.marca_modulo||'—'}</td><td>${v.pot_modulo||'—'} W</td><td rowspan="2" style="text-align:center;font-size:18px;font-weight:800;color:#4B0082;vertical-align:middle">${v.kwp||'—'}<br><span style="font-size:10px;font-weight:400">kWp</span></td></tr>
-    <tr><td>Inversor</td><td class="hl">${v.qtd_inversores||'—'} un.</td><td class="hl">${v.marca_inversor||'—'}</td><td>${v.pot_inversor||'—'} kW</td></tr>
+    <tr><td>Módulos Solares</td><td class="hl">${v.qtd_modulos||'—'} un.</td><td class="hl">${_e(v.marca_modulo)||'—'}</td><td>${v.pot_modulo||'—'} W</td><td rowspan="2" style="text-align:center;font-size:18px;font-weight:800;color:#4B0082;vertical-align:middle">${v.kwp||'—'}<br><span style="font-size:10px;font-weight:400">kWp</span></td></tr>
+    <tr><td>Inversor</td><td class="hl">${v.qtd_inversores||'—'} un.</td><td class="hl">${_e(v.marca_inversor)||'—'}</td><td>${v.pot_inversor||'—'} kW</td></tr>
     ${v.qtd_baterias?`<tr><td>Baterias</td><td class="hl">${v.qtd_baterias} un.</td><td class="hl">${v.marca_bateria||'—'}</td><td>${v.pot_bateria||'—'} kWh</td><td>—</td></tr>`:''}
   </tbody>
 </table>
@@ -157,8 +157,8 @@ table.kit .hl{color:#4B0082;font-weight:700}
   <div class="item"><div class="lbl">Estruturas c/ Obra</div><div class="val">${fmtMulti(de.estruturas_obra,{nao_ha:'Não há necessidade',agua_01:'Água 01',agua_02:'Água 02',agua_03:'Água 03',agua_04:'Água 04',agua_05:'Água 05',agua_06:'Água 06',todas:'Todas as águas'})}</div></div>
   <div class="item"><div class="lbl">Trocar Inv. (inclinação)</div><div class="val">${bool(de.trocar_inversor_inclinacao)}</div></div>
   <div class="item"><div class="lbl">Risco de Sombreamento</div><div class="val">${bool(de.risco_sombreamento)}</div></div>
-  ${de.desc_obra?`<div class="item" style="grid-column:span 3"><div class="lbl">Descrição da Obra Necessária</div><div class="val" style="background:#fffbeb;padding:8px;border-radius:4px;border:1px solid #fbbf24"><strong>${de.desc_obra}</strong></div></div>`:''}
-  ${de.obs_estrutura?`<div class="item" style="grid-column:span 3"><div class="lbl">Obs. Estrutura</div><div class="val">${de.obs_estrutura}</div></div>`:''}
+  ${de.desc_obra?`<div class="item" style="grid-column:span 3"><div class="lbl">Descrição da Obra Necessária</div><div class="val" style="background:#fffbeb;padding:8px;border-radius:4px;border:1px solid #fbbf24"><strong>${_e(de.desc_obra)}</strong></div></div>`:''}
+  ${de.obs_estrutura?`<div class="item" style="grid-column:span 3"><div class="lbl">Obs. Estrutura</div><div class="val">${_e(de.obs_estrutura)}</div></div>`:''}
 </div>
 
 ${(()=>{const r=v.resultado||'';return (r.includes('obra')||r.includes('sombreamento'))?`
@@ -234,7 +234,7 @@ function abrirPropostaJanela(p, imprimir=false){
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
-<title>Proposta SER — ${p.nome||''}</title>
+<title>Proposta SER — ${_e(p.nome||'')}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0eaf8;color:#111}
@@ -602,14 +602,14 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
     <div class="kit-card inv">
       <div class="kit-card-qtd">${p.qtd_inversores||'1'}x</div>
       <img class="kit-card-img" src="https://crm.serenergiarenovavel.com.br/img/kit-inversor.jpg" alt="Inversor"/>
-      <div class="kit-card-brand">${p.marca_inversor||'—'}</div>
+      <div class="kit-card-brand">${_e(p.marca_inversor)||'—'}</div>
       <div class="kit-card-type">Inversor · ${p.pot_inversor||'—'} kW${p.fase?' · '+p.fase:''}${p.tensao?' · '+p.tensao+'V':''}</div>
       <div class="kit-card-pot">${p.pot_inversor||'—'}<span> kW</span></div>
     </div>
     <div class="kit-card">
       <div class="kit-card-qtd">${p.qtd_modulos||'—'}x</div>
       <img class="kit-card-img" src="https://crm.serenergiarenovavel.com.br/img/kit-modulo.jpg" alt="Módulo solar"/>
-      <div class="kit-card-brand">${p.marca_modulo||'—'}</div>
+      <div class="kit-card-brand">${_e(p.marca_modulo)||'—'}</div>
       <div class="kit-card-type">Módulos · ${p.pot_modulo||'—'} W cada</div>
       <div class="kit-card-pot">${p.pot_modulo||'—'}<span> W</span></div>
     </div>
@@ -635,9 +635,9 @@ ${p.qtd_baterias?'.kit-cards{grid-template-columns:1fr 1fr 1fr}':''}
   ${(p.forma_pgto||p.pgto_desc||p.banco)?`
   <div style="margin-top:20px;background:#f9f5ff;border-radius:12px;padding:14px 28px;text-align:center;max-width:400px">
     <div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6B21A8;margin-bottom:6px">FORMA DE PAGAMENTO</div>
-    <div style="font-size:15px;font-weight:700;color:#1a0a2e">${p.forma_pgto||''}</div>
-    ${p.banco?`<div style="font-size:12px;color:#6b7280;margin-top:4px">${p.banco}</div>`:''}
-    ${p.pgto_desc?`<div style="font-size:12px;color:#6b7280;margin-top:4px">${p.pgto_desc}</div>`:''}
+    <div style="font-size:15px;font-weight:700;color:#1a0a2e">${_e(p.forma_pgto)}</div>
+    ${p.banco?`<div style="font-size:12px;color:#6b7280;margin-top:4px">${_e(p.banco)}</div>`:''}
+    ${p.pgto_desc?`<div style="font-size:12px;color:#6b7280;margin-top:4px">${_e(p.pgto_desc)}</div>`:''}
   </div>`:''}
 
   <div style="margin-top:24px;width:100%;max-width:500px">
@@ -1027,7 +1027,7 @@ function abrirContratoJanela(c, imprimir=false, winName='_blank'){
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
-<title>Contrato — ${c.nome||'SER Energia'}</title>
+<title>Contrato — ${_e(c.nome||'SER Energia')}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:'Times New Roman',Times,serif;font-size:12pt;line-height:1.7;color:#111;background:#f0eaf8;padding:24px}
@@ -1090,7 +1090,7 @@ table.kit .hl{color:#4B0082;font-weight:700}
 <p class="pi">c. Conexão elétrica entre módulos, quadros DC, inversor e quadro baixa tensão;</p>
 <p class="pi">d. Teste de funcionalidade e entrega de conformidade da usina;</p>
 <p class="pi">f. Avaliação do projeto de ajuste, caso seja necessário;</p>
-<p class="pi">g. Tratamento do processo de HOMOLOGAÇÃO do sistema junto a Concessionária de Energia Elétrica${c.concessionaria?' ('+c.concessionaria+')':''} e solicitação de aumento de carga (monofásico para bifásico).</p>
+<p class="pi">g. Tratamento do processo de HOMOLOGAÇÃO do sistema junto a Concessionária de Energia Elétrica${c.concessionaria?' ('+_e(c.concessionaria)+')':''} e solicitação de aumento de carga (monofásico para bifásico).</p>
 <p><strong>1.1. Os componentes a serem fornecidos estritamente adequados ao projeto contratado, objeto deste contrato, são:</strong></p>
 ${c.qtd_modulos?`<p class="pi">g) <strong>${txt(c.qtd_modulos)}</strong> Módulos Solares <strong>${txt(c.marca_modulo)} ${c.pot_modulo||'___'} W</strong>;</p>`:''}
 ${c.qtd_inversores?`<p class="pi">h) <strong>${c.qtd_inversores}</strong> INVERSOR <strong>${txt(c.marca_inversor)} ${c.pot_inversor||'___'} KW ${c.fase?c.fase.toUpperCase():''} ${c.tensao?c.tensao+' V':''}</strong>.</p>`:''}
@@ -1099,8 +1099,8 @@ ${c.qtd_baterias?'<p class="pi">i) <strong>'+c.qtd_baterias+'</strong> Bateria(s
 <table class="kit">
   <thead><tr><th>ITEM</th><th>QTD.</th><th>FABRICANTE</th><th>POTÊNCIA</th><th>CONFIGURAÇÃO</th></tr></thead>
   <tbody>
-    ${c.qtd_modulos?`<tr><td>Módulos Solares</td><td class="hl">${c.qtd_modulos} un.</td><td class="hl">${c.marca_modulo||'—'}</td><td>${c.pot_modulo||'—'} W</td><td>—</td></tr>`:''}
-    ${c.qtd_inversores?`<tr><td>Inversor</td><td class="hl">${c.qtd_inversores} un.</td><td class="hl">${c.marca_inversor||'—'}</td><td>${c.pot_inversor||'—'} kW</td><td class="hl">${c.fase?c.fase.toUpperCase():''} ${c.tensao?c.tensao+' V':''}</td></tr>`:''}
+    ${c.qtd_modulos?`<tr><td>Módulos Solares</td><td class="hl">${c.qtd_modulos} un.</td><td class="hl">${_e(c.marca_modulo)||'—'}</td><td>${c.pot_modulo||'—'} W</td><td>—</td></tr>`:''}
+    ${c.qtd_inversores?`<tr><td>Inversor</td><td class="hl">${c.qtd_inversores} un.</td><td class="hl">${_e(c.marca_inversor)||'—'}</td><td>${c.pot_inversor||'—'} kW</td><td class="hl">${c.fase?c.fase.toUpperCase():''} ${c.tensao?c.tensao+' V':''}</td></tr>`:''}
     ${c.qtd_baterias?'<tr><td>Baterias</td><td class="hl">'+c.qtd_baterias+' un.</td><td class="hl">'+(c.marca_bateria||'—')+'</td><td>'+(c.pot_bateria||'—')+' kWh</td><td>—</td></tr>':''}
   </tbody>
 </table>
@@ -1119,7 +1119,7 @@ ${c.qtd_baterias?'<p class="pi">i) <strong>'+c.qtd_baterias+'</strong> Bateria(s
 <h2>Dos Valores e Forma de Pagamento</h2>
 <p><strong>3. O valor que deverá ser pago pelo(a) CONTRATANTE à CONTRATADA SER ENERGIA RENOVÁVEL para a realização do serviço de todas as obrigações descritas neste contrato corresponde ao total de <span style="color:#4B0082">${fR(c.valor)}</span> (${extenso(c.valor)}).</strong></p>
 <p><strong>Forma de pagamento: <span style="color:#4B0082">${txt(c.forma_pgto)}</span></strong></p>
-${(c.pgto_desc||c.banco)?'<p><strong>3.1. O Pagamento ocorrerá: <span style="color:#4B0082">'+(c.banco?c.banco+' — ':'')+txt(c.pgto_desc)+'</span>.</strong></p>':''}
+${(c.pgto_desc||c.banco)?'<p><strong>3.1. O Pagamento ocorrerá: <span style="color:#4B0082">'+(c.banco?_e(c.banco)+' — ':'')+txt(c.pgto_desc)+'</span>.</strong></p>':''}
 <p><strong>3.2. Verificado o descumprimento da obrigação prevista no item 3 e 3.1, estará a CONTRATADA autorizada a proceder com os métodos de cobrança extrajudiciais e judiciais, tais como negativação do CPF do devedor nos órgãos de crédito, envio da dívida para protesto em cartórios, além do ajuizamento das medidas judiciais cabíveis e interrupção imediata da prestação do serviço até a regularização.</strong></p>
 <p><strong>3.3. Havendo mais de um contratante, estes possuem responsabilidade solidária em todas as obrigações do presente contrato.</strong></p>
 
@@ -1189,13 +1189,13 @@ ${(c.pgto_desc||c.banco)?'<p><strong>3.1. O Pagamento ocorrerá: <span style="co
     </div>
     <div class="sign-cell">
       <div class="sign-name">TESTEMUNHA 1</div>
-      <div class="sign-detail">Nome: ${c.vendedor||'_______________'}</div>
+      <div class="sign-detail">Nome: ${_e(c.vendedor)||'_______________'}</div>
       <div class="sign-detail">CPF: ${c.vend_cpf||'___________'}</div>
       <div class="sign-label">TESTEMUNHA 1 — VENDEDOR</div>
     </div>
     <div class="sign-cell">
       <div class="sign-name">TESTEMUNHA 2</div>
-      <div class="sign-detail">Nome: ${c.supervisor_nome||'_______________'}</div>
+      <div class="sign-detail">Nome: ${_e(c.supervisor_nome)||'_______________'}</div>
       <div class="sign-detail">CPF: ${c.supervisor_cpf||'___________'}</div>
       <div class="sign-label">TESTEMUNHA 2 — SUPERVISOR</div>
     </div>
@@ -1219,7 +1219,7 @@ ${(c.pgto_desc||c.banco)?'<p><strong>3.1. O Pagamento ocorrerá: <span style="co
   <p>03 meses para serviços de manutenção pela SER. As fabricantes oferecem 25 anos de garantia de performance e 10 anos contra defeitos de fabricação para os módulos.</p>
   <div class="mat-box">
     <div class="mat-title">📦 Lista de Materiais do Projeto</div>
-    <p>Sistema <strong>${c.kwp||'—'} kWp</strong>${c.qtd_modulos?` · <strong>${c.qtd_modulos} módulo(s) ${c.marca_modulo||''} ${c.pot_modulo?c.pot_modulo+'W':''}</strong>`:''}${c.qtd_inversores?` · <strong>${c.qtd_inversores} inversor(es) ${c.marca_inversor||''} ${c.pot_inversor?c.pot_inversor+'kW':''}</strong>${c.fase?' — '+c.fase.toUpperCase():''}${c.tensao?' '+c.tensao+'V':''}`:''}</p>
+    <p>Sistema <strong>${c.kwp||'—'} kWp</strong>${c.qtd_modulos?` · <strong>${c.qtd_modulos} módulo(s) ${_e(c.marca_modulo)} ${c.pot_modulo?c.pot_modulo+'W':''}</strong>`:''}${c.qtd_inversores?` · <strong>${c.qtd_inversores} inversor(es) ${_e(c.marca_inversor)} ${c.pot_inversor?c.pot_inversor+'kW':''}</strong>${c.fase?' — '+c.fase.toUpperCase():''}${c.tensao?' '+c.tensao+'V':''}`:''}</p>
     <p style="margin-top:8px"><strong style="color:#4B0082">💰 Valor total: ${fR(c.valor)} (${extenso(c.valor)})</strong></p>
     <p style="margin-top:4px"><strong>💳 Forma de pagamento: ${txt(c.forma_pgto)}</strong></p>
   </div>
