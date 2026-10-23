@@ -691,7 +691,7 @@ export async function renderHomeVendedor(){
 }
 
 // Aniversariantes dos próximos 7 dias: equipe (só quem lê perfis completos) e clientes (leads com nascimento)
-export function buildAniversariantes(){
+export function buildAniversariantes(opts={}){
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const prox = (iso)=>{
     if(!iso) return null;
@@ -705,8 +705,9 @@ export function buildAniversariantes(){
   (State.perfis||[]).filter(p=>p.ativo!==false && p.nascimento).forEach(p=>{ const a=prox(p.nascimento); if(a) lista.push({ nome:p.nome, tipo:'Equipe', tel:p.telefone, ...a }); });
   const vistos = new Set();
   (State.leads||[]).filter(l=>l.nascimento).forEach(l=>{ const a=prox(l.nascimento); const k=(l.nome||'')+l.nascimento; if(a && !vistos.has(k)){ vistos.add(k); lista.push({ nome:l.nome, tipo:'Cliente', tel:l.telefone, ...a }); } });
-  if(!lista.length) return '';
   lista.sort((a,b)=>a.dias-b.dias);
+  if(opts.dados) return lista;
+  if(!lista.length) return '';
   return `<div class="card" style="margin-bottom:16px">
     <div class="card-header"><h3>🎂 Aniversariantes da semana</h3></div>
     <div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">
@@ -718,7 +719,7 @@ export function buildAniversariantes(){
 }
 
 // Projetos parados: registros ainda abertos numa etapa há mais dias que o limite dela
-export function buildParados(){
+export function buildParados(opts={}){
   const agora = Date.now();
   const regras = [
     { etapa:'Proposta',    icon:'📄', dados:State.propostas,    abre:r=>['enviada','em_aberto'].includes(r.status), limite:7 },
@@ -746,8 +747,9 @@ export function buildParados(){
       if(dias>=g.limite) (dias>90 ? antigos : lista).push({ etapa:g.etapa, icon:g.icon, nome:r.nome||r.cliente||'—', vendedor:r.vendedor||'', dias, limite:g.limite });
     });
   });
-  if(!lista.length && !antigos.length) return '';
   lista.sort((a,b)=>(b.dias-b.limite)-(a.dias-a.limite));
+  if(opts.dados) return { lista, antigos };
+  if(!lista.length && !antigos.length) return '';
   return `<div class="card" style="margin-bottom:16px">
     <div class="card-header"><h3>⏳ Projetos parados <span style="font-size:11px;font-weight:400;color:var(--text-light)">(${lista.length} acima do prazo da etapa)</span></h3></div>
     <div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">
@@ -759,6 +761,51 @@ export function buildParados(){
     ${antigos.length?`<div style="font-size:12px;color:var(--text-light);margin-top:6px">+ ${antigos.length} registro(s) abertos há mais de 90 dias (provavelmente abandonados ou sem baixa) — vale revisar e encerrar.</div>`:''}
     <div style="font-size:11px;color:var(--text-light)">Prazos: proposta 7d · vistoria 7d · contrato 5d · logística 15d · instalação 10d · homologação 20d. Vermelho = o dobro do prazo.</div>
   </div>`;
+}
+
+
+// Cartão único "Para agir hoje": projetos parados, alertas, régua de relacionamento e aniversariantes em abas
+export function buildParaAgir(c){
+  const parados = buildParados({dados:true}) || { lista:[], antigos:[] };
+  const anivs = buildAniversariantes({dados:true}) || [];
+  const linha = (ic, titulo, sub, dir, cor) => `<div class="pa-it"><span class="pa-ic">${ic}</span><div class="pa-tx"><div class="pa-t">${titulo}</div>${sub?`<div class="pa-s">${sub}</div>`:''}</div>${dir?`<div class="pa-d" style="color:${cor||'var(--text)'}">${dir}</div>`:''}</div>`;
+  const vazio = txt => `<div class="pa-vazio">${txt}</div>`;
+  const paneParados = parados.lista.length
+    ? parados.lista.slice(0,8).map(a=>linha(a.icon, esc(a.nome), esc(a.etapa)+(a.vendedor?' · '+esc(a.vendedor):''), a.dias+' dias', a.dias>=a.limite*2?'#dc2626':'#ca8a04')).join('')
+      + (parados.lista.length>8 ? `<div class="pa-mais">+ ${parados.lista.length-8} outros acima do prazo</div>` : '')
+      + (parados.antigos.length ? `<div class="pa-mais">+ ${parados.antigos.length} aberto(s) há mais de 90 dias — vale revisar e encerrar</div>` : '')
+      + `<div class="pa-mais" style="opacity:.8">Prazos: proposta 7d · vistoria 7d · contrato 5d · logística 15d · instalação 10d · homologação 20d</div>`
+    : vazio('✅ Nenhum projeto acima do prazo.');
+  const sem = c.leadsSemContato, vh = c.vistHoje, ih = c.instHoje;
+  const paneAlertas = `
+    <div id="alertaLeadsParados" class="pa-it pa-click" style="cursor:${sem>0?'pointer':'default'}"><span class="pa-ic">${sem>0?'🔴':'🟢'}</span><div class="pa-tx"><div class="pa-t"><b>${sem}</b> lead${sem!==1?'s':''} sem contato há +3 dias</div></div>${sem>0?'<div class="pa-d" style="color:#e53e3e">Ver →</div>':''}</div>
+    ${linha(vh>0?'🔵':'🟢', `<b>${vh}</b> vistoria${vh!==1?'s':''} para hoje`)}
+    ${linha(ih>0?'🔵':'🟢', `<b>${ih}</b> instalaç${ih!==1?'ões':'ão'} para hoje`)}`;
+  const paneRegua = c.agendaHoje.length ? `<div data-agenda-card>` + c.agendaHoje.map(a=>`
+      <div id="agenda-row-${esc(a.id)}" class="pa-it" style="flex-wrap:wrap">
+        <span class="pa-ic">💛</span><div class="pa-tx" style="min-width:160px"><div class="pa-t">${esc(a.cliente_nome||'—')}</div><div class="pa-s">${esc(c.tipoLabel[a.tipo]||a.tipo)}</div></div>
+        <div class="pa-acoes">
+          <a href="${c.agendaWaLink(a)}" target="_blank" rel="noopener" class="pa-wa">📲 WhatsApp</a>
+          <button class="pa-b" onclick="agendaMarcar('${esc(a.id)}','enviado')">✔ Enviado</button>
+          <button class="pa-b pa-b2" onclick="agendaMarcar('${esc(a.id)}','ignorado')">✗ Ignorar</button>
+        </div>
+      </div>`).join('') + `</div>` : vazio('Nenhuma mensagem de relacionamento para hoje.');
+  const paneAnivs = anivs.length
+    ? anivs.slice(0,10).map(a=>linha('🎂', `<b>${esc(a.nome||'')}</b>`, esc(a.tipo)+(a.idade>0&&a.idade<110?' · '+a.idade+' anos':''),
+        (a.dias===0?'🎉 hoje':a.dias===1?'amanhã':a.label)+(a.tel?` · <a href="https://wa.me/55${String(a.tel).replace(/\D/g,'')}?text=${encodeURIComponent('Parabéns, '+String(a.nome||'').split(' ')[0]+'! 🎉 A equipe SER Energia Renovável deseja um dia muito especial e muita energia positiva pra você!')}" target="_blank" rel="noopener">Enviar parabéns</a>`:''))).join('')
+    : vazio('Nenhum aniversariante nos próximos 7 dias.');
+  const abas = [
+    { k:'par', rot:'Projetos parados', n:parados.lista.length, hot:true,  html:paneParados },
+    { k:'ale', rot:'Alertas',          n:(sem>0?1:0)+(vh>0?1:0)+(ih>0?1:0), hot:true, html:paneAlertas },
+    { k:'reg', rot:'Régua de relacionamento', n:c.agendaHoje.length, hot:false, html:paneRegua },
+    { k:'ani', rot:'Aniversariantes',  n:anivs.length, hot:false, html:paneAnivs },
+  ];
+  const ativa = (abas.find(a=>a.n>0) || abas[0]).k;
+  return `<section class="card para-agir" id="paraAgir">
+    <h3>⚡ Para agir hoje <small>o que está pendente agora</small></h3>
+    <div class="pa-tabs">${abas.map(a=>`<button type="button" data-pa="${a.k}" class="${a.k===ativa?'on':''}">${a.rot}${a.n>0?`<b class="${a.hot?'hot':''}">${a.n}</b>`:''}</button>`).join('')}</div>
+    ${abas.map(a=>`<div class="pa-pane" data-pane="${a.k}" style="display:${a.k===ativa?'block':'none'}">${a.html}</div>`).join('')}
+  </section>`;
 }
 
 export async function renderDashboard(){
@@ -881,20 +928,26 @@ export async function renderDashboard(){
       </div>
     </div>
 
-    <div class="metrics" style="margin-bottom:16px">
-      <div class="metric"><div class="metric-label">Total Leads</div><div class="metric-value">${isVend() ? filterByVendor(leads).length : leads.length}</div></div>
-      <div class="metric"><div class="metric-label">Propostas Abertas</div><div class="metric-value">${isVend() ? filterByVendor(props).filter(p=>!['aceita','recusada'].includes(p.status)).length : propsAbertas}</div></div>
-      <div class="metric"><div class="metric-label">Contratos Assinados</div><div class="metric-value">${isVend() ? filterByVendor(contratos).filter(c=>c.status==='assinado').length : contratosAssin}</div></div>
-      <div class="metric"><div class="metric-label">kWp Instalado</div><div class="metric-value">${fmtNum(isVend() ? filterByVendor(instal).reduce((s,i)=>s+(Number(i.kwp)||0),0) : totalKwp,2)}</div></div>
-      <div class="metric"><div class="metric-label">Vendido no Mês</div><div class="metric-value" style="font-size:15px">${fmtBRL(valorMes)}</div></div>
-      <div class="metric"><div class="metric-label">Ticket Médio</div><div class="metric-value" style="font-size:15px">${(()=>{ const cc=contratos.filter(c=>c.status==='assinado'&&(isVend()?c.vendedor===State.profile?.nome:true)); return cc.length ? fmtBRL(cc.reduce((s,c)=>s+(Number(c.valor)||0),0)/cc.length) : '—'; })()}</div></div>
-      <div class="metric"><div class="metric-label">Taxa Conversão</div><div class="metric-value">${(()=>{ const l=isVend()?filterByVendor(leads).length:leads.length; const c=isVend()?filterByVendor(contratos).filter(x=>x.status==='assinado').length:contratosAssin; return l>0?Math.round(c/l*100)+'%':'—'; })()}</div></div>
-      <div class="metric"><div class="metric-label">⏱️ Time Lead</div><div class="metric-value" id="kpiTimeLead">—</div><div class="metric-sub" style="font-size:10px;color:var(--text-light);text-align:center">dias lead→contrato</div></div>
-      <div class="metric"><div class="metric-label">🏆 Rec. Homologação</div><div class="metric-value" id="kpiHomolRec">—</div><div class="metric-value" style="font-size:13px;color:var(--text-light)" id="kpiHomolAvg">—</div><div class="metric-sub" style="font-size:10px;color:var(--text-light);text-align:center">recorde · média (dias contrato→homol)</div></div>
-      <div class="metric"><div class="metric-label">⚡ Rec. Instalação</div><div class="metric-value" id="kpiInstalRec">—</div><div class="metric-value" style="font-size:13px;color:var(--text-light)" id="kpiInstalAvg">—</div><div class="metric-sub" style="font-size:10px;color:var(--text-light);text-align:center">recorde · média (dias contrato→instal)</div></div>
+    ${buildParaAgir({ leadsSemContato, vistHoje, instHoje, agendaHoje, tipoLabel, agendaWaLink })}
+
+    <div class="kpi-feat">
+      <div class="metric metric-dest metric-lg"><div class="metric-label">Vendido no Mês</div><div class="metric-value" >${fmtBRL(valorMes)}</div><span class="kpi-var" id="kpiVarVendido"></span></div>
+      <div class="metric metric-lg"><div class="metric-label">Contratos Assinados</div><div class="metric-value">${isVend() ? filterByVendor(contratos).filter(c=>c.status==='assinado').length : contratosAssin}</div><span class="kpi-var" id="kpiVarContratos"></span></div>
+      <div class="metric metric-lg"><div class="metric-label">Taxa Conversão</div><div class="metric-value">${(()=>{ const l=isVend()?filterByVendor(leads).length:leads.length; const c=isVend()?filterByVendor(contratos).filter(x=>x.status==='assinado').length:contratosAssin; return l>0?Math.round(c/l*100)+'%':'—'; })()}</div></div>
+      <div class="metric metric-lg"><div class="metric-label">kWp Instalado</div><div class="metric-value">${fmtNum(isVend() ? filterByVendor(instal).reduce((s,i)=>s+(Number(i.kwp)||0),0) : totalKwp,2)}</div></div>
+    </div>
+    <div class="kpi-sec">
+      <div class="metric metric-sm"><div class="metric-label">Total Leads</div><div class="metric-value">${isVend() ? filterByVendor(leads).length : leads.length}</div></div>
+      <div class="metric metric-sm"><div class="metric-label">Propostas Abertas</div><div class="metric-value">${isVend() ? filterByVendor(props).filter(p=>!['aceita','recusada'].includes(p.status)).length : propsAbertas}</div></div>
+      <div class="metric metric-sm"><div class="metric-label">Ticket Médio</div><div class="metric-value" >${(()=>{ const cc=contratos.filter(c=>c.status==='assinado'&&(isVend()?c.vendedor===State.profile?.nome:true)); return cc.length ? fmtBRL(cc.reduce((s,c)=>s+(Number(c.valor)||0),0)/cc.length) : '—'; })()}</div></div>
+      <div class="metric metric-sm"><div class="metric-label">⏱️ Time Lead</div><div class="metric-value" id="kpiTimeLead">—</div><div class="metric-sub" style="font-size:10px;color:var(--text-light);text-align:center">dias lead→contrato</div></div>
+    </div>
+    <div class="kpi-rec">
+      <div class="metric metric-chip"><div class="metric-label">🏆 Rec. Homologação</div><div class="metric-value" id="kpiHomolRec">—</div><div class="metric-value" style="font-size:13px;color:var(--text-light)" id="kpiHomolAvg">—</div><div class="metric-sub" style="font-size:10px;color:var(--text-light);text-align:center">recorde · média (dias contrato→homol)</div></div>
+      <div class="metric metric-chip"><div class="metric-label">⚡ Rec. Instalação</div><div class="metric-value" id="kpiInstalRec">—</div><div class="metric-value" style="font-size:13px;color:var(--text-light)" id="kpiInstalAvg">—</div><div class="metric-sub" style="font-size:10px;color:var(--text-light);text-align:center">recorde · média (dias contrato→instal)</div></div>
     </div>
 
-    <div style="display:grid;grid-template-columns:180px 1fr 220px;gap:16px;margin-bottom:16px">
+    <div class="row-meta">
       <!-- Meta do mês -->
       <div class="card" style="padding:16px;display:flex;flex-direction:column;align-items:center;gap:4px">
         <div style="font-size:12px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Meta do Mês</div>
@@ -934,67 +987,7 @@ export async function renderDashboard(){
             </div>`).join('')}
         </div>
       </div>
-
-      <!-- Alertas -->
-      <div class="card">
-        <div class="card-header"><h3>🔔 Alertas</h3></div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div id="alertaLeadsParados" style="padding:12px;background:${leadsSemContato>0?'#fee2e2':'#f0fdf4'};border-radius:8px;font-size:13px;cursor:${leadsSemContato>0?'pointer':'default'};border:1px solid ${leadsSemContato>0?'#fca5a5':'#bbf7d0'}">
-            ${leadsSemContato>0?'🔴':'🟢'} <strong>${leadsSemContato}</strong> lead${leadsSemContato!==1?'s':''} sem contato há +3 dias
-            ${leadsSemContato>0?'<span style="float:right;color:#e53e3e;font-size:11px">Ver →</span>':''}
-          </div>
-          <div style="padding:12px;background:${vistHoje>0?'#eff6ff':'#f0fdf4'};border-radius:8px;font-size:13px;border:1px solid ${vistHoje>0?'#bfdbfe':'#bbf7d0'}">
-            ${vistHoje>0?'🔵':'🟢'} <strong>${vistHoje}</strong> vistoria${vistHoje!==1?'s':''} para hoje
-          </div>
-          <div style="padding:12px;background:${instHoje>0?'#eff6ff':'#f0fdf4'};border-radius:8px;font-size:13px;border:1px solid ${instHoje>0?'#bfdbfe':'#bbf7d0'}">
-            ${instHoje>0?'🔵':'🟢'} <strong>${instHoje}</strong> instalação${instHoje!==1?'ões':''} para hoje
-          </div>
-        </div>
-      </div>
     </div>
-
-    ${buildAniversariantes()}
-
-    ${buildParados()}
-
-    <!-- Régua de Relacionamento — disparos de hoje -->
-    ${agendaHoje.length > 0 ? `
-    <div class="card" data-agenda-card style="margin-bottom:16px">
-      <div class="card-header"><h3>💛 Régua de Relacionamento <span style="font-size:11px;font-weight:400;color:var(--text-light)">${agendaHoje.length} mensagem${agendaHoje.length!==1?'s':''} para hoje</span></h3></div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        ${agendaHoje.map(a=>`
-        <div id="agenda-row-${esc(a.id)}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-secondary);border-radius:8px;flex-wrap:wrap">
-          <div style="flex:1;min-width:160px">
-            <div style="font-weight:600;font-size:13px">${esc(a.cliente_nome||'—')}</div>
-            <div style="font-size:11px;color:var(--text-light);margin-top:2px">${esc(tipoLabel[a.tipo]||a.tipo)}</div>
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <a href="${agendaWaLink(a)}" target="_blank" rel="noopener"
-               style="display:inline-flex;align-items:center;gap:4px;padding:6px 10px;background:#25d366;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none">
-              📲 Enviar WhatsApp
-            </a>
-            <button onclick="agendaMarcar('${esc(a.id)}','enviado')" style="padding:6px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer">✔ Enviado</button>
-            <button onclick="agendaMarcar('${esc(a.id)}','ignorado')" style="padding:6px 10px;background:#e5e7eb;color:#374151;border:none;border-radius:6px;font-size:12px;cursor:pointer">✗ Ignorar</button>
-          </div>
-        </div>`).join('')}
-      </div>
-    </div>` : ''}
-
-    <!-- Gráfico de desempenho -->
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-header" style="margin-bottom:0">
-        <h3>Desempenho de Vendas <span style="font-size:11px;color:var(--text-light);font-weight:400" id="chartPeriodLabel">(Mês atual)</span></h3>
-      </div>
-      <div style="position:relative;height:220px;padding:12px 4px 4px">
-        <canvas id="salesChart"></canvas>
-      </div>
-    </div>
-
-    <!-- Dashboard Preditivo de Receita -->
-    <div id="preditivoSection" style="margin-bottom:16px"></div>
-
-    <!-- Tempo médio por etapa -->
-    <div id="tempoMedioSection" style="margin-bottom:0"></div>
 
     <!-- Metas por vendedor -->
     <div id="metasVendSection" style="margin-bottom:0"></div>
@@ -1012,6 +1005,26 @@ export async function renderDashboard(){
       </div>
       <div id="rankBody"></div>
     </div>
+
+    <details class="card analises" id="analises">
+      <summary>📈 Análises <small>desempenho de vendas · preditivo de receita · tempo médio por etapa</small></summary>
+    <!-- Gráfico de desempenho -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header" style="margin-bottom:0">
+        <h3>Desempenho de Vendas <span style="font-size:11px;color:var(--text-light);font-weight:400" id="chartPeriodLabel">(Mês atual)</span></h3>
+      </div>
+      <div style="position:relative;height:220px;padding:12px 4px 4px">
+        <canvas id="salesChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Dashboard Preditivo de Receita -->
+    <div id="preditivoSection" style="margin-bottom:16px"></div>
+
+    <!-- Tempo médio por etapa -->
+    <div id="tempoMedioSection" style="margin-bottom:0"></div>
+
+    </details>
   `;
 
   // Estado interno do dashboard
@@ -1298,6 +1311,28 @@ export async function renderDashboard(){
       if(lbl==='kWp Instalado')       val.textContent = fmtNum(kwpP,2);
     });
 
+    // ── Variação em relação ao período anterior (mesmo tamanho) ───────────────
+    (function(){
+      try{
+        const d0 = new Date(startD+'T12:00:00'), d1 = new Date(endD+'T12:00:00');
+        const dias = Math.round((d1-d0)/86400000)+1;
+        const pEnd = new Date(d0); pEnd.setDate(pEnd.getDate()-1);
+        const pStart = new Date(pEnd); pStart.setDate(pStart.getDate()-(dias-1));
+        const iso = d => d.toISOString().slice(0,10);
+        const ant = byVend(contratos).filter(c=>c.status==='assinado' && c.data_assinatura>=iso(pStart) && c.data_assinatura<=iso(pEnd));
+        const valAnt = ant.reduce((x,c)=>x+(Number(c.valor)||0),0);
+        const selo = (id, atual, anterior, fmt)=>{
+          const el = document.getElementById(id); if(!el) return;
+          if(!anterior){ el.className='kpi-var neu'; el.textContent = atual ? 'sem período anterior para comparar' : ''; return; }
+          const pct = Math.round((atual-anterior)/anterior*100);
+          el.className = 'kpi-var '+(pct>=0?'up':'down');
+          el.textContent = (pct>=0?'▲ ':'▼ ')+Math.abs(pct)+'% vs período anterior ('+fmt(anterior)+')';
+        };
+        selo('kpiVarVendido', totalPeriodo, valAnt, fmtBRL);
+        selo('kpiVarContratos', contKpi.length, ant.length, n=>String(n));
+      }catch(e){ console.warn('[variação KPI]', e); }
+    })();
+
     // ── Rankings ───────────────────────────────────────────────────────────
     // Helper: agrupa com normalização inteligente (ignora partículas de nome)
     function grpNorm(arr, field, valFn){
@@ -1552,6 +1587,13 @@ export async function renderDashboard(){
   });
 
   // Alerta leads parados → ir para pipeline destacando os parados
+  // Abas do cartão "Para agir hoje"
+  $$('#paraAgir .pa-tabs button').forEach(b=>b.addEventListener('click', ()=>{
+    $$('#paraAgir .pa-tabs button').forEach(x=>x.classList.toggle('on', x===b));
+    $$('#paraAgir .pa-pane').forEach(p=>{ p.style.display = p.dataset.pane===b.dataset.pa ? 'block' : 'none'; });
+  }));
+  // Os gráficos de "Análises" medem o tamanho ao abrir
+  $('#analises')?.addEventListener('toggle', ()=>{ if($('#analises').open) setTimeout(()=>window.dispatchEvent(new Event('resize')), 60); });
   $('#alertaLeadsParados')?.addEventListener('click', ()=>{
     const parados = calcLeadsParados(3);
     if(!parados.length) return;

@@ -453,3 +453,45 @@ tbody tr:hover{background:#fafaf6}
 #globalSearchBtn{background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--text-light);display:flex;align-items:center;gap:6px;transition:background .15s}
 #globalSearchBtn:hover{background:var(--bg)}
 #globalSearchBtn kbd{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:11px;font-family:inherit}
+
+/* ===== Dashboard novo (23/10): "Para agir hoje", KPIs em destaque, análises recolhidas ===== */
+.para-agir{margin-bottom:16px;padding:18px}
+.para-agir h3{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
+.para-agir h3 small{font-weight:500;color:var(--text-light);margin-left:auto;font-size:12px}
+.pa-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.pa-tabs button{border:1px solid var(--border);background:transparent;color:var(--text-light);font:inherit;font-weight:700;font-size:13px;padding:6px 12px;border-radius:999px;cursor:pointer}
+.pa-tabs button.on{background:#ede9fe;color:#6d28d9;border-color:transparent}
+.pa-tabs b{background:#94a3b8;color:#fff;border-radius:999px;font-size:11px;padding:1px 7px;margin-left:6px}
+.pa-tabs b.hot{background:#dc2626}
+.pa-it{display:flex;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid var(--border)}
+.pa-it:last-child{border-bottom:0}
+.pa-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#ede9fe;flex:none;font-size:16px}
+.pa-tx{min-width:0;flex:1} .pa-t{font-weight:700;overflow:hidden;text-overflow:ellipsis} .pa-s{color:var(--text-light);font-size:13px}
+.pa-d{margin-left:auto;font-weight:800;white-space:nowrap;text-align:right}
+.pa-mais{font-size:12px;color:var(--text-light);padding:8px 2px 0}
+.pa-vazio{padding:14px 4px;color:var(--text-light)}
+.pa-acoes{display:flex;gap:6px;flex-wrap:wrap}
+.pa-wa{background:#25d366;color:#fff;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;text-decoration:none}
+.pa-b{border:0;background:var(--primary);color:#fff;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+.pa-b2{background:#e5e7eb;color:#374151}
+.kpi-feat{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:12px}
+.kpi-feat .metric-lg{padding:18px;border-radius:16px}
+.kpi-feat .metric-lg .metric-value{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.kpi-feat .metric-dest{background:linear-gradient(135deg,#6d28d9,#a21caf);color:#fff;border-color:transparent}
+.kpi-feat .metric-dest .metric-label{color:#e9d5ff}
+.kpi-feat .metric-dest .metric-value{font-size:28px}
+.kpi-var{display:inline-flex;margin-top:6px;font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px;background:rgba(109,40,217,.1);color:#6d28d9}
+.kpi-var:empty{display:none}
+.kpi-var.up{background:#dcfce7;color:#15803d} .kpi-var.down{background:#fee2e2;color:#b91c1c} .kpi-var.neu{background:#ede9fe;color:#6d28d9}
+.metric-dest .kpi-var{background:rgba(255,255,255,.22);color:#fff}
+.kpi-sec{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.kpi-sec .metric-sm{padding:12px 14px} .kpi-sec .metric-sm .metric-value{font-size:20px}
+.kpi-rec{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.kpi-rec .metric-chip{flex:1;min-width:230px;padding:10px 14px}
+.row-meta{display:grid;grid-template-columns:260px 1fr;gap:16px;margin-bottom:16px}
+details.analises{margin-top:16px;padding:16px 18px}
+details.analises>summary{cursor:pointer;font-weight:800;font-size:15px;list-style:none;display:flex;align-items:center;gap:8px}
+details.analises>summary small{font-weight:500;color:var(--text-light);font-size:12px}
+details.analises[open]>summary{margin-bottom:14px}
+@media(max-width:1000px){.kpi-feat,.kpi-sec{grid-template-columns:1fr 1fr}.row-meta{grid-template-columns:1fr}}
+@media(max-width:560px){.kpi-feat .metric-lg .metric-value{font-size:24px}.pa-it{flex-wrap:wrap}}
