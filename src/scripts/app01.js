@@ -771,8 +771,8 @@ export function buildParaAgir(c){
   const linha = (ic, titulo, sub, dir, cor) => `<div class="pa-it"><span class="pa-ic">${ic}</span><div class="pa-tx"><div class="pa-t">${titulo}</div>${sub?`<div class="pa-s">${sub}</div>`:''}</div>${dir?`<div class="pa-d" style="color:${cor||'var(--text)'}">${dir}</div>`:''}</div>`;
   const vazio = txt => `<div class="pa-vazio">${txt}</div>`;
   const paneParados = parados.lista.length
-    ? parados.lista.slice(0,8).map(a=>linha(a.icon, esc(a.nome), esc(a.etapa)+(a.vendedor?' · '+esc(a.vendedor):''), a.dias+' dias', a.dias>=a.limite*2?'#dc2626':'#ca8a04')).join('')
-      + (parados.lista.length>8 ? `<div class="pa-mais">+ ${parados.lista.length-8} outros acima do prazo</div>` : '')
+    ? parados.lista.slice(0,5).map(a=>linha(a.icon, esc(a.nome), esc(a.etapa)+(a.vendedor?' · '+esc(a.vendedor):''), a.dias+' dias', a.dias>=a.limite*2?'#dc2626':'#ca8a04')).join('')
+      + (parados.lista.length>5 ? `<div class="pa-mais">+ ${parados.lista.length-5} outros acima do prazo</div>` : '')
       + (parados.antigos.length ? `<div class="pa-mais">+ ${parados.antigos.length} aberto(s) há mais de 90 dias — vale revisar e encerrar</div>` : '')
       + `<div class="pa-mais" style="opacity:.8">Prazos: proposta 7d · vistoria 7d · contrato 5d · logística 15d · instalação 10d · homologação 20d</div>`
     : vazio('✅ Nenhum projeto acima do prazo.');
