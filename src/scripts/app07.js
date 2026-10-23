@@ -2,6 +2,7 @@ import Chart from 'chart.js/auto';
 import { $, $$, State, checkSession, esc, fmtBRL, fmtDate, getPeriodRange, isAdmin, isGestor, loadAll, loadTable, normName, renderDashboard, supa, toast, today } from './app01.js';
 import { closeModal, formField, openModal, openStageModal, readForm } from './app02.js';
 import { openClientModalByNome } from './app06.js';
+import { avisoPopupBloqueado, uiConfirm } from './app08.js';
 /* ============================================================
    CALENDÁRIO
    ============================================================ */
@@ -757,7 +758,7 @@ export async function renderGestaoCustos(){
   // Excluir
   $$('[data-gc-del]').forEach(b=>{
     b.addEventListener('click', async ()=>{
-      if(!confirm('Excluir este custo fixo?')) return;
+      if(!await uiConfirm('Excluir este custo fixo?')) return;
       await supa.from('custos_fixos').delete().eq('id', b.dataset.gcDel);
       await loadTable('custos_fixos');
       renderGestaoCustos();

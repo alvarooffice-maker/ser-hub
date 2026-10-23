@@ -2,6 +2,7 @@ import { $, $$, DL_BANCO, DL_MARCA_BATERIA, DL_MARCA_INVERSOR, DL_MARCA_MODULO, 
 import { attachCEP, attachCPF, attachLinkedDocListeners, buildTransitionPayload, carregarHistorico, closeModal, detectMudancas, enviarParaRemarketing, formField, getLinkedDocs, histSection, mergeChain, openModal, readForm, registrarHistorico, renderAppManKanban, renderHomologadorKanban, renderInstaladorKanban, renderLinkedDocBtns, renderReservicoKanban } from './app02.js';
 import { abrirContratoJanela, abrirPropostaJanela, abrirVistoriaJanela } from './app04.js';
 import { openProjetoFinanceiroModal } from './app06.js';
+import { avisoPopupBloqueado, uiConfirm } from './app08.js';
 /* ============================================================
    CONTACT LOG
    ============================================================ */
@@ -1352,7 +1353,7 @@ export function openTermoAditivoModal(contrato, termo=null){
 
   if(!isNew){
     $('#delTermoBtn')?.addEventListener('click', async ()=>{
-      if(!confirm('Excluir este termo aditivo?')) return;
+      if(!await uiConfirm('Excluir este termo aditivo?')) return;
       const { error:err } = await supa.from('contratos_termos_aditivos').delete().eq('id',termo.id);
       if(err) return toast(err.message,'error');
       toast('Termo excluído','success');
@@ -1366,7 +1367,7 @@ export function imprimirTermoAditivo(contrato, termo){
   const _e = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const tipoLabel = TIPO_TERMO_LABEL[termo.tipo] || termo.tipo;
   const w = window.open('','_blank');
-  if(!w){ alert('Popup bloqueado. Permita popups para este site.'); return; }
+  if(!w){ avisoPopupBloqueado(); return; }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Termo Aditivo — ${tipoLabel}</title>
   <style>
     body{font-family:Arial,sans-serif;max-width:720px;margin:40px auto;color:#222;font-size:14px;line-height:1.7}

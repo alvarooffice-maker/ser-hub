@@ -2,6 +2,7 @@ import { $, DL_DISTRIBUIDORA, DL_TECNICO, State, confirmDel, esc, fmtInputNum, i
 import { attachLinkedDocListeners, buildTransitionPayload, carregarHistorico, closeModal, detectMudancas, formField, getLinkedDocs, histSection, mergeChain, openModal, readForm, registrarHistorico, renderLinkedDocBtns } from './app02.js';
 import { attachFileUploads, fileUploadBlock, thumbHtml } from './app03.js';
 import { sincronizarReceitaRepasse } from './app05.js';
+import { avisoPopupBloqueado } from './app08.js';
 /* ============================================================
    LAUDO DE VISTORIA TÉCNICA HTML/PDF
    ============================================================ */
@@ -16,7 +17,7 @@ export function abrirVistoriaJanela(v, imprimir=false){
   const di  = v.dados_inversor||{};
   const de  = v.dados_estrutura||{};
   const win = window.open('','_blank');
-  if(!win){ alert('Popup bloqueado. Permita popups para este site.'); return; }
+  if(!win){ avisoPopupBloqueado(); return; }
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
@@ -234,7 +235,7 @@ export function abrirPropostaJanela(p, imprimir=false){
   const inicial = (p.vendedor||'S').trim().charAt(0).toUpperCase();
 
   const win = window.open('','_blank');
-  if(!win){ alert('Popup bloqueado. Permita popups para este site.'); return; }
+  if(!win){ avisoPopupBloqueado(); return; }
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
@@ -980,7 +981,7 @@ async function gerarPDF(){
     const filename = nomeCliente ? \`Proposta SER — \${nomeCliente}.pdf\` : 'Proposta_SER.pdf';
     pdf.save(filename);
   } catch(e) {
-    alert('Erro ao gerar PDF: ' + e.message);
+    toast('Erro ao gerar PDF: ' + e.message,'error');
   } finally {
     document.getElementById('__pdfcap')?.remove();
     btn.disabled = false; btn.textContent = '🖨️ Baixar PDF';
@@ -1027,7 +1028,7 @@ export function abrirContratoJanela(c, imprimir=false, winName='_blank'){
     return r+(n===1?' real':' reais');
   }
   const win = window.open('',winName);
-  if(!win){ alert('Popup bloqueado. Permita popups para este site.'); return; }
+  if(!win){ avisoPopupBloqueado(); return; }
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
@@ -2077,7 +2078,7 @@ export function abrirInstalacaoLaudo(item, ld, fs){
   };
 
   const win = window.open('','_blank');
-  if(!win){ alert('Popup bloqueado. Permita popups para este site.'); return; }
+  if(!win){ avisoPopupBloqueado(); return; }
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8">
 <title>Laudo de Instalação — ${esc(item.nome||'')}</title>

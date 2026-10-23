@@ -4,6 +4,7 @@ import { attachLinkedDocListeners, carregarHistorico, closeModal, detectMudancas
 import { attachContactLog, attachFileUploads, fileUploadBlock, openContratoModal, openPropostaModal, openVistoriaModal, renderContactLog } from './app03.js';
 import { openInstalacaoModal, openLogisticaModal } from './app04.js';
 import { openAuditoriaReceitasModal, openDespesasPadraoModal, openProjetoFinanceiroModal } from './app06.js';
+import { avisoPopupBloqueado, uiConfirm, alterarMargemMinima } from './app08.js';
 /* ============================================================
    HOMOLOGACAO MODAL
    ============================================================ */
@@ -910,7 +911,7 @@ export function renderBaterias(){
 export function abrirBateriaPDF(calc, cliente, cidade, imprimir=false){
   const hoje = new Date().toLocaleDateString('pt-BR');
   const win = window.open('','_blank');
-  if(!win){ alert('Popup bloqueado. Permita popups para este site.'); return; }
+  if(!win){ avisoPopupBloqueado(); return; }
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
@@ -1087,6 +1088,20 @@ export async function openComissoesPagarModal(mesSel, pagina){
   const pessoas = Object.values(porPessoa).sort((a,b)=>b.pendente-a.pendente || b.pago-a.pago);
   const totPend = pessoas.reduce((s,p)=>s+p.pendente,0), totPago = pessoas.reduce((s,p)=>s+p.pago,0);
 
+  const doMes = todas.filter(l=>mes==='todos'||l.mes===mes);
+  const fechPago = doMes.filter(l=>l.status==='paga').reduce((a,l)=>a+l.val,0);
+  const fechPend = doMes.filter(l=>l.status!=='paga').reduce((a,l)=>a+l.val,0);
+  const fechPct = (fechPago+fechPend)>0 ? Math.round(fechPago/(fechPago+fechPend)*100) : 0;
+  const nPend = new Set(doMes.filter(l=>l.status!=='paga').map(l=>l.comId)).size;
+  const passoLanc = semMes.length===0, passoPag = nPend===0 && (fechPago+fechPend)>0;
+  const painelFechamento = `<div class="fechamento">
+      <div class="fech-topo"><b>${mes==='todos'?'Fechamento — todos os meses':'Fechamento de '+nomeMes(mes)}</b><span class="fech-pct">${fechPct}% pago</span></div>
+      <div class="fech-barra"><i style="width:${fechPct}%"></i></div>
+      <div class="fech-passos">
+        <div class="fech-passo ${passoLanc?'ok':'pend'}"><span>${passoLanc?'✓':'1'}</span><div><b>Lançar comissões</b><small>${passoLanc?'todas as vendas têm comissão':semMes.length+' venda(s) assinada(s) sem comissão'}</small></div></div>
+        <div class="fech-passo ${passoPag?'ok':(fechPago+fechPend>0?'pend':'espera')}"><span>${passoPag?'✓':'2'}</span><div><b>Pagar</b><small>${passoPag?'tudo pago':nPend+' venda(s) com pagamento pendente · '+fR(fechPend)}</small></div></div>
+        <div class="fech-passo ${passoLanc&&passoPag?'ok':'espera'}"><span>${passoLanc&&passoPag?'✓':'3'}</span><div><b>Mês fechado</b><small>${passoLanc&&passoPag?'pronto para arquivar':'faltam as etapas acima'}</small></div></div>
+      </div></div>`;
   const corpoHtml = `
     <div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px">
@@ -1098,6 +1113,7 @@ export async function openComissoesPagarModal(mesSel, pagina){
         <label style="font-size:13px;display:flex;gap:6px;align-items:center;margin-bottom:8px"><input type="checkbox" id="cpPagas" ${mostrarPagas?'checked':''}> mostrar já pagas</label>
         <button class="btn btn-secondary btn-sm" id="cpImprimir" style="margin-left:auto">🖨️ Imprimir / PDF</button>
       </div>
+      ${painelFechamento}
       <div class="metrics" style="margin-bottom:12px">
         <div class="metric" style="border-color:var(--warning)"><div class="metric-label">A pagar</div><div class="metric-value">${fR(totPend)}</div></div>
         <div class="metric" style="border-color:#16a34a"><div class="metric-label">Já pago</div><div class="metric-value">${fR(totPago)}</div></div>
@@ -1153,7 +1169,7 @@ export async function openComissoesPagarModal(mesSel, pagina){
     const st = tr.querySelector('strong'); if(st) st.textContent = st.textContent.replace(/^[▾▸]/, aberto?'▾':'▸');
   }));
   $$('[data-cp-pagar]').forEach(b=> b.addEventListener('click', async ()=>{
-    if(!confirm('Marcar esta comissão como PAGA? (vale para todos os envolvidos nesta venda)')) return;
+    if(!await uiConfirm('Marcar esta comissão como PAGA? (vale para todos os envolvidos nesta venda)')) return;
     const { error } = await supa.from('comissoes').update({status:'paga'}).eq('id', b.dataset.cpPagar);
     if(error) return toast(error.message,'error');
     toast('Marcado como paga','success');
@@ -1353,7 +1369,7 @@ export function gerarRelatorioComissoesPDF(opts={}){
     </section>`).join('');
 
   const w = window.open('','_blank');
-  if(!w){ alert('Popup bloqueado. Permita popups para este site.'); return; }
+  if(!w){ avisoPopupBloqueado(); return; }
   w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
   <title>Comissões a Pagar — ${periodoTxt}</title>
   <style>
@@ -1699,7 +1715,7 @@ export function buildMargemProjetoSection(despesas){
   const abaixo = rows.filter(r=>r.margemPct!=null && r.margemPct<margemMin);
   const alertaMargem = abaixo.length ? `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#991b1b">
       ⚠️ <b>${abaixo.length} projeto(s) abaixo da margem mínima de ${margemMin}%:</b> ${abaixo.slice(0,8).map(r=>esc(r.c.nome||'')+' ('+r.margemPct.toFixed(1)+'%)').join(', ')}${abaixo.length>8?'…':''}
-      <button type="button" class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="(function(){const v=prompt('Margem mínima (%)',${margemMin});if(v&&!isNaN(+v)){localStorage.setItem('ser_margem_min',+v);if(window.renderFinanceiro)renderFinanceiro();else location.reload();}})()">Alterar mínimo</button>
+      <button type="button" class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="alterarMargemMinima(${margemMin})">Alterar mínimo</button>
     </div>` : '';
 
   return alertaMargem + `
