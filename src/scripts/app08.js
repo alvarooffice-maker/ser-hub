@@ -115,12 +115,47 @@ function iniciarIndicadorSalvando() {
   window.addEventListener('offline', rede); window.addEventListener('online', rede);
 }
 
+
+/* ---------- 6b. Modo escuro: remapeia cores claras escritas direto nos elementos ---------- */
+const rgbDe = v => { const m = String(v || '').match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/); return m ? { r: +m[1] / 255, g: +m[2] / 255, b: +m[3] / 255, a: m[4] === undefined ? 1 : +m[4] } : null; };
+const luzDe = c => 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+function hsl2css(h, s, l) { return `hsl(${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%)`; }
+function toHsl({ r, g, b }) {
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; let h = 0, s = 0;
+  if (mx !== mn) { const d = mx - mn; s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6; }
+  return [h, s, l];
+}
+function escurecerInline(raiz = document) {
+  if (document.documentElement.dataset.theme !== 'dark') return;
+  raiz.querySelectorAll('[style*="background"],[style*="color"]').forEach(el => {
+    if (el.dataset.ob === undefined) {
+      const bg = rgbDe(el.style.backgroundColor);
+      if (bg && bg.a > 0.5 && luzDe(bg) > 0.78) {
+        el.dataset.ob = el.style.backgroundColor;
+        const [h, s, l] = toHsl(bg);
+        el.style.backgroundColor = s < 0.15 ? (l > 0.97 ? 'var(--card)' : 'var(--hover)') : hsl2css(h, Math.min(s, 0.5), Math.max(0.17, 0.30 - (l - 0.78) * 0.55));
+      }
+    }
+    if (el.dataset.oc === undefined) {
+      const tx = rgbDe(el.style.color);
+      if (tx && luzDe(tx) < 0.55) { el.dataset.oc = el.style.color; const [h, s] = toHsl(tx); el.style.color = hsl2css(h, Math.min(s, 0.75), 0.84); }
+    }
+  });
+}
+function restaurarInline() {
+  document.querySelectorAll('[data-ob],[data-oc]').forEach(el => {
+    if (el.dataset.ob !== undefined) { el.style.backgroundColor = el.dataset.ob; delete el.dataset.ob; }
+    if (el.dataset.oc !== undefined) { el.style.color = el.dataset.oc; delete el.dataset.oc; }
+  });
+}
+
 /* ---------- 6. Tema claro/escuro ---------- */
 function temaSalvo() { try { return localStorage.getItem('ser_tema') || 'auto'; } catch (e) { return 'auto'; } }
 export function aplicarTema(modo = temaSalvo()) {
   const escuro = modo === 'dark' || (modo === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = escuro ? 'dark' : 'light';
   const b = $('#themeBtn'); if (b) b.textContent = escuro ? '☀️' : '🌙';
+  if (escuro) escurecerInline(); else restaurarInline();
 }
 function alternarTema() {
   const novo = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -214,4 +249,7 @@ export function initApp08() {
   // formulários em passos: observa quando um modal abre
   const mr = $('#modalRoot');
   if (mr) new MutationObserver(() => { if (mr.classList.contains('active')) transformarEmPassos(mr); }).observe(mr, { childList: true });
+  let pendente = false;
+  const reaplicar = () => { if (pendente) return; pendente = true; requestAnimationFrame(() => { pendente = false; escurecerInline(); }); };
+  [$('#content'), mr, $('#bellPanel')?.parentElement].filter(Boolean).forEach(n => new MutationObserver(reaplicar).observe(n, { childList: true, subtree: true }));
 }

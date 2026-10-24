@@ -562,6 +562,112 @@ details.analises[open]>summary{margin-bottom:14px}
 th{position:sticky;top:0;z-index:1}
 .row-actions .btn{min-height:30px}
 
+/* modo escuro: derivado automaticamente das cores claras do tema */
+[data-theme="dark"] .auth-box{background:var(--card)}
+[data-theme="dark"] .auth-msg.error{background:#501f1b}
+[data-theme="dark"] .auth-msg.success{background:#1b5232}
+[data-theme="dark"] .topbar{background:var(--card)}
+[data-theme="dark"] .btn-secondary{background:var(--card)}
+[data-theme="dark"] .btn-secondary:hover{background:#3f3b2a}
+[data-theme="dark"] .table-wrap{background:var(--card)}
+[data-theme="dark"] th{background:#404023}
+[data-theme="dark"] tbody tr:hover{background:#404023}
+[data-theme="dark"] .badge{background:var(--hover);color:#d6d6d6}
+[data-theme="dark"] .badge-em_contato,[data-theme="dark"] .badge-pendente,[data-theme="dark"] .badge-aguardando,[data-theme="dark"] .badge-em_aberto,[data-theme="dark"] .badge-aguardando_docs{background:#1e5b4e;color:#bdefec}
+[data-theme="dark"] .badge-proposta,[data-theme="dark"] .badge-enviada,[data-theme="dark"] .badge-projeto,[data-theme="dark"] .badge-comprado,[data-theme="dark"] .badge-em_andamento{background:#203c5f;color:#bccaf0}
+[data-theme="dark"] .badge-aceita,[data-theme="dark"] .badge-assinado,[data-theme="dark"] .badge-aprovada,[data-theme="dark"] .badge-aprovado,[data-theme="dark"] .badge-concluida,[data-theme="dark"] .badge-concluido,[data-theme="dark"] .badge-pago,[data-theme="dark"] .badge-ativo,[data-theme="dark"] .badge-recebido,[data-theme="dark"] .badge-paga,[data-theme="dark"] .badge-reativado,[data-theme="dark"] .badge-entregue,[data-theme="dark"] .badge-realizado{background:#216439;color:#b8f5e5}
+[data-theme="dark"] .badge-perdido,[data-theme="dark"] .badge-recusada,[data-theme="dark"] .badge-reprovada,[data-theme="dark"] .badge-reprovado,[data-theme="dark"] .badge-cancelado,[data-theme="dark"] .badge-cancelada,[data-theme="dark"] .badge-descartado,[data-theme="dark"] .badge-inativo{background:#5b1e1e;color:#f0bdbd}
+[data-theme="dark"] .badge-agendada,[data-theme="dark"] .badge-enviado,[data-theme="dark"] .badge-realizada,[data-theme="dark"] .badge-trt_art_pg,[data-theme="dark"] .badge-parecer_acesso,[data-theme="dark"] .badge-vistoria_final,[data-theme="dark"] .badge-estudo_obra,[data-theme="dark"] .badge-manutencao,[data-theme="dark"] .badge-aguardando_agendamento{background:#381d56;color:#d0bbf2}
+[data-theme="dark"] .badge-aprovada_com_obra,[data-theme="dark"] .badge-aprovada_com_sombreamento,[data-theme="dark"] .badge-aprovada_com_obra_e_sombreamento,[data-theme="dark"] .badge-aprovado_com_obra,[data-theme="dark"] .badge-aprovado_com_sombreamento,[data-theme="dark"] .badge-aprovado_com_obra_e_sombreamento{background:#684823;color:#f5c7b8}
+[data-theme="dark"] .kanban-col[data-stage="atendimentos"] .badge-aberto,[data-theme="dark"] .kanban-col[data-stage="appman"] .badge-aberto{background:#594b1e;color:#f5e5b8}
+[data-theme="dark"] .kanban-col[data-stage="atendimentos"] .badge-em_andamento,[data-theme="dark"] .kanban-col[data-stage="appman"] .badge-em_andamento{background:var(--hover);color:#d3d6d9}
+[data-theme="dark"] .kanban-col[data-stage="atendimentos"] .badge-concluido,[data-theme="dark"] .kanban-col[data-stage="appman"] .badge-concluido{background:#2c5543;color:#baf2d8}
+[data-theme="dark"] .kanban-col[data-stage="atendimentos"] .badge-cancelado,[data-theme="dark"] .kanban-col[data-stage="appman"] .badge-cancelado{background:#581d23;color:#efbdc2}
+[data-theme="dark"] .kanban-col[data-stage="atendimentos"] .badge-retorno_tecnico{background:#1d3558;color:#b8d0f5}
+[data-theme="dark"] .kanban-col[data-stage="atendimentos"] .badge-sombreamento{background:#371e5a;color:#cfc0ec}
+[data-theme="dark"] .kanban-col[data-stage="atendimentos"] .badge-goteira{background:#5e4f1f;color:#f5e2b8}
+[data-theme="dark"] .kanban-col[data-stage="atendimentos"] .badge-falta_de_energia{background:#581d23;color:#efbdc2}
+[data-theme="dark"] .kanban-col[data-stage="atendimentos"] .badge-outros{background:var(--hover);color:#d3d6d9}
+[data-theme="dark"] .form-group input,[data-theme="dark"] .form-group select,[data-theme="dark"] .form-group textarea{background:var(--card)}
+[data-theme="dark"] .form-group input[readonly]{background:#3f3b2a}
+[data-theme="dark"] .toggle input{background:var(--hover)}
+[data-theme="dark"] .toggle input::before{background:var(--card)}
+[data-theme="dark"] .multicheck-pill{background:#293139}
+[data-theme="dark"] .multicheck-pill:hover{background:#291a4e}
+[data-theme="dark"] .bat-autonomia-card{background:#404023}
+[data-theme="dark"] .bat-autonomia-card.selected{background:#2e194c}
+[data-theme="dark"] .bat-row:hover{background:#404023}
+[data-theme="dark"] .bat-qty-btn{background:var(--card)}
+[data-theme="dark"] .bat-input-small{background:var(--card)}
+[data-theme="dark"] .bat-custom-row{background:#404023}
+[data-theme="dark"] .bat-custom-row input{background:var(--card)}
+[data-theme="dark"] .bat-res-card{background:#404023}
+[data-theme="dark"] .bat-res-card.destaque{background:#2e194c}
+[data-theme="dark"] .bat-nota{background:#4d421a;color:#f5e0b8}
+[data-theme="dark"] .modal{background:var(--card)}
+[data-theme="dark"] .modal-close:hover{background:#3f3b2a}
+[data-theme="dark"] .modal-footer{background:#404023}
+[data-theme="dark"] .section-header{background:#404023}
+[data-theme="dark"] .kanban-col{background:#524d29}
+[data-theme="dark"] .kanban-col-header{background:#5a5835}
+[data-theme="dark"] .kanban-col-body.drag-over{background:#54451c}
+[data-theme="dark"] .kanban-card{background:var(--card)}
+[data-theme="dark"] .kanban-card .footer{background:var(--card)}
+[data-theme="dark"] .col-search-bar{background:#5b593c}
+[data-theme="dark"] .col-search-input{background:var(--card)}
+[data-theme="dark"] .period-filter{background:#3f3b2a}
+[data-theme="dark"] .period-btn.active{background:var(--card)}
+[data-theme="dark"] .linked-docs-bar{background:#2e194c}
+[data-theme="dark"] .modal-footer{background:#404023}
+[data-theme="dark"] .flag.ok{background:#216439;color:#b8f5e5}
+[data-theme="dark"] .flag.teal,[data-theme="dark"] .flag.warn{background:#203c5f;color:#bccaf0}
+[data-theme="dark"] .flag.purple{background:#381d56;color:#d0bbf2}
+[data-theme="dark"] .flag.amber{background:#684823;color:#f5c7b8}
+[data-theme="dark"] .flag.danger{background:#5b1e1e;color:#f0bdbd}
+[data-theme="dark"] .flag.countdown{background:#371e5a;color:#cfc0ec}
+[data-theme="dark"] .flag.countdown.urgent{background:#581d23;color:#efbdc2}
+[data-theme="dark"] .flag.countdown.done{background:#2c5543;color:#baf2d8}
+[data-theme="dark"] .log-list{background:#404023}
+[data-theme="dark"] .log-tools button{background:var(--card)}
+[data-theme="dark"] .toast{background:var(--card)}
+[data-theme="dark"] .file-upload{background:#404023}
+[data-theme="dark"] .btn-add-file:hover{background:#2e194c}
+[data-theme="dark"] .file-thumb{background:var(--card)}
+[data-theme="dark"] .file-thumb.contain img{background:var(--card)}
+[data-theme="dark"] .funnel-bar{background:#524d29}
+[data-theme="dark"] .preview-box{background:#404023}
+[data-theme="dark"] .cal-filter-chip.fc-aniversario{background:#511b2d;color:#f5b8d0}
+[data-theme="dark"] .cal-filter-chip.fc-instalacao{background:#1b3a51;color:#b8d4f5}
+[data-theme="dark"] .cal-filter-chip.fc-entrega{background:#513c1b;color:#f5cdb8}
+[data-theme="dark"] .cal-filter-chip.fc-vistoria{background:#4a1f50;color:#ddbaf3}
+[data-theme="dark"] .cal-filter-chip.fc-homologacao{background:#511b2d;color:#f4b8b8}
+[data-theme="dark"] .cal-filter-chip.fc-manutencao{background:#22514f;color:#b8f5ed}
+[data-theme="dark"] .cal-filter-chip.fc-acolhimento{background:#214c24;color:#c3e9c5}
+[data-theme="dark"] .cal-filter-chip.fc-gratidao{background:#4e4a1a}
+[data-theme="dark"] .cal-filter-chip.fc-embaixador{background:#51441b}
+[data-theme="dark"] .cal-filter-chip.fc-renovacao{background:#1c4d53;color:#b8f0f5}
+[data-theme="dark"] .cal-filter-chip.fc-reservico{background:#1f254e;color:#bfc5ee}
+[data-theme="dark"] .cal-event.ce-aniversario{background:#511b2d;color:#f5b8d0}
+[data-theme="dark"] .cal-event.ce-instalacao{background:#1b3a51;color:#b8d4f5}
+[data-theme="dark"] .cal-event.ce-entrega{background:#513c1b;color:#f5cdb8}
+[data-theme="dark"] .cal-event.ce-vistoria{background:#4a1f50;color:#ddbaf3}
+[data-theme="dark"] .cal-event.ce-homologacao{background:#511b2d;color:#f4b8b8}
+[data-theme="dark"] .cal-event.ce-manutencao{background:#22514f;color:#b8f5ed}
+[data-theme="dark"] .cal-event.ce-acolhimento{background:#214c24;color:#c3e9c5}
+[data-theme="dark"] .cal-event.ce-gratidao{background:#4e4a1a}
+[data-theme="dark"] .cal-event.ce-embaixador{background:#51441b}
+[data-theme="dark"] .cal-event.ce-renovacao{background:#1c4d53;color:#b8f0f5}
+[data-theme="dark"] .cal-event.ce-reservico{background:#1f254e;color:#bfc5ee}
+[data-theme="dark"] .kanban-card.sla-warn  .kanban-card-inner{background:#4e4a1a}
+[data-theme="dark"] .kanban-card.sla-alert .kanban-card-inner{background:#4c3519}
+[data-theme="dark"] .kanban-card.sla-danger .kanban-card-inner{background:#4a191c}
+[data-theme="dark"] .pa-tabs button.on{background:#241a4e;color:#d0baf3}
+[data-theme="dark"] .pa-ic{background:#241a4e}
+[data-theme="dark"] .pa-b2{background:var(--hover);color:#ced4de}
+[data-theme="dark"] .kpi-var.up{background:#1c542f;color:#b9f3cf}
+[data-theme="dark"] .kpi-var.down{background:#511b1b;color:#f4b8b8}
+[data-theme="dark"] .kpi-var.neu{background:#241a4e;color:#d0baf3}
+
 /* 6. modo escuro */
 :root{--hover:#f5f4f0;--soft:#fafaf6}
 :root[data-theme="dark"]{
@@ -669,3 +775,21 @@ th{position:sticky;top:0;z-index:1}
 .cli-badges{display:flex;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600}.cli-badges span{background:var(--hover);border-radius:10px;padding:1px 8px}
 .cal-filter-chip.fc-tarefa{background:#fce7f3;color:#9d174d}.cal-event.ce-tarefa{background:#fce7f3;color:#9d174d;font-weight:600}
 [data-theme="dark"] .cal-filter-chip.fc-tarefa,[data-theme="dark"] .cal-event.ce-tarefa{background:#831843;color:#fbcfe8}
+
+[data-theme="dark"] .kanban-card-inner{background:var(--card);border-radius:0 8px 8px 0}
+[data-theme="dark"] .kanban-card .footer{background:inherit;border-top-color:var(--border)}
+[data-theme="dark"] .kanban-card.sla-warn .kanban-card-inner{border-left-color:#eab308}
+[data-theme="dark"] .kanban-card.sla-alert .kanban-card-inner{border-left-color:#f97316}
+[data-theme="dark"] .kanban-card.sla-danger .kanban-card-inner{border-left-color:#ef4444}
+[data-theme="dark"] .kanban-card .name,[data-theme="dark"] .kanban-card .name *{color:var(--text)}
+[data-theme="dark"] .kanban-card .meta{color:var(--text-light)}
+[data-theme="dark"] .sla-days{color:var(--text);opacity:.8}
+[data-theme="dark"] .section-header{background:var(--soft);color:var(--text)}
+[data-theme="dark"] .badge{filter:none}
+[data-theme="dark"] .modal-body,[data-theme="dark"] .modal-header{background:var(--card);color:var(--text)}
+[data-theme="dark"] a{color:inherit}
+/* modo escuro: roxo da marca como TEXTO fica claro; chips coloridos com texto escuro */
+[data-theme="dark"] .cal-day-num,[data-theme="dark"] .rank-tab.active,[data-theme="dark"] .tab.active,[data-theme="dark"] .period-btn.active,
+[data-theme="dark"] .metric-label a,[data-theme="dark"] select,[data-theme="dark"] option,[data-theme="dark"] .meta-clock-val,[data-theme="dark"] .pa-tabs button.on{color:#d2b8fb}
+[data-theme="dark"] .cli-stage,[data-theme="dark"] .mv-av,[data-theme="dark"] .cs-contrato,[data-theme="dark"] .cs-posvenda,[data-theme="dark"] .pa-tabs b{color:#1a0a2e}
+[data-theme="dark"] .tab.active{border-bottom-color:#a78bfa}[data-theme="dark"] .rank-tab.active{border-bottom-color:#a78bfa}
