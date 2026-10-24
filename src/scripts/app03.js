@@ -3,6 +3,7 @@ import { attachCEP, attachCPF, attachLinkedDocListeners, buildTransitionPayload,
 import { abrirContratoJanela, abrirPropostaJanela, abrirVistoriaJanela } from './app04.js';
 import { openProjetoFinanceiroModal } from './app06.js';
 import { avisoPopupBloqueado, uiConfirm } from './app08.js';
+import { setCardAtual } from './app09.js';
 /* ============================================================
    CONTACT LOG
    ============================================================ */
@@ -72,6 +73,7 @@ export async function attachContactLog(parentId, kind){
    PROPOSTA MODAL
    ============================================================ */
 export function openPropostaModal(item=null){
+  setCardAtual('proposta', item);
   const isNew = !item;
   item = mergeChain(item || {});
   const statusOpts = [['em_aberto','Em aberto'],['enviada','Enviada'],['aceita','Aceita'],['recusada','Recusada']];
@@ -505,6 +507,7 @@ export function attachFileUploads(rootEl, fileStore, opts={}){
    VISTORIA MODAL
    ============================================================ */
 export function openVistoriaModal(item=null){
+  setCardAtual('vistoria', item);
   const isNew = !item;
   item = mergeChain(item || {});
   const linked = getLinkedDocs(item);
@@ -1422,6 +1425,7 @@ export function imprimirTermoAditivo(contrato, termo){
 }
 
 export function openContratoModal(item=null){
+  setCardAtual('contrato', item);
   const isNew = !item;
   item = mergeChain(item || {});
   const linked = getLinkedDocs(item);

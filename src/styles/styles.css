@@ -642,3 +642,30 @@ th{position:sticky;top:0;z-index:1}
 .mv-base{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--text-light);margin-top:4px}
 [data-theme="dark"] .chip-batida{background:#14532d;color:#bbf7d0}[data-theme="dark"] .chip-ritmo{background:#365314;color:#d9f99d}[data-theme="dark"] .chip-atento{background:#713f12;color:#fef08a}[data-theme="dark"] .chip-atras{background:#7c2d12;color:#fed7aa}
 @media(max-width:560px){.mv-pos{width:22px;font-size:15px}.mv-base{font-size:11px}}
+
+/* anotações do cliente + tarefas */
+.cli-panel{margin-top:18px;border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden}
+.cli-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--soft)}
+.cli-tabs button{flex:1;padding:11px 12px;font-size:13px;font-weight:600;color:var(--text-light);border-bottom:2px solid transparent}
+.cli-tabs button.on{color:var(--primary);border-bottom-color:var(--primary);background:var(--card)}
+.cli-tabs b{background:var(--primary);color:#fff;border-radius:10px;font-size:11px;padding:1px 7px;margin-left:4px}
+.cli-pane{padding:12px 14px}
+.cli-pane textarea,.tar-form textarea,.tar-form input,.tar-form select{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);resize:vertical}
+.cli-linha{display:flex;justify-content:space-between;align-items:center;margin:6px 0 10px;gap:8px}.cli-linha small{color:var(--text-light)}
+.cli-feed{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow:auto}
+.cli-vazio{color:var(--text-light);font-size:13px;padding:8px 2px}
+.cli-nota{border:1px solid var(--border);border-radius:10px;padding:9px 11px;background:var(--soft)}
+.cli-nota.fixa{border-color:#eab308;background:rgba(234,179,8,.1)}
+.cli-nota-top{display:flex;gap:8px;align-items:center;font-size:12px;flex-wrap:wrap}.cli-nota-top span{color:var(--text-light)}
+.cli-nota-acoes{margin-left:auto;display:flex;gap:2px}.cli-nota-acoes button{padding:2px 6px;border-radius:6px}.cli-nota-acoes button:hover{background:var(--hover)}
+.cli-nota-tx{margin-top:5px;font-size:13.5px;line-height:1.45;word-break:break-word}
+.cli-tar{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:10px;padding:10px;flex-wrap:wrap}
+.cli-tar.atrasada{border-color:#dc2626;background:rgba(220,38,38,.07)}.cli-tar.feita{opacity:.7}
+.cli-tar-ic{font-size:20px}.cli-tar-corpo{flex:1;min-width:180px;font-size:13px}.cli-tar-corpo span{color:var(--text-light)}.cli-tar-corpo em{color:#dc2626;font-style:normal;font-weight:700}
+.cli-tar-obs{margin-top:3px}.cli-tar-corpo small{display:block;color:var(--text-light);margin-top:2px}
+.cli-tar-acoes{display:flex;gap:6px;flex-wrap:wrap}.cli-sub{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-light);margin-top:6px}
+.tar-form{max-width:440px}.tar-form label{display:block;font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:10px}.tar-form label>*{margin-top:4px;font-weight:400;color:var(--text)}
+.tar-dh{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tar-av{font-size:12.5px;color:var(--text-light);margin:2px 0 14px;background:var(--soft);padding:8px 10px;border-radius:8px}
+.cli-badges{display:flex;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600}.cli-badges span{background:var(--hover);border-radius:10px;padding:1px 8px}
+.cal-filter-chip.fc-tarefa{background:#fce7f3;color:#9d174d}.cal-event.ce-tarefa{background:#fce7f3;color:#9d174d;font-weight:600}
+[data-theme="dark"] .cal-filter-chip.fc-tarefa,[data-theme="dark"] .cal-event.ce-tarefa{background:#831843;color:#fbcfe8}

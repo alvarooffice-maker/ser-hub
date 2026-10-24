@@ -3,6 +3,7 @@ import { $, $$, State, checkSession, esc, fmtBRL, fmtDate, getPeriodRange, isAdm
 import { closeModal, formField, openModal, openStageModal, readForm } from './app02.js';
 import { openClientModalByNome } from './app06.js';
 import { avisoPopupBloqueado, uiConfirm } from './app08.js';
+import { tarefaTipoRotulo, carregarTarefas } from './app09.js';
 /* ============================================================
    CALENDÁRIO
    ============================================================ */
@@ -18,6 +19,7 @@ export const CAL_FILTERS = [
   { key:'embaixador',   label:'🌟 Embaixador',           cls:'fc-embaixador'   },
   { key:'renovacao',    label:'🔄 Renovação App',        cls:'fc-renovacao'    },
   { key:'reservico',    label:'🛠️ Re-Serviço',           cls:'fc-reservico'    },
+  { key:'tarefa',       label:'📅 Minhas tarefas',      cls:'fc-tarefa'       },
 ];
 
 export let _calState = {
@@ -146,7 +148,17 @@ export function collectCalEvents(from, to){
     });
   }
 
-  events.sort((a,b)=>a.date.localeCompare(b.date));
+  // 12. TAREFAS AGENDADAS (follow-up, retorno na casa do cliente…)
+  if(s.tarefa){
+    (State.tarefas||[]).filter(t=>t.status==='pendente').forEach(t=>{
+      const d = new Date(t.data_hora); const iso = calIsoDate(new Date(d.getTime()-d.getTimezoneOffset()*60000));
+      if(!inRange(iso)) return;
+      const hh = d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      events.push({date:iso, label:`⏰ ${hh} ${tarefaTipoRotulo(t.tipo).replace(/^\S+\s/,'')} — ${t.cliente_nome||''}`, type:'tarefa', item:t, nome:t.cliente_nome, hora:hh});
+    });
+  }
+
+  events.sort((a,b)=>a.date.localeCompare(b.date) || String(a.hora||'').localeCompare(String(b.hora||'')));
   return events;
 }
 
@@ -166,7 +178,7 @@ export function renderCalendario(){
     _calState.anchor = new Date(now.getFullYear(), now.getMonth(), 1);
   }
   content.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  loadAll().then(()=>{
+  Promise.all([loadAll(), carregarTarefas()]).then(()=>{
     content.innerHTML = buildCalHTML();
     attachCalEvents();
   });
