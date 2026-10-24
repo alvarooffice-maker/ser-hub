@@ -158,7 +158,7 @@ export function collectCalEvents(from, to){
     });
   }
 
-  events.sort((a,b)=>a.date.localeCompare(b.date) || String(a.hora||'').localeCompare(String(b.hora||'')));
+  events.sort((a,b)=>a.date.localeCompare(b.date) || (b.type==='tarefa')-(a.type==='tarefa') || String(a.hora||'').localeCompare(String(b.hora||'')));
   return events;
 }
 

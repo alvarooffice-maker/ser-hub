@@ -6,7 +6,7 @@
      aparece no calendário, no "Para agir hoje" e avisa no horário.
    ============================================================ */
 import { $, $$, State, STAGES, esc, normName, supa, toast, userRole, loadTable } from './app01.js';
-import { uiConfirm, uiPrompt, registrarAviso } from './app08.js';
+import { uiConfirm, uiPrompt } from './app08.js';
 
 const TIPOS = {
   followup: { ic: '📞', rot: 'Follow-up' },
@@ -18,7 +18,7 @@ const TIPOS = {
 export const tarefaTipoRotulo = t => (TIPOS[t] || TIPOS.outro).ic + ' ' + (TIPOS[t] || TIPOS.outro).rot;
 const PODE_ESCREVER = ['admin', 'supervisor', 'vendedor'];
 const podeEscrever = () => PODE_ESCREVER.includes(userRole());
-const ETAPA_ROT = Object.fromEntries((STAGES || []).map(s => [s.id, s.label]));
+const etapaRot = id => (STAGES || []).find(s => s.id === id)?.label || id;
 
 /* ---------- identifica o cliente do card aberto ---------- */
 let cardAtual = null; // { stage, item, consumido }
@@ -104,7 +104,7 @@ async function desenharNotas(painel, ctx) {
   $('#cliNN', painel).textContent = (data || []).length;
   const eu = State.user?.id, admin = userRole() === 'admin';
   box.innerHTML = (data || []).length ? data.map(n => `<div class="cli-nota ${n.fixada ? 'fixa' : ''}">
-      <div class="cli-nota-top"><b>${esc(n.autor_nome || 'Alguém')}</b><span>${new Date(n.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${n.etapa ? ` · ${esc(ETAPA_ROT[n.etapa] || n.etapa)}` : ''}</span>
+      <div class="cli-nota-top"><b>${esc(n.autor_nome || 'Alguém')}</b><span>${new Date(n.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${n.etapa ? ` · ${esc(etapaRot(n.etapa))}` : ''}</span>
         ${(n.autor_id === eu || admin) ? `<span class="cli-nota-acoes"><button type="button" data-acao="n-pin" data-id="${n.id}" data-fix="${n.fixada ? 1 : 0}" title="${n.fixada ? 'Desafixar' : 'Fixar no topo'}">${n.fixada ? '📌' : '📍'}</button><button type="button" data-acao="n-del" data-id="${n.id}" title="Apagar">🗑️</button></span>` : ''}</div>
       <div class="cli-nota-tx">${esc(n.texto).replace(/\n/g, '<br>')}</div></div>`).join('')
     : `<div class="cli-vazio">Nenhuma anotação ainda.</div>`;
@@ -187,7 +187,7 @@ const JA_AVISOU = 'ser_tarefas_avisadas';
 const lerAvisadas = () => { try { return new Set(JSON.parse(sessionStorage.getItem(JA_AVISOU) || '[]')); } catch (e) { return new Set(); } };
 const gravarAvisadas = s => { try { sessionStorage.setItem(JA_AVISOU, JSON.stringify([...s])); } catch (e) {} };
 function avisar(titulo, corpo) {
-  toast(`${titulo} — ${corpo}`, 'info', 15000); registrarAviso(`${titulo} — ${corpo}`, 'info');
+  toast(`${titulo} — ${corpo}`, 'info', 15000);
   try { if ('Notification' in window && Notification.permission === 'granted') new Notification(titulo, { body: corpo, icon: 'logo.png' }); } catch (e) {}
 }
 function checarLembretes() {
