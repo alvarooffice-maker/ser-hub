@@ -10,8 +10,8 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.116.0",
-    "astro": "^6.4.8",
-    "chart.js": "4.4.0"
+    "@supabase/supabase-js": "^2.118.0",
+    "astro": "^7.4.2",
+    "chart.js": "^4.6.1"
   }
 }
