@@ -5,10 +5,12 @@ import { attachContactLog, attachFileUploads, fileUploadBlock, openContratoModal
 import { openInstalacaoModal, openLogisticaModal } from './app04.js';
 import { openAuditoriaReceitasModal, openDespesasPadraoModal, openProjetoFinanceiroModal } from './app06.js';
 import { avisoPopupBloqueado, uiConfirm, alterarMargemMinima } from './app08.js';
+import { setCardAtual } from './app09.js';
 /* ============================================================
    HOMOLOGACAO MODAL
    ============================================================ */
 export function openHomologacaoModal(item=null){
+  setCardAtual('homologacao', item);
   item = mergeChain(item || {});
   const linked = getLinkedDocs(item);
   const etapaOpts = [['aguardando_docs','Aguardando docs'],['projeto','Projeto'],['trt_art_pg','TRT/ART pago'],['parecer_acesso','Parecer de acesso'],['aumento_de_carga','Aumento de Carga'],['estudo_obra','Estudo/Obra na rede'],['vistoria_final','Vistoria final'],['aprovada','Aprovada'],['reprovada','Reprovada']];
@@ -314,6 +316,7 @@ export async function criarRegistroVinculadoPosVenda(tipo, posItem){
 }
 
 export function openPosVendaModal(item=null){
+  setCardAtual('posvenda', item);
   item = item || {};
   const linked = getLinkedDocsByNome(item);
   const statusOpts = [['ativo','Ativo'],['inativo','Inativo'],['manutencao','Manutenção']];

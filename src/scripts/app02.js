@@ -2,6 +2,7 @@ import { $, $$, STAGES, State, badge, confirmDel, esc, filterByVendor, fmtBRL, f
 import { attachContactLog, openAppManModal, openAtendimentoModal, openContratoModal, openPropostaModal, openVistoriaModal, renderContactLog } from './app03.js';
 import { abrirContratoJanela, abrirPropostaJanela, abrirVistoriaJanela, openInstalacaoModal, openLogisticaModal } from './app04.js';
 import { openHomologacaoModal, openPosVendaModal } from './app05.js';
+import { setCardAtual } from './app09.js';
 /* ============================================================
    KANBAN DO INSTALADOR
    Visão dedicada para tec_instalacao: 4 colunas baseadas no
@@ -1562,6 +1563,7 @@ export function histSection(){
    LEAD MODAL
    ============================================================ */
 export function openLeadModal(item=null){
+  setCardAtual('lead', item);
   const isNew = !item;
   item = item || {};
   const canalOpts = [['','— selecione —'],['PAP','PAP'],['Network','Network'],['Captação','Captação'],['Indicação','Indicação'],['Tráfego pago','Tráfego pago'],['Redes sociais','Redes sociais']];

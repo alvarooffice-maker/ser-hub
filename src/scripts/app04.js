@@ -3,6 +3,7 @@ import { attachLinkedDocListeners, buildTransitionPayload, carregarHistorico, cl
 import { attachFileUploads, fileUploadBlock, thumbHtml } from './app03.js';
 import { sincronizarReceitaRepasse } from './app05.js';
 import { avisoPopupBloqueado } from './app08.js';
+import { setCardAtual } from './app09.js';
 /* ============================================================
    LAUDO DE VISTORIA TÉCNICA HTML/PDF
    ============================================================ */
@@ -1277,6 +1278,7 @@ if (window.name === 'clicksign-capture') {
    LOGISTICA MODAL
    ============================================================ */
 export function openLogisticaModal(item=null){
+  setCardAtual('logistica', item);
   item = mergeChain(item || {});
   const linked = getLinkedDocs(item);
   const statusOpts = [['aguardando','Aguardando'],['comprado','Comprado'],['enviado','Enviado'],['entregue','Entregue']];
@@ -1391,6 +1393,7 @@ export function openLogisticaModal(item=null){
    INSTALACAO MODAL
    ============================================================ */
 export function openInstalacaoModal(item=null){
+  setCardAtual('instalacao', item);
   item = mergeChain(item || {});
   const linked = getLinkedDocs(item);
   const statusOpts = [['aguardando_agendamento','Aguardando Agendamento'],['agendada','Agendada'],['em_andamento','Em andamento'],['concluida','Concluída'],['cancelada','Cancelada']];

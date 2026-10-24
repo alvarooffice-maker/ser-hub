@@ -6,6 +6,7 @@ import { renderBaterias, renderComissoesPagina, renderCustoPorProjeto, renderFin
 import { renderCadastros, renderClientes, renderDisparador, renderUsuarios } from './app06.js';
 import { buildMetaLoja, abrirRelatorioMensal, buildPreditivoSection, buildTempoMedioSection, openMetasVendedoresModal, renderCalendario, renderGestaoCustos, renderMetasVendedor, renderMonitoramento, renderRelatorioPosvenda } from './app07.js';
 import { uiConfirm, uiAlert, registrarAviso, agruparMenu } from './app08.js';
+import { tarefasDeHoje, buildPaneTarefas, carregarTarefas } from './app09.js';
 /* ============================================================
    SISTEMA SER - CRM SOLAR COMPLETO
    ============================================================ */
@@ -819,7 +820,9 @@ export function buildParaAgir(c){
     ? anivs.slice(0,10).map(a=>linha('🎂', `<b>${esc(a.nome||'')}</b>`, esc(a.tipo)+(a.idade>0&&a.idade<110?' · '+a.idade+' anos':''),
         (a.dias===0?'🎉 hoje':a.dias===1?'amanhã':a.label)+(a.tel?` · <a href="https://wa.me/55${String(a.tel).replace(/\D/g,'')}?text=${encodeURIComponent('Parabéns, '+String(a.nome||'').split(' ')[0]+'! 🎉 A equipe SER Energia Renovável deseja um dia muito especial e muita energia positiva pra você!')}" target="_blank" rel="noopener">Enviar parabéns</a>`:''))).join('')
     : vazio('Nenhum aniversariante nos próximos 7 dias.');
+  const tarHoje = tarefasDeHoje();
   const abas = [
+    { k:'tar', rot:'Minhas tarefas', n:tarHoje.length, hot:true, html:buildPaneTarefas(tarHoje) },
     { k:'par', rot:'Projetos parados', n:parados.lista.length, hot:true,  html:paneParados },
     { k:'ale', rot:'Alertas',          n:(sem>0?1:0)+(vh>0?1:0)+(ih>0?1:0), hot:true, html:paneAlertas },
     { k:'reg', rot:'Régua de relacionamento', n:c.agendaHoje.length, hot:false, html:paneRegua },
@@ -835,6 +838,7 @@ export function buildParaAgir(c){
 
 export async function renderDashboard(){
   await loadAll();
+  await carregarTarefas();
   // Dashboard sempre mostra dados completos da empresa (visão geral para todos)
   const leads = State.leads || [];
   const props = State.propostas || [];
