@@ -6,7 +6,7 @@
      aparece no calendário, no "Para agir hoje" e avisa no horário.
    ============================================================ */
 import { $, $$, State, STAGES, esc, normName, supa, toast, userRole, loadTable } from './app01.js';
-import { uiConfirm, uiPrompt } from './app08.js';
+import { uiAlert, uiConfirm, uiPrompt } from './app08.js';
 
 const TIPOS = {
   followup: { ic: '📞', rot: 'Follow-up' },
@@ -22,7 +22,7 @@ const etapaRot = id => (STAGES || []).find(s => s.id === id)?.label || id;
 
 /* ---------- identifica o cliente do card aberto ---------- */
 let cardAtual = null; // { stage, item, consumido }
-export function setCardAtual(stage, item) { cardAtual = item ? { stage, item, consumido: false } : null; }
+export function setCardAtual(stage, item) { cardAtual = { stage, item: item || {}, consumido: false } }
 
 export function chaveCliente(stage, item) {
   if (!item) return null;
@@ -56,33 +56,45 @@ async function injetarPainel(root) {
   cardAtual.consumido = true;
   const painel = document.createElement('div');
   painel.id = 'cliPanel'; painel.className = 'cli-panel';
-  if (!chave) { painel.innerHTML = `<div class="cli-vazio">💾 Salve o card para liberar as anotações e tarefas deste cliente.</div>`; corpo.appendChild(painel); return; }
   const nome = item.nome || (State.leads || []).find(l => String(l.id) === String(chave))?.nome || '';
+  // sem `chave` = card ainda não salvo: a anotação fica ligada ao nome e passa a aparecer no card depois de salvo
   painel.innerHTML = `<div class="cli-tabs">
       <button type="button" data-t="notas" class="on">📝 Observações e Anotações <b id="cliNN">…</b></button>
       <button type="button" data-t="tarefas">📅 Tarefas <b id="cliNT">…</b></button></div>
     <div class="cli-pane" data-p="notas">
       ${podeEscrever() ? `<textarea id="cliNotaTx" form="cliSemForm" rows="2" maxlength="4000" placeholder="Escreva uma observação sobre ${esc(nome.split(' ')[0] || 'o cliente')}… (aparece em todas as etapas)"></textarea>
-      <div class="cli-linha"><small>Fica registrado com seu nome, a data e a etapa.</small><button type="button" class="btn btn-primary btn-sm" id="cliNotaAdd">Registrar</button></div>` : ''}
+      <div class="cli-linha"><small>Fica registrado com seu nome, a data e a etapa — e vale para todas as etapas do cliente. Se você esquecer de clicar em Registrar, o texto é salvo sozinho ao salvar ou fechar.</small><button type="button" class="btn btn-primary btn-sm" id="cliNotaAdd">Registrar</button></div>` : ''}
       <div id="cliNotas" class="cli-feed"><div class="cli-vazio">Carregando…</div></div></div>
     <div class="cli-pane" data-p="tarefas" hidden>
       ${podeEscrever() ? `<button type="button" class="btn btn-primary btn-sm" id="cliTarNova">📅 Agendar tarefa</button>` : ''}
       <div id="cliTarefas" class="cli-feed"><div class="cli-vazio">Carregando…</div></div></div>`;
   corpo.appendChild(painel);
 
-  const ctx = { stage, chave, nome, telefone: item.telefone || item.cliente_telefone || (State.leads || []).find(l => String(l.id) === String(chave))?.telefone || '' };
+  const ctx = { stage, chave, nome, modal, telefone: item.telefone || item.cliente_telefone || (State.leads || []).find(l => String(l.id) === String(chave))?.telefone || '' };
   const abas = $$('.cli-tabs button', painel);
   abas.forEach(b => b.addEventListener('click', () => {
     abas.forEach(x => x.classList.toggle('on', x === b));
     $$('.cli-pane', painel).forEach(p => { p.hidden = p.dataset.p !== b.dataset.t; });
   }));
   const recarregar = async () => { await Promise.all([desenharNotas(painel, ctx), desenharTarefas(painel, ctx)]); };
-  $('#cliNotaAdd', painel)?.addEventListener('click', async () => {
-    const tx = $('#cliNotaTx', painel); const texto = tx.value.trim(); if (!texto) return;
-    const { error } = await supa.from('cliente_notas').insert({ chave: ctx.chave, lead_id: ehUuid(ctx.chave) ? ctx.chave : null, cliente_nome: ctx.nome, etapa: ctx.stage, texto, autor_nome: State.profile?.nome || State.user?.email });
-    if (error) return toast('Não foi possível salvar a anotação: ' + error.message, 'error');
-    tx.value = ''; toast('Anotação registrada', 'success'); await desenharNotas(painel, ctx);
-  });
+  // Registra o que estiver escrito. Também roda sozinho ao salvar ou fechar o card, para nada se perder.
+  const registrarPendente = async (avisar = true) => {
+    const tx = $('#cliNotaTx', painel); if (!tx) return
+    const texto = tx.value.trim(); if (!texto) return
+    tx.value = ''   // limpa já, para não registrar duas vezes
+    const chaveDaNota = ctx.chave || 'n:' + normName(ctx.modal?.querySelector('input[name="nome"]')?.value || ctx.nome)
+    const { error } = await supa.from('cliente_notas').insert({ chave: chaveDaNota, lead_id: ehUuid(ctx.chave) ? ctx.chave : null, cliente_nome: ctx.modal?.querySelector('input[name="nome"]')?.value || ctx.nome, etapa: ctx.stage, texto, autor_nome: State.profile?.nome || State.user?.email })
+    if (error) {
+      tx.value = texto
+      await uiAlert('Não foi possível salvar a anotação (' + error.message + '). O texto continua na caixa; copie-o antes de fechar:\n\n' + texto, 'Anotação não salva')
+      return
+    }
+    if (avisar) toast('Anotação registrada', 'success')
+    if (document.body.contains(painel)) await desenharNotas(painel, ctx)
+  }
+  $('#cliNotaAdd', painel)?.addEventListener('click', () => registrarPendente())
+  window.__antesDeFecharModal = () => { registrarPendente(false) }
+  modal.querySelector('form')?.addEventListener('submit', () => { registrarPendente(false) }, true)
   $('#cliTarNova', painel)?.addEventListener('click', () => abrirFormTarefa(ctx, null, recarregar));
   painel.addEventListener('click', async e => {
     const b = e.target.closest('[data-acao]'); if (!b) return;
@@ -96,11 +108,17 @@ async function injetarPainel(root) {
   await recarregar();
 }
 
+/** Chaves sob as quais as anotações deste cliente podem estar: id do lead e nome (anotações feitas antes do card existir). */
+function chavesDo(ctx) {
+  const nome = ctx.modal?.querySelector('input[name="nome"]')?.value || ctx.nome
+  return [...new Set([ctx.chave, nome ? 'n:' + normName(nome) : null].filter(Boolean))]
+}
+
 async function desenharNotas(painel, ctx) {
-  const { data, error } = await supa.from('cliente_notas').select('*').eq('chave', ctx.chave).order('fixada', { ascending: false }).order('criado_em', { ascending: false });
+  const { data, error } = await supa.from('cliente_notas').select('*').in('chave', chavesDo(ctx)).order('fixada', { ascending: false }).order('criado_em', { ascending: false });
   const box = $('#cliNotas', painel); if (!box) return;
   if (error) { box.innerHTML = `<div class="cli-vazio">Não foi possível carregar as anotações.</div>`; return; }
-  State.cliente_notas = [...(State.cliente_notas || []).filter(n => n.chave !== ctx.chave), ...(data || [])];
+  State.cliente_notas = [...(State.cliente_notas || []).filter(n => !chavesDo(ctx).includes(n.chave)), ...(data || [])];
   $('#cliNN', painel).textContent = (data || []).length;
   const eu = State.user?.id, admin = userRole() === 'admin';
   box.innerHTML = (data || []).length ? data.map(n => `<div class="cli-nota ${n.fixada ? 'fixa' : ''}">
