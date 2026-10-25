@@ -607,31 +607,27 @@ export function getPeriodRange(period){
   }
 }
 
+
+/* Recordes da loja (iguais para todo mundo): a função recordes_loja do banco enxerga todos os contratos,
+   mesmo os que o vendedor logado não pode abrir. Fim do recorde = data em que a homologação foi aprovada. */
+const _titulo = (n) => String(n||'').trim().toLowerCase().replace(/(^|\s)(\S)/g,(m,a,b)=>a+b.toUpperCase()).replace(/\b(Da|De|Do|Das|Dos|E)\b/g,x=>x.toLowerCase());
+export function textoRecorde(r){
+  const nomes = (r?.nomes||[]).map(_titulo);
+  if(!nomes.length) return '';
+  return nomes.length===1 ? nomes[0] : `${nomes[0]} + ${nomes.length-1} empate${nomes.length>2?'s':''}`;
+}
+export async function buscarRecordes(){
+  try{
+    const { data, error } = await supa.rpc('recordes_loja');
+    if(error) throw error;
+    return data || {};
+  }catch(e){ console.warn('[recordes_loja]', e); return {}; }
+}
+
 export async function renderHomeVendedor(){
-  await Promise.all([loadTable('instalacoes'), loadTable('homologacoes'), loadTable('contratos')]);
-
-  // Recorde instalação
-  const instalEntries = (State.instalacoes||[])
-    .filter(i=>i.status==='concluida'&&i.data_instalacao&&i.contrato_id)
-    .map(i=>{
-      const c=(State.contratos||[]).find(x=>String(x.id)===String(i.contrato_id));
-      if(!c?.data_assinatura) return null;
-      const d=Math.floor((new Date(i.data_instalacao)-new Date(c.data_assinatura))/86400000);
-      return d>0?{d,nome:c.nome||'—'}:null;
-    }).filter(Boolean);
-  const recInstal = instalEntries.length ? instalEntries.reduce((a,b)=>a.d<=b.d?a:b) : null;
-
-  // Recorde homologação
-  const homolEntries = (State.homologacoes||[])
-    .filter(h=>h.etapa==='aprovada'&&(h.data_ativacao||h.data_aprovacao)&&h.contrato_id)
-    .map(h=>{
-      const c=(State.contratos||[]).find(x=>String(x.id)===String(h.contrato_id));
-      if(!c?.data_assinatura) return null;
-      const dataRef = h.data_ativacao || h.data_aprovacao;
-      const d=Math.floor((new Date(dataRef)-new Date(c.data_assinatura))/86400000);
-      return d>0?{d,nome:c.nome||'—'}:null;
-    }).filter(Boolean);
-  const recHomol = homolEntries.length ? homolEntries.reduce((a,b)=>a.d<=b.d?a:b) : null;
+  const recordes = await buscarRecordes();
+  const recInstal = recordes.instalacao?.dias ? { d: recordes.instalacao.dias, nome: textoRecorde(recordes.instalacao) } : null;
+  const recHomol = recordes.homologacao?.dias ? { d: recordes.homologacao.dias, nome: textoRecorde(recordes.homologacao) } : null;
 
   $('#pageActions').innerHTML = '';
   $('#content').innerHTML = `
@@ -839,6 +835,7 @@ export function buildParaAgir(c){
 export async function renderDashboard(){
   await loadAll();
   await carregarTarefas();
+  const rcd = await buscarRecordes();
   // Dashboard sempre mostra dados completos da empresa (visão geral para todos)
   const leads = State.leads || [];
   const props = State.propostas || [];
@@ -1252,43 +1249,17 @@ export async function renderDashboard(){
     const tlEl = $('#kpiTimeLead');
     if(tlEl) tlEl.textContent = avgTL!=null ? avgTL+'d' : '—';
 
-    // ── Recorde Homologação: dias contrato assinado → homologação aprovada ──
-    const homolEntries = (State.homologacoes||[])
-      .filter(h => h.etapa==='aprovada' && h.contrato_id && (h.data_ativacao || h.data_aprovacao))
-      .map(h => {
-        const cont = (State.contratos||[]).find(c=>String(c.id)===String(h.contrato_id));
-        if(!cont?.data_assinatura) return null;
-        const dataRef = h.data_ativacao || h.data_aprovacao;
-        const dias = Math.floor((new Date(dataRef).getTime() - new Date(cont.data_assinatura).getTime()) / 86400000);
-        return dias > 0 ? { dias, nome: cont.nome||'—' } : null;
-      })
-      .filter(d => d != null);
-    const recEntry = homolEntries.length ? homolEntries.reduce((a,b)=>a.dias<=b.dias?a:b) : null;
-    const avgHomol = homolEntries.length ? Math.round(homolEntries.reduce((s,d)=>s+d.dias,0)/homolEntries.length) : null;
-    const hrEl = $('#kpiHomolRec');
-    const haEl = $('#kpiHomolAvg');
-    if(hrEl) hrEl.textContent = recEntry ? '🏅 '+recEntry.dias+'d' : '—';
-    if(haEl) haEl.textContent = avgHomol!=null ? 'Média: '+avgHomol+' dias' : '—';
+    // ── Recordes da loja (iguais para todos; ver buscarRecordes) ──
+    const hrEl = $('#kpiHomolRec'), haEl = $('#kpiHomolAvg');
+    if(hrEl) hrEl.textContent = rcd.homologacao?.dias ? '🏅 '+rcd.homologacao.dias+'d' : '—';
+    if(haEl) haEl.textContent = rcd.homologacao?.media!=null ? 'Média: '+rcd.homologacao.media+' dias' : '—';
     const hSubEl = hrEl?.closest('.metric')?.querySelector('.metric-sub');
-    if(hSubEl) hSubEl.textContent = recEntry ? recEntry.nome : 'recorde · média (dias contrato→homol)';
-
-    // ── Recorde Instalação: dias contrato assinado → data instalação ──
-    const instalEntries = (State.instalacoes||[])
-      .filter(i => i.status==='concluida' && i.data_instalacao && i.contrato_id)
-      .map(i => {
-        const cont = (State.contratos||[]).find(c=>String(c.id)===String(i.contrato_id));
-        if(!cont?.data_assinatura) return null;
-        const dias = Math.floor((new Date(i.data_instalacao).getTime() - new Date(cont.data_assinatura).getTime()) / 86400000);
-        return dias > 0 ? { dias, nome: cont.nome||'—' } : null;
-      })
-      .filter(d => d != null);
-    const recInstal = instalEntries.length ? instalEntries.reduce((a,b)=>a.dias<=b.dias?a:b) : null;
-    const avgInstal = instalEntries.length ? Math.round(instalEntries.reduce((s,d)=>s+d.dias,0)/instalEntries.length) : null;
+    if(hSubEl) hSubEl.textContent = rcd.homologacao?.dias ? textoRecorde(rcd.homologacao) : 'recorde · média (dias contrato→homol)';
     const irEl = $('#kpiInstalRec'), iaEl = $('#kpiInstalAvg');
-    if(irEl) irEl.textContent = recInstal ? '⚡ '+recInstal.dias+'d' : '—';
-    if(iaEl) iaEl.textContent = avgInstal!=null ? 'Média: '+avgInstal+' dias' : '—';
+    if(irEl) irEl.textContent = rcd.instalacao?.dias ? '⚡ '+rcd.instalacao.dias+'d' : '—';
+    if(iaEl) iaEl.textContent = rcd.instalacao?.media!=null ? 'Média: '+rcd.instalacao.media+' dias' : '—';
     const iSubEl = irEl?.closest('.metric')?.querySelector('.metric-sub');
-    if(iSubEl) iSubEl.textContent = recInstal ? recInstal.nome : 'recorde · média (dias contrato→instal)';
+    if(iSubEl) iSubEl.textContent = rcd.instalacao?.dias ? textoRecorde(rcd.instalacao) : 'recorde · média (dias contrato→instal)';
 
     // ── Contratos filtrados por período ────────────────────────────────────
     const contFiltrados = byVend(contratos).filter(c=>c.status==='assinado' && c.data_assinatura >= startD && c.data_assinatura <= endD);

@@ -1354,6 +1354,8 @@ export function openModal(html, size=''){
   return root;
 }
 export function closeModal(){
+  // anotações digitadas e ainda não registradas são salvas antes de fechar (ver app09)
+  try{ if(window.__antesDeFecharModal){ const f = window.__antesDeFecharModal; window.__antesDeFecharModal = null; f(); } }catch(e){ console.warn(e); }
   const root = $('#modalRoot');
   $$('form', root).forEach(form=>{ form._submitting = false; });
   root.classList.remove('active');
