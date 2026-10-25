@@ -1,4 +1,4 @@
-import { $, $$, STAGES, State, badge, confirmDel, esc, filterByVendor, fmtBRL, fmtDate, fmtInputNum, fmtNum, isVend, loadAll, parseBR, renderPipeline, renderVistoriadorKanban, supa, toast, userRole } from './app01.js';
+import { $, $$, STAGES, State, badge, confirmDel, esc, filterByVendor, fmtBRL, fmtDate, fmtInputNum, fmtNum, isVend, listaDeVendedores, loadAll, nomesOficiais, padronizarNome, parseBR, renderPipeline, renderVistoriadorKanban, supa, toast, userRole } from './app01.js';
 import { attachContactLog, openAppManModal, openAtendimentoModal, openContratoModal, openPropostaModal, openVistoriaModal, renderContactLog } from './app03.js';
 import { abrirContratoJanela, abrirPropostaJanela, abrirVistoriaJanela, openInstalacaoModal, openLogisticaModal } from './app04.js';
 import { openHomologacaoModal, openPosVendaModal } from './app05.js';
@@ -1335,6 +1335,18 @@ export function openModal(html, size=''){
   root.innerHTML = `<div class="modal ${size}">${html}</div>`;
   root.classList.add('active');
   $$('.modal-close',root).forEach(b=>b.addEventListener('click', closeModal));
+  // campos de nome de pessoa em texto livre: sugere a lista oficial e corrige a grafia ao sair do campo
+  const CAMPOS_DE_NOME = ['captador','sdr','tecnico','tecnico_responsavel','responsavel','supervisor_nome','vend_nome','sup_nome','sdr_nome','cap_nome','ind_nome'];
+  const listaId = 'dlNomesOficiais';
+  $$('input[type="text"],input:not([type])',root).filter(i=>CAMPOS_DE_NOME.includes(i.name)).forEach(i=>{
+    if(!document.getElementById(listaId)){ const dl=document.createElement('datalist'); dl.id=listaId; dl.innerHTML=nomesOficiais().map(n=>`<option value="${esc(n)}">`).join(''); document.body.appendChild(dl); }
+    i.setAttribute('list', listaId); i.setAttribute('autocomplete','off');
+    i.addEventListener('change', ()=>{
+      const v = i.value.trim(); if(!v) return;
+      const canon = padronizarNome(v);
+      if(canon && canon!==v){ i.value = canon; toast(`Nome padronizado: ${canon}`,'info'); }
+    });
+  });
   $$('.section-header',root).forEach(h=>{
     h.addEventListener('click', ()=> h.parentElement.classList.toggle('collapsed'));
   });
@@ -1586,7 +1598,7 @@ export function openLeadModal(item=null){
           ${formField({label:'Projeto',name:'projeto',value:item.projeto,placeholder:'ex: Residencial, Expansão, Comercial...'})}
           ${formField({label:'kWh',name:'kwh',type:'number',value:item.kwh})}
           ${formField({label:'Canal',name:'canal',type:'select',value:item.canal,options:canalOpts})}
-          ${formField({label:'Vendedor',name:'vendedor',type:'select',value:item.vendedor||(isVend()?State.profile.nome:''),options:[['','— selecione —'],...(State.perfis||[]).filter(p=>p.ativo!==false&&['vendedor','supervisor','admin'].includes(p.perfil)&&p.nome).map(p=>[p.nome,p.nome])]})}
+          ${formField({label:'Vendedor',name:'vendedor',type:'select',value:item.vendedor||(isVend()?State.profile.nome:''),options:[['','— selecione —'],...listaDeVendedores().map(n=>[n,n])]})}
           ${formField({label:'Captador',name:'captador',value:item.captador})}
           ${formField({label:'SDR',name:'sdr',value:item.sdr})}
           ${formField({label:'Nascimento',name:'nascimento',type:'date',value:item.nascimento})}
