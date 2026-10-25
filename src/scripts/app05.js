@@ -1,5 +1,5 @@
 import Chart from 'chart.js/auto';
-import { $, $$, DL_TECNICO, State, badge, canVerFinanceiro, confirmDel, esc, filterByVendor, fmtBRL, fmtDate, fmtInputNum, isAdmin, loadAll, loadTable, navigate, normName, parseBR, renderPipeline, supa, toast } from './app01.js';
+import { $, $$, DL_TECNICO, State, badge, canVerFinanceiro, confirmDel, esc, filterByVendor, fmtBRL, fmtDate, fmtInputNum, isAdmin, listaDeVendedores, loadAll, loadTable, navigate, normName, parseBR, renderPipeline, supa, toast } from './app01.js';
 import { attachLinkedDocListeners, carregarHistorico, closeModal, detectMudancas, formField, getLinkedDocs, getLinkedDocsByNome, histSection, mergeChain, openModal, readForm, registrarHistorico, renderLinkedDocBtns } from './app02.js';
 import { attachContactLog, attachFileUploads, fileUploadBlock, openContratoModal, openPropostaModal, openVistoriaModal, renderContactLog } from './app03.js';
 import { openInstalacaoModal, openLogisticaModal } from './app04.js';
@@ -601,7 +601,7 @@ export function openRemarketingModal(item){
           ${formField({label:'Telefone',name:'telefone',value:item.telefone})}
           ${formField({label:'Motivo perda',name:'motivo_perda',value:item.motivo_perda,readonly:true})}
           ${formField({label:'Data reativação',name:'data_reativacao',type:'date',value:item.data_reativacao})}
-          ${formField({label:'Vendedor',name:'vendedor',value:item.vendedor})}
+          ${formField({label:'Vendedor',name:'vendedor',type:'select',value:item.vendedor||'',options:[['','— selecione —'],...listaDeVendedores().map(n=>[n,n])]})}
           ${formField({label:'Status',name:'status',type:'select',value:item.status,options:statusOpts})}
           ${formField({label:'Observações',name:'obs',type:'textarea',value:item.obs,full:true})}
         </div>

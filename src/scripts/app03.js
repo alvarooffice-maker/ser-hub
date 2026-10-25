@@ -1,4 +1,4 @@
-import { $, $$, DL_BANCO, DL_MARCA_BATERIA, DL_MARCA_INVERSOR, DL_MARCA_MODULO, DL_POT_BATERIA, DL_POT_INVERSOR, DL_POT_MODULO, DL_TECNICO, SURL, State, canVerFinanceiro, confirmDel, esc, fmtDate, fmtDateTime, fmtInputNum, isAdmin, isNetworkError, isVend, loadAll, parseBR, renderPipeline, renderVistoriadorKanban, salvarComOffline, supa, toast, uid } from './app01.js';
+import { $, $$, DL_BANCO, DL_MARCA_BATERIA, DL_MARCA_INVERSOR, DL_MARCA_MODULO, DL_POT_BATERIA, DL_POT_INVERSOR, DL_POT_MODULO, DL_TECNICO, SURL, State, canVerFinanceiro, confirmDel, esc, fmtDate, fmtDateTime, fmtInputNum, isAdmin, isNetworkError, isVend, listaDeVendedores, loadAll, parseBR, renderPipeline, renderVistoriadorKanban, salvarComOffline, supa, toast, uid } from './app01.js';
 import { attachCEP, attachCPF, attachLinkedDocListeners, buildTransitionPayload, carregarHistorico, closeModal, detectMudancas, enviarParaRemarketing, formField, getLinkedDocs, histSection, mergeChain, openModal, readForm, registrarHistorico, renderAppManKanban, renderHomologadorKanban, renderInstaladorKanban, renderLinkedDocBtns, renderReservicoKanban } from './app02.js';
 import { abrirContratoJanela, abrirPropostaJanela, abrirVistoriaJanela } from './app04.js';
 import { openProjetoFinanceiroModal } from './app06.js';
@@ -136,7 +136,7 @@ export function openPropostaModal(item=null){
             <div id="motivoPerdaPropWrap" style="display:${item.status==='recusada'?'':'none'}">
               ${formField({label:'Motivo da recusa',name:'motivo_perda',type:'select',value:item.motivo_perda||'',options:motivoPerdaOpts})}
             </div>
-            ${formField({label:'Vendedor',name:'vendedor',type:'select',value:item.vendedor||(isVend()?State.profile.nome:''),options:[['','— selecione —'],...(State.perfis||[]).filter(p=>p.ativo!==false&&['vendedor','supervisor','admin'].includes(p.perfil)&&p.nome).map(p=>[p.nome,p.nome])]})}
+            ${formField({label:'Vendedor',name:'vendedor',type:'select',value:item.vendedor||(isVend()?State.profile.nome:''),options:[['','— selecione —'],...listaDeVendedores().map(n=>[n,n])]})}
             ${formField({label:'Tel. Vendedor',name:'vend_telefone',value:item.vend_telefone})}
             ${formField({label:'Email Vendedor',name:'vend_email',value:item.vend_email})}
           </div></div>
@@ -1491,7 +1491,7 @@ export function openContratoModal(item=null){
             </div>
             ${formField({label:'Data Assinatura',name:'data_assinatura',type:'date',value:item.data_assinatura})}
             ${formField({label:'Canal de aquisição',name:'canal',type:'select',value:item.canal||'',options:[['','— automático (do lead) —'],['PAP','PAP'],['Network','Network'],['Captação','Captação'],['Indicação','Indicação'],['Tráfego pago','Tráfego pago'],['Redes sociais','Redes sociais']]})}
-            ${formField({label:'Vendedor (Testemunha 1)',name:'vendedor',type:'select',value:item.vendedor||'',options:[['','— selecione —'],...(State.perfis||[]).filter(p=>p.ativo!==false&&['vendedor','supervisor','admin'].includes(p.perfil)&&p.nome).map(p=>[p.nome,p.nome])]})}
+            ${formField({label:'Vendedor (Testemunha 1)',name:'vendedor',type:'select',value:item.vendedor||'',options:[['','— selecione —'],...listaDeVendedores().map(n=>[n,n])]})}
             ${formField({label:'CPF do Vendedor',name:'vend_cpf',value:item.vend_cpf,placeholder:'000.000.000-00'})}
             ${formField({label:'Supervisor (Testemunha 2)',name:'supervisor_nome',type:'select',value:item.supervisor_nome||'',options:[['','— selecione —'],...(State.perfis||[]).filter(p=>p.ativo!==false&&['supervisor','admin'].includes(p.perfil)&&p.nome).map(p=>[p.nome,p.nome])]})}
             ${formField({label:'CPF do Supervisor',name:'supervisor_cpf',value:item.supervisor_cpf,placeholder:'000.000.000-00'})}

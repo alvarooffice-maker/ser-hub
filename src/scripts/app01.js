@@ -419,6 +419,34 @@ export function calcLeadsParados(dias=3){
   return meuLeads.filter(l=>l.status==='em_contato' && new Date(l.atualizado_em||l.criado_em) < corte);
 }
 
+
+/* ---- Nomes de pessoas: uma grafia só (a lista oficial = quem tem acesso + cadastros do time) ---- */
+const _tiposDoTime = ['vendedor','tecnico','captador','sdr','supervisor'];
+export function nomesOficiais(){
+  const s = new Set();
+  (State.perfis||[]).forEach(p=>{ if(p.nome && p.nome.trim()) s.add(p.nome.trim()); });
+  (State.cadastros||[]).filter(c=>_tiposDoTime.includes(c.tipo) && c.nome && c.nome.trim()).forEach(c=>s.add(c.nome.trim()));
+  return [...s].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+}
+/** Quem pode ser vendedor de um card: usuários vendedor/supervisor/admin ativos + vendedores cadastrados que ainda não têm acesso. */
+export function listaDeVendedores(){
+  const s = new Set();
+  (State.perfis||[]).filter(p=>p.ativo!==false && ['vendedor','supervisor','admin'].includes(p.perfil) && p.nome).forEach(p=>s.add(p.nome.trim()));
+  (State.cadastros||[]).filter(c=>c.tipo==='vendedor' && c.nome).forEach(c=>s.add(c.nome.trim()));
+  return [...s].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+}
+const _tokens = t => normName(t).split(' ').filter(x=>x.length>1);
+/** Mesma regra do banco (padronizar_nome): igual sem acento/caixa/espaços, e-mail de usuário, ou parte de UM único nome oficial. */
+export function padronizarNome(t){
+  const n = normName(t); if(!n) return null;
+  const todos = nomesOficiais();
+  const igual = todos.find(x=>normName(x)===n); if(igual) return igual;
+  const porEmail = (State.perfis||[]).find(p=>p.email && String(p.email).trim().toLowerCase()===String(t).trim().toLowerCase()); if(porEmail?.nome) return porEmail.nome.trim();
+  const tk = _tokens(t); if(!tk.length) return null;
+  const cand = todos.filter(x=>{ const o=_tokens(x); return tk.every(w=>o.includes(w)); });
+  return cand.length===1 ? cand[0] : null;
+}
+
 export function renderNav(){
   const nav = $('#nav');
   const items = visibleRoutes();
