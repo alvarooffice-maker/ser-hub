@@ -1,16 +1,19 @@
 ---
-import Base from '../layouts/Base.astro';
-import '../styles/portal.css';
+// O portal do cliente mudou para o novo SER Hub. Os links antigos (portal?token=...) continuam valendo: levam ao endereço novo com o mesmo token.
 ---
-<Base title="SER Energia · Portal do Cliente" themeColor="#1a0a2e">
-<div id="app">
-  <div class="loading">
-    <div class="spinner"></div>
-    <div class="loading-text">Carregando seu projeto…</div>
-  </div>
-</div>
-</Base>
-
-<script>
-  import '../scripts/portal.js';
-</script>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SER Energia · Portal do Cliente</title>
+  <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;background:#1a0a2e;color:#fff;text-align:center}</style>
+</head>
+<body>
+  <p>Abrindo o seu portal…</p>
+  <script is:inline>
+    var t = new URLSearchParams(location.search).get('token');
+    location.replace('https://hub.serenergiarenovavel.com.br/portal' + (t ? '?token=' + encodeURIComponent(t) : ''));
+  </script>
+  <noscript><a href="https://hub.serenergiarenovavel.com.br/portal" style="color:#fff">Clique para abrir o portal</a></noscript>
+</body>
+</html>
