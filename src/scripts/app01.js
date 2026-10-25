@@ -614,7 +614,9 @@ const _titulo = (n) => String(n||'').trim().toLowerCase().replace(/(^|\s)(\S)/g,
 export function textoRecorde(r){
   const nomes = (r?.nomes||[]).map(_titulo);
   if(!nomes.length) return '';
-  return nomes.length===1 ? nomes[0] : `${nomes[0]} + ${nomes.length-1} empate${nomes.length>2?'s':''}`;
+  if(nomes.length===1) return nomes[0];
+  const primeiros = nomes.slice(0,3).map(n=>n.split(' ')[0]);   // empate: mostra todos pelo primeiro nome
+  return primeiros.join(' · ') + (nomes.length>3 ? ` +${nomes.length-3}` : '') + ' (empate)';
 }
 export async function buscarRecordes(){
   try{
