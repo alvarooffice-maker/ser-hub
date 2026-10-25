@@ -1,21 +1,31 @@
 ---
-import Base from '../layouts/Base.astro';
-import AuthScreen from '../components/AuthScreen.astro';
-import AppShell from '../components/AppShell.astro';
-import ModalRoot from '../components/ModalRoot.astro';
-import Toast from '../components/Toast.astro';
-import GlobalSearch from '../components/GlobalSearch.astro';
-import '../styles/styles.css';
+// Sistema antigo encerrado em 25/10/2026: a página só avisa e leva para o SER Hub novo. Nenhum código do sistema antigo é carregado.
 ---
-<Base title="Sistema SER - SER Energia Renovável" themeColor="#3B6D11">
-  <link slot="head" rel="manifest" href="manifest.json" />
-  <AuthScreen />
-  <AppShell />
-  <ModalRoot />
-  <Toast />
-  <GlobalSearch />
-</Base>
-
-<script>
-  import '../scripts/main.js';
-</script>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>O SER Hub mudou de endereço</title>
+  <meta http-equiv="refresh" content="6;url=https://hub.serenergiarenovavel.com.br/entrar" />
+  <style>
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#1a0a2e,#6b21a8);color:#fff;text-align:center;padding:24px}
+    .c{max-width:440px}h1{font-size:26px;margin:16px 0 8px}p{opacity:.85;line-height:1.5}a{display:inline-block;margin-top:18px;background:#fff;color:#4c1680;padding:12px 26px;border-radius:10px;font-weight:700;text-decoration:none}
+    img{width:150px}
+  </style>
+</head>
+<body>
+  <div class="c">
+    <img src="/logo.png" alt="SER Energia Renovável" />
+    <h1>O SER Hub está mais rápido e mais bonito 🚀</h1>
+    <p>Agora ele mora em <b>hub.serenergiarenovavel.com.br</b>. Use o mesmo e-mail e a mesma senha de sempre.</p>
+    <a href="https://hub.serenergiarenovavel.com.br/entrar">Entrar no novo SER Hub</a>
+    <p style="font-size:12px;margin-top:22px">Você será levado automaticamente em alguns segundos.</p>
+  </div>
+  <script is:inline>
+    // limpa o que o sistema antigo guardou neste aparelho (cache e service worker)
+    try { navigator.serviceWorker && navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister() }) }) } catch (e) {}
+    try { window.caches && caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k) }) }) } catch (e) {}
+    setTimeout(function () { location.replace('https://hub.serenergiarenovavel.com.br/entrar') }, 6000)
+  </script>
+</body>
+</html>
